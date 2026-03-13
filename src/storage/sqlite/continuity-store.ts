@@ -31,6 +31,7 @@ interface RequestAnchorRow {
   content: string
   created_at: number
   summarized_at: number | null
+  last_checkpoint_observation_at: number | null
 }
 
 interface SummaryRow {
@@ -104,7 +105,8 @@ export class ContinuityStore {
         project_path TEXT NOT NULL,
         content TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        summarized_at INTEGER
+        summarized_at INTEGER,
+        last_checkpoint_observation_at INTEGER
       );
 
       CREATE INDEX IF NOT EXISTS idx_request_anchors_project_session_created
@@ -125,6 +127,8 @@ export class ContinuityStore {
       CREATE INDEX IF NOT EXISTS idx_summaries_project_created
       ON summaries(project_path, created_at DESC);
     `)
+
+    this.ensureColumn("request_anchors", "last_checkpoint_observation_at", "INTEGER")
   }
 
   saveObservation(record: ObservationRecord) {
@@ -159,8 +163,8 @@ export class ContinuityStore {
     this.db
       .prepare(`
         INSERT OR REPLACE INTO request_anchors (
-          id, session_id, project_path, content, created_at, summarized_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+          id, session_id, project_path, content, created_at, summarized_at, last_checkpoint_observation_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `)
       .run(
         record.id,
@@ -169,17 +173,18 @@ export class ContinuityStore {
         record.content,
         record.createdAt,
         record.summarizedAt ?? null,
+        record.lastCheckpointObservationAt ?? null,
       )
   }
 
-  getLatestUnsummarizedRequestAnchor(input: {
+  getLatestRequestAnchor(input: {
     projectPath: string
     sessionID: string
   }): RequestAnchorRecord | null {
     const row = this.db
       .prepare(`
         SELECT * FROM request_anchors
-        WHERE project_path = ? AND session_id = ? AND summarized_at IS NULL
+        WHERE project_path = ? AND session_id = ?
         ORDER BY created_at DESC
         LIMIT 1
       `)
@@ -188,14 +193,18 @@ export class ContinuityStore {
     return row ? this.mapRequestAnchor(row) : null
   }
 
-  markRequestAnchorSummarized(id: string, summarizedAt: number) {
+  updateRequestAnchorCheckpoint(input: {
+    id: string
+    summarizedAt: number
+    lastCheckpointObservationAt: number
+  }) {
     this.db
       .prepare(`
         UPDATE request_anchors
-        SET summarized_at = ?
+        SET summarized_at = ?, last_checkpoint_observation_at = ?
         WHERE id = ?
       `)
-      .run(summarizedAt, id)
+      .run(input.summarizedAt, input.lastCheckpointObservationAt, input.id)
   }
 
   listRecentObservations(input: {
@@ -270,20 +279,20 @@ export class ContinuityStore {
   listObservationsForRequestWindow(input: {
     projectPath: string
     sessionID: string
-    afterCreatedAt: number
+    afterCreatedAtExclusive: number
     limit?: number
   }): ObservationRecord[] {
     const rows = this.db
       .prepare(`
         SELECT * FROM observations
-        WHERE project_path = ? AND session_id = ? AND created_at >= ?
+        WHERE project_path = ? AND session_id = ? AND created_at > ?
         ORDER BY created_at ASC
         LIMIT ?
       `)
       .all(
         input.projectPath,
         input.sessionID,
-        input.afterCreatedAt,
+        input.afterCreatedAtExclusive,
         input.limit ?? 20,
       ) as ObservationRow[]
 
@@ -517,7 +526,14 @@ export class ContinuityStore {
       content: row.content,
       createdAt: row.created_at,
       summarizedAt: row.summarized_at ?? undefined,
+      lastCheckpointObservationAt: row.last_checkpoint_observation_at ?? undefined,
     }
+  }
+
+  private ensureColumn(table: string, column: string, definition: string) {
+    const rows = this.db.query(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+    if (rows.some((row) => row.name === column)) return
+    this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
   }
 
   private mapSummary(row: SummaryRow): SummaryRecord {

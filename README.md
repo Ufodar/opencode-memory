@@ -64,6 +64,7 @@ docs/
 - SQLite observation 持久化
 - request anchor 持久化
 - deterministic summary aggregation
+- 同一 request anchor 已支持多 checkpoint summary
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - system injection 已升级为 summary-first，并自动过滤已被 summary 覆盖的 observation
 - retrieval 已支持 `session / project` scope

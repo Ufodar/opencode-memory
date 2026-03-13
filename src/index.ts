@@ -36,7 +36,7 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
     event: async ({ event }) => {
       if (event.type === "session.idle") {
         const sessionID = event.properties.sessionID
-        const requestAnchor = store.getLatestUnsummarizedRequestAnchor({
+        const requestAnchor = store.getLatestRequestAnchor({
           projectPath: directory,
           sessionID,
         })
@@ -49,7 +49,8 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
         const observations = store.listObservationsForRequestWindow({
           projectPath: directory,
           sessionID,
-          afterCreatedAt: requestAnchor.createdAt,
+          afterCreatedAtExclusive:
+            requestAnchor.lastCheckpointObservationAt ?? requestAnchor.createdAt - 1,
         })
 
         if (!shouldAggregateRequestWindow({ observations })) {
@@ -66,7 +67,11 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
         })
 
         store.saveSummary(summary)
-        store.markRequestAnchorSummarized(requestAnchor.id, Date.now())
+        store.updateRequestAnchorCheckpoint({
+          id: requestAnchor.id,
+          summarizedAt: Date.now(),
+          lastCheckpointObservationAt: Math.max(...observations.map((item) => item.createdAt)),
+        })
         log("captured summary", { id: summary.id, sessionID })
       }
     },

@@ -25,6 +25,7 @@
   - observation capture
   - request anchor
   - summary 聚合
+  - 同一 request anchor 可多次 checkpoint
 
 ### 回注器
 
@@ -57,10 +58,10 @@ tool.execute.after
 chat.message
   -> request anchor
 session.idle
-  -> request window observations
+  -> request checkpoint observations
   -> summary aggregation
   -> summary persistence
-  -> request anchor summarized
+  -> request anchor checkpoint updated
 retrieval
   -> summary-first memory_search / mixed memory_details
 injection

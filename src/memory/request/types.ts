@@ -5,4 +5,5 @@ export interface RequestAnchorRecord {
   content: string
   createdAt: number
   summarizedAt?: number
+  lastCheckpointObservationAt?: number
 }
