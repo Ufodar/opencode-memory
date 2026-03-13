@@ -6,6 +6,7 @@ export function buildSystemContinuityContext(input: {
   observations: ObservationRecord[]
 }): string[] {
   const system: string[] = []
+  const coveredObservationIDs = new Set(input.summaries.flatMap((summary) => summary.observationIDs))
 
   if (input.summaries.length > 0) {
     system.push("[CONTINUITY]")
@@ -16,9 +17,14 @@ export function buildSystemContinuityContext(input: {
     }
   }
 
-  if (input.observations.length > 0) {
-    system.push("Recent observations:")
-    for (const observation of input.observations) {
+  const unsummarizedObservations =
+    input.summaries.length > 0
+      ? input.observations.filter((observation) => !coveredObservationIDs.has(observation.id))
+      : input.observations
+
+  if (unsummarizedObservations.length > 0) {
+    system.push(input.summaries.length > 0 ? "Recent unsummarized observations:" : "Recent observations:")
+    for (const observation of unsummarizedObservations) {
       system.push(`- ${observation.content}`)
     }
   }

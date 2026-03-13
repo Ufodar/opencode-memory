@@ -65,13 +65,14 @@ docs/
 - request anchor 持久化
 - deterministic summary aggregation
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
+- system injection 已升级为 summary-first，并自动过滤已被 summary 覆盖的 observation
 - 第一版架构和路线图文档
 
 下一步建议优先实现：
 
 1. summary ranking / scope 控制
 2. 更细的 request window 切分
-3. 注入层的去重与 token 预算
+3. 注入层的 token 预算
 4. 再评估是否需要轻量外部 worker
 
 ## 致谢

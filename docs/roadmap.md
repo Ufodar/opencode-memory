@@ -27,6 +27,7 @@
 - `experimental.chat.system.transform`
 - summary 优先注入
 - recent observation 索引注入
+- 已被 summary 覆盖 observation 的去重
 - compaction 友好策略
 
 ## v0.5.0 Retrieval Surface

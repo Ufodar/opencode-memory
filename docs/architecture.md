@@ -30,6 +30,9 @@
 
 - OpenCode 等价点：`experimental.chat.system.transform`
 - 作用：把 continuity 结果注入到 system/background，而不是普通消息
+- 当前策略：
+  - summary-first
+  - 仅补未被 summary 覆盖的 observation
 
 ### 检索器
 
@@ -56,7 +59,9 @@ session.idle
   -> request anchor summarized
 retrieval
   -> summary-first memory_search / mixed memory_details
-  -> system transform 读取最近 observation
+injection
+  -> summary-first system transform
+  -> unsummarized observations only
 ```
 
 ## 数据流
