@@ -23,7 +23,8 @@
 - 第一版不做外部 worker
 - 先在插件内部完成：
   - observation capture
-  - summary 聚合占位
+  - request anchor
+  - summary 聚合
 
 ### 回注器
 
@@ -43,6 +44,14 @@ tool.execute.after
   -> candidate rule
   -> observation record
   -> SQLite persistence
+chat.message
+  -> request anchor
+session.idle
+  -> request window observations
+  -> summary aggregation
+  -> summary persistence
+  -> request anchor summarized
+retrieval
   -> memory_search / memory_details
   -> system transform 读取最近 observation
 ```

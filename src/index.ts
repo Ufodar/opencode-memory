@@ -1,7 +1,9 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { getDefaultDatabasePath } from "./config/paths.js"
+import { captureRequestAnchor } from "./runtime/hooks/chat-message.js"
 import { captureToolObservation } from "./runtime/hooks/tool-after.js"
 import { buildSystemContinuityContext } from "./runtime/injection/system-context.js"
+import { shouldAggregateRequestWindow, summarizeRequestWindow } from "./memory/summary/aggregate.js"
 import { ContinuityStore } from "./storage/sqlite/continuity-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
 import { createMemoryDetailsTool } from "./tools/memory-details.js"
@@ -11,13 +13,59 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
   const store = new ContinuityStore(getDefaultDatabasePath())
 
   return {
-    "chat.message": async () => {
-      // Reserved for request anchoring in later iterations.
+    "chat.message": async (input, output) => {
+      const text = output.parts
+        .filter((part): part is typeof part & { type: "text"; text: string } => part.type === "text")
+        .map((part) => part.text)
+        .join("\n")
+
+      const requestAnchor = captureRequestAnchor({
+        sessionID: input.sessionID,
+        messageID: output.message.id,
+        projectPath: directory,
+        text,
+      })
+
+      if (!requestAnchor) return
+
+      store.saveRequestAnchor(requestAnchor)
     },
 
     event: async ({ event }) => {
       if (event.type === "session.idle") {
-        log("session.idle", { sessionID: event.properties?.sessionID })
+        const sessionID = event.properties.sessionID
+        const requestAnchor = store.getLatestUnsummarizedRequestAnchor({
+          projectPath: directory,
+          sessionID,
+        })
+
+        if (!requestAnchor) {
+          log("session.idle without pending request anchor", { sessionID })
+          return
+        }
+
+        const observations = store.listObservationsForRequestWindow({
+          projectPath: directory,
+          sessionID,
+          afterCreatedAt: requestAnchor.createdAt,
+        })
+
+        if (!shouldAggregateRequestWindow({ observations })) {
+          log("session.idle without aggregatable observations", {
+            sessionID,
+            requestAnchorID: requestAnchor.id,
+          })
+          return
+        }
+
+        const summary = summarizeRequestWindow({
+          request: requestAnchor,
+          observations,
+        })
+
+        store.saveSummary(summary)
+        store.markRequestAnchorSummarized(requestAnchor.id, Date.now())
+        log("captured summary", { id: summary.id, sessionID })
       }
     },
 
@@ -36,6 +84,11 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
     },
 
     "experimental.chat.system.transform": async (input, output) => {
+      const summaries = store.listRecentSummaries({
+        projectPath: directory,
+        sessionID: input.sessionID,
+        limit: 3,
+      })
       const observations = store.listRecentObservations({
         projectPath: directory,
         sessionID: input.sessionID,
@@ -43,7 +96,7 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
       })
 
       const system = buildSystemContinuityContext({
-        summaries: [],
+        summaries,
         observations,
       })
 

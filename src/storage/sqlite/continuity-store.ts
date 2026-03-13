@@ -3,6 +3,8 @@ import { dirname } from "node:path"
 import { Database } from "bun:sqlite"
 
 import type { ObservationRecord } from "../../memory/observation/types.js"
+import type { RequestAnchorRecord } from "../../memory/request/types.js"
+import type { SummaryRecord } from "../../memory/summary/types.js"
 
 interface ObservationRow {
   id: string
@@ -20,6 +22,27 @@ interface ObservationRow {
   importance: number
   tags_json: string
   trace_json: string
+}
+
+interface RequestAnchorRow {
+  id: string
+  session_id: string
+  project_path: string
+  content: string
+  created_at: number
+  summarized_at: number | null
+}
+
+interface SummaryRow {
+  id: string
+  session_id: string
+  project_path: string
+  request_anchor_id: string
+  request_summary: string
+  outcome_summary: string
+  next_step: string | null
+  observation_ids_json: string
+  created_at: number
 }
 
 export class ContinuityStore {
@@ -56,6 +79,33 @@ export class ContinuityStore {
 
       CREATE INDEX IF NOT EXISTS idx_observations_session_created
       ON observations(session_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS request_anchors (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        summarized_at INTEGER
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_request_anchors_project_session_created
+      ON request_anchors(project_path, session_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS summaries (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        request_anchor_id TEXT NOT NULL,
+        request_summary TEXT NOT NULL,
+        outcome_summary TEXT NOT NULL,
+        next_step TEXT,
+        observation_ids_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_summaries_project_created
+      ON summaries(project_path, created_at DESC);
     `)
   }
 
@@ -85,6 +135,49 @@ export class ContinuityStore {
       JSON.stringify(record.retrieval.tags),
       JSON.stringify(record.trace),
     )
+  }
+
+  saveRequestAnchor(record: RequestAnchorRecord) {
+    this.db
+      .prepare(`
+        INSERT OR REPLACE INTO request_anchors (
+          id, session_id, project_path, content, created_at, summarized_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.id,
+        record.sessionID,
+        record.projectPath,
+        record.content,
+        record.createdAt,
+        record.summarizedAt ?? null,
+      )
+  }
+
+  getLatestUnsummarizedRequestAnchor(input: {
+    projectPath: string
+    sessionID: string
+  }): RequestAnchorRecord | null {
+    const row = this.db
+      .prepare(`
+        SELECT * FROM request_anchors
+        WHERE project_path = ? AND session_id = ? AND summarized_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 1
+      `)
+      .get(input.projectPath, input.sessionID) as RequestAnchorRow | null
+
+    return row ? this.mapRequestAnchor(row) : null
+  }
+
+  markRequestAnchorSummarized(id: string, summarizedAt: number) {
+    this.db
+      .prepare(`
+        UPDATE request_anchors
+        SET summarized_at = ?
+        WHERE id = ?
+      `)
+      .run(summarizedAt, id)
   }
 
   listRecentObservations(input: {
@@ -156,6 +249,81 @@ export class ContinuityStore {
     return rows.map((row) => this.mapObservation(row))
   }
 
+  listObservationsForRequestWindow(input: {
+    projectPath: string
+    sessionID: string
+    afterCreatedAt: number
+    limit?: number
+  }): ObservationRecord[] {
+    const rows = this.db
+      .prepare(`
+        SELECT * FROM observations
+        WHERE project_path = ? AND session_id = ? AND created_at >= ?
+        ORDER BY created_at ASC
+        LIMIT ?
+      `)
+      .all(
+        input.projectPath,
+        input.sessionID,
+        input.afterCreatedAt,
+        input.limit ?? 20,
+      ) as ObservationRow[]
+
+    return rows.map((row) => this.mapObservation(row))
+  }
+
+  saveSummary(record: SummaryRecord) {
+    this.db
+      .prepare(`
+        INSERT OR REPLACE INTO summaries (
+          id, session_id, project_path, request_anchor_id,
+          request_summary, outcome_summary, next_step,
+          observation_ids_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        record.id,
+        record.sessionID,
+        record.projectPath,
+        record.requestAnchorID,
+        record.requestSummary,
+        record.outcomeSummary,
+        record.nextStep ?? null,
+        JSON.stringify(record.observationIDs),
+        record.createdAt,
+      )
+  }
+
+  listRecentSummaries(input: {
+    projectPath: string
+    sessionID?: string
+    limit: number
+  }): SummaryRecord[] {
+    if (input.sessionID) {
+      const rows = this.db
+        .prepare(`
+          SELECT * FROM summaries
+          WHERE project_path = ? AND session_id = ?
+          ORDER BY created_at DESC
+          LIMIT ?
+        `)
+        .all(input.projectPath, input.sessionID, input.limit) as SummaryRow[]
+
+      return rows.map((row) => this.mapSummary(row))
+    }
+
+    const rows = this.db
+      .prepare(`
+        SELECT * FROM summaries
+        WHERE project_path = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+      `)
+      .all(input.projectPath, input.limit) as SummaryRow[]
+
+    return rows.map((row) => this.mapSummary(row))
+  }
+
   close() {
     this.db.close()
   }
@@ -185,6 +353,31 @@ export class ContinuityStore {
         tags: parseStringArray(row.tags_json),
       },
       trace: parseTrace(row.trace_json),
+    }
+  }
+
+  private mapRequestAnchor(row: RequestAnchorRow): RequestAnchorRecord {
+    return {
+      id: row.id,
+      sessionID: row.session_id,
+      projectPath: row.project_path,
+      content: row.content,
+      createdAt: row.created_at,
+      summarizedAt: row.summarized_at ?? undefined,
+    }
+  }
+
+  private mapSummary(row: SummaryRow): SummaryRecord {
+    return {
+      id: row.id,
+      sessionID: row.session_id,
+      projectPath: row.project_path,
+      requestAnchorID: row.request_anchor_id,
+      requestSummary: row.request_summary,
+      outcomeSummary: row.outcome_summary,
+      nextStep: row.next_step ?? undefined,
+      observationIDs: parseStringArray(row.observation_ids_json),
+      createdAt: row.created_at,
     }
   }
 }

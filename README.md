@@ -62,15 +62,17 @@ docs/
 - OpenCode plugin 最小骨架
 - 核心 observation / summary 类型
 - SQLite observation 持久化
+- request anchor 持久化
+- deterministic summary aggregation
 - `memory_search` / `memory_details` 真实读取 observation
 - 第一版架构和路线图文档
 
 下一步建议优先实现：
 
-1. request anchor 持久化
-2. observation batch -> summary aggregation
-3. summary 持久化与 system 注入优先级
-4. retrieval 结果排序和 scope 控制
+1. summary-first 检索与 details 扩展
+2. summary ranking / scope 控制
+3. 更细的 request window 切分
+4. 再评估是否需要轻量外部 worker
 
 ## 致谢
 
