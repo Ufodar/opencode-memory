@@ -83,11 +83,16 @@ export async function generateModelSummary(
       return null
     }
 
+    const outcomeSummary = normalizeSummaryText(parsed.outcomeSummary)
+    if (!outcomeSummary) return null
+
+    const nextStep = normalizeNextStep(
+      typeof parsed.nextStep === "string" ? parsed.nextStep : undefined,
+    )
+
     return {
-      outcomeSummary: parsed.outcomeSummary.trim(),
-      nextStep: typeof parsed.nextStep === "string" && parsed.nextStep.trim()
-        ? parsed.nextStep.trim()
-        : undefined,
+      outcomeSummary,
+      nextStep,
     }
   } catch (error) {
     log("model summary generation failed", {
@@ -106,7 +111,10 @@ function buildMessages(input: {
     "你的任务是把一个 request checkpoint 里的 observation 压成简短、准确、可回注的阶段摘要。",
     "输出必须是 JSON，对象字段只有 outcomeSummary 和 nextStep。",
     "outcomeSummary 必须是中文，聚焦已经完成的事实结果，不要写闲聊或过程口号。",
+    "outcomeSummary 最好控制在 1-2 句内，避免重复 request 原文。",
     "nextStep 只有在 observation 中已经出现明确下一步时才填写。",
+    "nextStep 必须具体，像“继续处理”这类空泛说法不要写。",
+    "禁止编造 observation 中没有出现的文件、结论或计划。",
   ].join("\n")
 
   const user = [
@@ -132,4 +140,45 @@ function safeParseJson(value: string): Record<string, unknown> | null {
   } catch {
     return null
   }
+}
+
+function normalizeSummaryText(value: string): string | null {
+  const normalized = normalizePunctuationSpacing(collapseWhitespace(stripMarkdownPrefix(value)))
+  if (!normalized) return null
+  return truncate(normalized, 160)
+}
+
+function normalizeNextStep(value?: string): string | undefined {
+  if (!value) return undefined
+
+  const normalized = normalizePunctuationSpacing(collapseWhitespace(stripMarkdownPrefix(value)))
+  if (!normalized) return undefined
+  if (isWeakNextStep(normalized)) return undefined
+
+  return truncate(normalized, 80)
+}
+
+function stripMarkdownPrefix(value: string): string {
+  return value
+    .replace(/^\s*[-*]\s*/u, "")
+    .replace(/^\s*#+\s*/u, "")
+    .trim()
+}
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim()
+}
+
+function normalizePunctuationSpacing(value: string): string {
+  return value
+    .replace(/\s*([，。；：！？])/gu, "$1")
+    .replace(/([，。；：！？])\s+/gu, "$1")
+}
+
+function isWeakNextStep(value: string): boolean {
+  return /^(继续处理|继续推进|继续完善|继续优化|待继续|继续)$/u.test(value)
+}
+
+function truncate(value: string, max: number): string {
+  return value.length <= max ? value : `${value.slice(0, max - 3)}...`
 }

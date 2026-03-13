@@ -94,6 +94,75 @@ describe("model summary", () => {
 
     expect(result).toBeNull()
   })
+
+  test("normalizes multiline markdown-ish model output", async () => {
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+
+    const result = await generateModelSummary(
+      {
+        request: buildRequest(),
+        observations: [buildObservation()],
+      },
+      {
+        fetchImpl: async () =>
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: "```json\n{\"outcomeSummary\":\"- 已完成资格条件抽取，\\n并发现1项材料缺口。\",\"nextStep\":\"  输出缺口清单并等待人工确认。  \"}\n```",
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      },
+    )
+
+    expect(result).toEqual({
+      outcomeSummary: "已完成资格条件抽取，并发现1项材料缺口。",
+      nextStep: "输出缺口清单并等待人工确认。",
+    })
+  })
+
+  test("drops weak nextStep and truncates overly long outcomeSummary", async () => {
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+
+    const longSummary = "已完成资格条件抽取".repeat(30)
+
+    const result = await generateModelSummary(
+      {
+        request: buildRequest(),
+        observations: [buildObservation()],
+      },
+      {
+        fetchImpl: async () =>
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      outcomeSummary: longSummary,
+                      nextStep: "继续处理",
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      },
+    )
+
+    expect(result?.outcomeSummary.length).toBeLessThanOrEqual(160)
+    expect(result?.nextStep).toBeUndefined()
+  })
 })
 
 function buildRequest(): RequestAnchorRecord {
