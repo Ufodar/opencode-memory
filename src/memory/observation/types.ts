@@ -1,3 +1,11 @@
+export type ObservationPhase =
+  | "planning"
+  | "research"
+  | "execution"
+  | "verification"
+  | "decision"
+  | "other"
+
 export interface ObservationRecord {
   id: string
   content: string
@@ -5,6 +13,7 @@ export interface ObservationRecord {
   projectPath: string
   promptId?: string
   createdAt: number
+  phase?: ObservationPhase
   tool: {
     name: string
     callID: string

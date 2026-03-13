@@ -1,5 +1,6 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import { shouldCaptureToolObservation } from "../../memory/observation/candidate.js"
+import { inferObservationPhaseFromToolCall } from "../../memory/observation/phase.js"
 
 export function captureToolObservation(input: {
   tool: string
@@ -32,6 +33,12 @@ export function captureToolObservation(input: {
     sessionID: input.sessionID,
     projectPath: input.projectPath,
     createdAt: Date.now(),
+    phase: inferObservationPhaseFromToolCall({
+      tool: input.tool,
+      args: input.args,
+      content: summaries.content,
+      outputSummary: summaries.outputSummary,
+    }),
     tool: {
       name: input.tool,
       callID: input.callID,

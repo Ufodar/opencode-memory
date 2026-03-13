@@ -189,6 +189,10 @@ describe("ContinuityStore retrieval surface", () => {
       "obs_high_older",
       "obs_low_recent",
     ])
+    expect(results.find((item) => item.id === "obs_high_older")).toMatchObject({
+      kind: "observation",
+      phase: "research",
+    })
   })
 
   test("excludes internal continuity tool observations from search results", () => {
@@ -357,6 +361,10 @@ describe("ContinuityStore retrieval surface", () => {
       "sum_current_session",
       "obs_current_after",
     ])
+    expect(timeline?.items[1]).toMatchObject({
+      kind: "observation",
+      phase: "research",
+    })
   })
 })
 

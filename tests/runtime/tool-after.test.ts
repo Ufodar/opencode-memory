@@ -85,4 +85,24 @@ describe("captureToolObservation", () => {
 
     expect(observation).toBeNull()
   })
+
+  test("classifies bash test commands as verification observations", () => {
+    const observation = captureToolObservation(
+      {
+        tool: "bash",
+        sessionID: "ses_demo",
+        callID: "call_5",
+        args: { command: "bun test" },
+        projectPath: "/workspace/demo",
+      },
+      {
+        title: "Run tests",
+        output: "44 pass\n0 fail",
+        metadata: {},
+      },
+    )
+
+    expect(observation).not.toBeNull()
+    expect(observation?.phase).toBe("verification")
+  })
 })

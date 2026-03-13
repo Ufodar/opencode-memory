@@ -87,6 +87,24 @@ describe("ContinuityStore", () => {
     expect(results.map((item) => item.id)).toEqual(["obs_a", "obs_b"])
   })
 
+  test("persists observation phase", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_verify",
+        projectPath: "/workspace/demo",
+        content: "运行 bun test，全部通过",
+        phase: "verification",
+      }),
+    )
+
+    const results = store.listRecentObservations({
+      projectPath: "/workspace/demo",
+      limit: 5,
+    })
+
+    expect(results[0]?.phase).toBe("verification")
+  })
+
   test("cleans legacy internal-tool rows and normalizes legacy read payloads on init", () => {
     const dbPath = join(tempDir, "continuity.sqlite")
     store.close()
@@ -164,6 +182,7 @@ function buildObservation(input: {
   id: string
   projectPath: string
   content: string
+  phase?: ObservationRecord["phase"]
 }): ObservationRecord {
   return {
     id: input.id,
@@ -171,6 +190,7 @@ function buildObservation(input: {
     sessionID: "ses_demo",
     projectPath: input.projectPath,
     createdAt: 1_700_000_000_000,
+    phase: input.phase,
     tool: {
       name: "read",
       callID: `call_${input.id}`,

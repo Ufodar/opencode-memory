@@ -67,6 +67,22 @@ describe("selectCheckpointObservations", () => {
     expect(selected.map((item) => item.id)).toEqual(["obs_1"])
   })
 
+  test("allows a single bash verification observation to form a checkpoint", () => {
+    const observations = [
+      buildObservation({
+        id: "obs_1",
+        toolName: "bash",
+        content: "运行 bun test，全部通过",
+        createdAt: 10,
+        inputSummary: JSON.stringify({ command: "bun test" }),
+      }),
+    ]
+
+    const selected = selectCheckpointObservations({ observations })
+
+    expect(selected.map((item) => item.id)).toEqual(["obs_1"])
+  })
+
   test("does not treat generic output wording as a decision signal", () => {
     const observations = [
       buildObservation({
@@ -94,6 +110,8 @@ function buildObservation(input: {
   toolName: string
   content: string
   createdAt: number
+  inputSummary?: string
+  phase?: ObservationRecord["phase"]
 }): ObservationRecord {
   return {
     id: input.id,
@@ -101,13 +119,14 @@ function buildObservation(input: {
     sessionID: "ses_demo",
     projectPath: "/workspace/demo",
     createdAt: input.createdAt,
+    phase: input.phase,
     tool: {
       name: input.toolName,
       callID: `call_${input.id}`,
       status: "success",
     },
     input: {
-      summary: "执行工具",
+      summary: input.inputSummary ?? "执行工具",
     },
     output: {
       summary: input.content,

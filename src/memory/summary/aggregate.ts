@@ -2,8 +2,7 @@ import type { ObservationRecord } from "../observation/types.js"
 import type { RequestAnchorRecord } from "../request/types.js"
 import type { SummaryRecord } from "./types.js"
 import type { ModelSummaryResult } from "../../services/ai/model-summary.js"
-
-type ObservationPhase = "planning" | "research" | "execution" | "verification" | "decision" | "other"
+import { classifyObservationPhase, looksLikeDecisionSignal } from "../observation/phase.js"
 
 export function summarizeRequestWindow(input: {
   request: RequestAnchorRecord
@@ -109,39 +108,9 @@ function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max)}...`
 }
 
-function classifyObservationPhase(observation: ObservationRecord): ObservationPhase {
-  const text = `${observation.content}\n${observation.output.summary}`.toLowerCase()
-  if (looksLikeDecisionSignal(text)) return "decision"
-
-  switch (observation.tool.name) {
-    case "task":
-      return "planning"
-    case "read":
-    case "grep":
-    case "glob":
-      return "research"
-    case "edit":
-    case "write":
-    case "patch":
-      return "execution"
-    case "test":
-    case "lint":
-    case "check":
-      return "verification"
-    default:
-      return "other"
-  }
-}
-
 function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
   for (let index = items.length - 1; index >= 0; index -= 1) {
     if (predicate(items[index]!)) return index
   }
   return -1
-}
-
-function looksLikeDecisionSignal(value: string): boolean {
-  return /(形成决策|明确决策|决策[:：]|决定[:：]?|下一步[:：]?|先[^，。；]{0,40}(?:[，,。；;]|$))/u.test(
-    value,
-  )
 }

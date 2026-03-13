@@ -5,6 +5,7 @@ import { Database } from "bun:sqlite"
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
+import { classifyObservationPhase } from "../../memory/observation/phase.js"
 
 interface ObservationRow {
   id: string
@@ -13,6 +14,7 @@ interface ObservationRow {
   project_path: string
   prompt_id: string | null
   created_at: number
+  phase: string | null
   tool_name: string
   call_id: string
   tool_title: string | null
@@ -62,6 +64,7 @@ export type ContinuitySearchRecord =
       id: string
       content: string
       createdAt: number
+      phase?: ObservationRecord["phase"]
       tool: string
       importance: number
       tags: string[]
@@ -82,6 +85,7 @@ export type ContinuityTimelineItem =
       id: string
       content: string
       createdAt: number
+      phase?: ObservationRecord["phase"]
       tool: string
       importance: number
       tags: string[]
@@ -106,6 +110,7 @@ export class ContinuityStore {
         project_path TEXT NOT NULL,
         prompt_id TEXT,
         created_at INTEGER NOT NULL,
+        phase TEXT,
         tool_name TEXT NOT NULL,
         call_id TEXT NOT NULL,
         tool_title TEXT,
@@ -152,6 +157,7 @@ export class ContinuityStore {
       ON summaries(project_path, created_at DESC);
     `)
 
+    this.ensureColumn("observations", "phase", "TEXT")
     this.ensureColumn("request_anchors", "last_checkpoint_observation_at", "INTEGER")
     this.cleanupLegacyObservationNoise()
   }
@@ -160,9 +166,10 @@ export class ContinuityStore {
     const statement = this.db.prepare(`
       INSERT OR REPLACE INTO observations (
         id, content, session_id, project_path, prompt_id, created_at,
+        phase,
         tool_name, call_id, tool_title, tool_status,
         input_summary, output_summary, importance, tags_json, trace_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     statement.run(
@@ -172,6 +179,7 @@ export class ContinuityStore {
       record.projectPath,
       record.promptId ?? null,
       record.createdAt,
+      record.phase ?? null,
       record.tool.name,
       record.tool.callID,
       record.tool.title ?? null,
@@ -487,6 +495,7 @@ export class ContinuityStore {
         id: row.id,
         content: row.content,
         createdAt: row.created_at,
+        phase: classifyObservationPhase(this.mapObservation(row)),
         tool: row.tool_name,
         importance: row.importance,
         tags: parseStringArray(row.tags_json),
@@ -529,6 +538,7 @@ export class ContinuityStore {
         id: row.id,
         content: row.content,
         createdAt: row.created_at,
+        phase: classifyObservationPhase(this.mapObservation(row)),
         tool: row.tool_name,
         importance: row.importance,
         tags: parseStringArray(row.tags_json),
@@ -606,6 +616,7 @@ export class ContinuityStore {
             id: explicit.id,
             content: explicit.content,
             createdAt: explicit.createdAt,
+            phase: explicit.phase,
             tool: explicit.tool,
             importance: explicit.importance,
             tags: explicit.tags,
@@ -639,6 +650,7 @@ export class ContinuityStore {
           id: result.id,
           content: result.content,
           createdAt: result.createdAt,
+          phase: result.phase,
           tool: result.tool,
           importance: result.importance,
           tags: result.tags,
@@ -733,6 +745,7 @@ export class ContinuityStore {
       id: row.id,
       content: row.content,
       createdAt: row.created_at,
+      phase: classifyObservationPhase(this.mapObservation(row)),
       tool: row.tool_name,
       importance: row.importance,
       tags: parseStringArray(row.tags_json),
@@ -748,6 +761,7 @@ export class ContinuityStore {
       projectPath: row.project_path,
       promptId: row.prompt_id ?? undefined,
       createdAt: row.created_at,
+      phase: (row.phase as ObservationRecord["phase"]) ?? undefined,
       tool: {
         name: row.tool_name,
         callID: row.call_id,

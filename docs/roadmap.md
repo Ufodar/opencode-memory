@@ -52,3 +52,11 @@
 - summary / observation 混合时间视图
 - covered observation 默认去重，但允许 anchor 保留
 - 与 `search -> timeline -> details` 渐进检索纪律对齐
+
+## v0.8.0 Phase & Compaction Continuity
+
+- observation phase 落盘
+- bash 动作 phase 分类
+- retrieval / timeline / details 暴露 phase
+- `experimental.session.compacting` continuity context
+- compaction summary-first + unsummarized observations

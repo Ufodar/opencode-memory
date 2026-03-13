@@ -7,7 +7,7 @@ const DEFAULT_DEPTH_AFTER = 3
 export function createMemoryTimelineTool(store: ContinuityStore, projectPath: string) {
   return tool({
     description:
-      "Show chronological continuity context around a summary or observation anchor. Prefer this after memory_search and before memory_details.",
+      "Show chronological continuity context around a summary or observation anchor. Prefer this after memory_search and before memory_details. If scope is omitted, resolve the timeline from current session first and then fall back to project history.",
     args: {
       anchor: tool.schema.string().optional(),
       query: tool.schema.string().optional(),
@@ -23,14 +23,42 @@ export function createMemoryTimelineTool(store: ContinuityStore, projectPath: st
         })
       }
 
-      const timeline = store.getContinuityTimeline({
-        projectPath,
-        sessionID: args.scope === "session" ? toolCtx.sessionID : undefined,
-        anchorID: args.anchor,
-        query: args.query,
-        depthBefore: args.depth_before ?? DEFAULT_DEPTH_BEFORE,
-        depthAfter: args.depth_after ?? DEFAULT_DEPTH_AFTER,
-      })
+      const depthBefore = args.depth_before ?? DEFAULT_DEPTH_BEFORE
+      const depthAfter = args.depth_after ?? DEFAULT_DEPTH_AFTER
+
+      let scopeUsed: "session" | "project" = "project"
+      let timeline =
+        args.scope === "project"
+          ? store.getContinuityTimeline({
+              projectPath,
+              anchorID: args.anchor,
+              query: args.query,
+              depthBefore,
+              depthAfter,
+            })
+          : store.getContinuityTimeline({
+              projectPath,
+              sessionID: toolCtx.sessionID,
+              anchorID: args.anchor,
+              query: args.query,
+              depthBefore,
+              depthAfter,
+            })
+
+      if (args.scope === "project") {
+        scopeUsed = "project"
+      } else if (timeline || args.scope === "session") {
+        scopeUsed = "session"
+      } else {
+        timeline = store.getContinuityTimeline({
+          projectPath,
+          anchorID: args.anchor,
+          query: args.query,
+          depthBefore,
+          depthAfter,
+        })
+        scopeUsed = "project"
+      }
 
       if (!timeline) {
         return JSON.stringify({
@@ -41,7 +69,7 @@ export function createMemoryTimelineTool(store: ContinuityStore, projectPath: st
 
       return JSON.stringify({
         success: true,
-        scope: args.scope ?? "project",
+        scope: scopeUsed,
         anchor: timeline.anchor,
         count: timeline.items.length,
         items: timeline.items,

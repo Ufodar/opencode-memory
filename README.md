@@ -17,6 +17,7 @@ OpenCode 的通用 memory continuity 插件底座。
 - summary 聚合
 - system/background 注入
 - 分层检索
+- compaction continuity
 
 第一阶段不做：
 
@@ -66,15 +67,29 @@ docs/
 - deterministic summary aggregation
 - 同一 request anchor 已支持多 checkpoint summary
 - request checkpoint 已支持第一版 phase-aware 切分
+- observation 已带 phase：
+  - `research`
+  - `planning`
+  - `execution`
+  - `verification`
+  - `decision`
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_timeline` 已支持围绕 summary / observation anchor 查看时间上下文
+- `memory_search` / `memory_timeline` 在未显式指定 `scope` 时已默认：
+  - 先查当前 session
+  - 再回退 project
 - `memory_search` 已过滤被返回 summary 覆盖的 observation
 - `memory_search` 已具备第一版 deterministic ranking
 - summary 已支持可选 model-assisted 生成，并保留 deterministic fallback
 - model-assisted summary 已加入输出归一化、长度约束与弱 nextStep 过滤
 - model-assisted summary 已加入 timeout，provider 卡住时会自动回退
 - system injection 已升级为 summary-first，并自动过滤已被 summary 覆盖的 observation
+- compaction 已支持 continuity context 注入：
+  - 优先注入 recent summaries
+  - 再补 recent unsummarized observations
+  - 帮助 OpenCode compaction 保留 continuity checkpoint
 - retrieval 已支持 `session / project` scope
+- retrieval tools 已开始内建 `session-first / project-fallback` 默认行为，减少 agent 端判断负担
 - system injection 已支持 session-first / project-fallback 选择
 - system injection 已支持 count + character budget
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
@@ -98,8 +113,9 @@ docs/
 
 1. 继续细化 phase-aware checkpoint，而不是停在当前启发式 phase
 2. 继续增强 ranking，而不是停在当前启发式分数
-3. 再评估是否需要轻量外部 worker
-4. 如进入 worker 化，优先保持当前 deterministic 主链不变，只迁移 runtime 边界
+3. 继续增强 compaction continuity，而不是只影响正常对话
+4. 再评估是否需要轻量外部 worker
+5. 如进入 worker 化，优先保持当前 deterministic 主链不变，只迁移 runtime 边界
 
 ## 开发与真实测试说明
 

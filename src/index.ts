@@ -4,6 +4,7 @@ import { DEFAULTS } from "./config/defaults.js"
 import { captureRequestAnchor } from "./runtime/hooks/chat-message.js"
 import { createSessionReentryGuard } from "./runtime/hooks/idle-summary-guard.js"
 import { captureToolObservation } from "./runtime/hooks/tool-after.js"
+import { buildCompactionContinuityContext } from "./runtime/injection/compaction-context.js"
 import { buildSystemContinuityContext } from "./runtime/injection/system-context.js"
 import { selectInjectionRecords } from "./runtime/injection/select-context.js"
 import {
@@ -128,6 +129,28 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
 
       if (system.length > 0) {
         output.system.unshift(...system)
+      }
+    },
+
+    "experimental.session.compacting": async (input, output) => {
+      const selected = selectInjectionRecords({
+        store,
+        projectPath: directory,
+        sessionID: input.sessionID,
+        maxSummaries: DEFAULTS.maxCompactionSummaries,
+        maxObservations: DEFAULTS.maxCompactionObservations,
+      })
+
+      const context = buildCompactionContinuityContext({
+        summaries: selected.summaries,
+        observations: selected.observations,
+        maxSummaries: DEFAULTS.maxCompactionSummaries,
+        maxObservations: DEFAULTS.maxCompactionObservations,
+        maxChars: DEFAULTS.maxCompactionChars,
+      })
+
+      if (context.length > 0) {
+        output.context.push(context.join("\n"))
       }
     },
 

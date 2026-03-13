@@ -36,7 +36,8 @@
       "chat.message",
       "event",
       "tool.execute.after",
-      "experimental.chat.system.transform"
+      "experimental.chat.system.transform",
+      "experimental.session.compacting"
     ]
   },
   "files": [

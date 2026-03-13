@@ -3,24 +3,48 @@ import type { ContinuityStore } from "../storage/sqlite/continuity-store.js"
 
 export function createMemorySearchTool(store: ContinuityStore, projectPath: string) {
   return tool({
-    description: "Search continuity memory by keywords or technical tags.",
+    description:
+      "Search continuity memory by keywords or technical tags. If scope is omitted, search current session first and fall back to project history.",
     args: {
       query: tool.schema.string(),
       limit: tool.schema.number().optional(),
       scope: tool.schema.enum(["session", "project"]).optional(),
     },
     async execute(args, toolCtx) {
-      const results = store.searchContinuityRecords({
-        projectPath,
-        sessionID: args.scope === "session" ? toolCtx.sessionID : undefined,
-        query: args.query,
-        limit: args.limit ?? 10,
-      })
+      const limit = args.limit ?? 10
+
+      let scopeUsed: "session" | "project" = "project"
+      let results =
+        args.scope === "project"
+          ? store.searchContinuityRecords({
+              projectPath,
+              query: args.query,
+              limit,
+            })
+          : store.searchContinuityRecords({
+              projectPath,
+              sessionID: toolCtx.sessionID,
+              query: args.query,
+              limit,
+            })
+
+      if (args.scope === "project") {
+        scopeUsed = "project"
+      } else if (results.length > 0 || args.scope === "session") {
+        scopeUsed = "session"
+      } else {
+        results = store.searchContinuityRecords({
+          projectPath,
+          query: args.query,
+          limit,
+        })
+        scopeUsed = "project"
+      }
 
       return JSON.stringify({
         success: true,
         count: results.length,
-        scope: args.scope ?? "project",
+        scope: scopeUsed,
         results,
       })
     },

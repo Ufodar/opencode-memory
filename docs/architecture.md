@@ -10,6 +10,7 @@
 2. 压缩器
 3. 回注器
 4. 检索器
+5. compaction continuity
 
 ## 第一版角色映射
 
@@ -42,6 +43,7 @@
   - 优先注入当前 session continuity
   - 若当前 session 没有 continuity，再回退到 project continuity
   - 受 count 和 character budget 双重约束
+  - observation 会带 phase，便于保留阶段语义
 
 ### 检索器
 
@@ -51,7 +53,9 @@
   - `memory_details`
 - 当前策略：
   - `memory_search` summary-first
+  - `memory_search` 未指定 `scope` 时默认 `session-first / project-fallback`
   - `memory_timeline` 围绕 summary / observation anchor 返回时间上下文
+  - `memory_timeline` 未指定 `scope` 时默认 `session-first / project-fallback`
   - `memory_details` mixed details
   - `memory_search` 支持 `session / project` scope
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
@@ -60,6 +64,17 @@
     - `memory_search`
     - `memory_timeline`
     - `memory_details`
+
+### compaction continuity
+
+- OpenCode 等价点：`experimental.session.compacting`
+- 作用：在会话 compaction 时，把 continuity checkpoint 显式追加到 compaction prompt
+- 当前策略：
+  - 复用与 system injection 相同的 continuity 选择纪律
+  - 优先 recent summaries
+  - 再补 recent unsummarized observations
+  - observation 显式带 `phase` 前缀
+  - 受独立 compaction budget 约束
 
 ## 当前已落地的最小数据链
 
@@ -82,6 +97,10 @@ injection
   -> unsummarized observations only
   -> session-first / project-fallback selection
   -> count + character budget
+compaction
+  -> summary-first continuity context
+  -> unsummarized observations with phase
+  -> separate compaction budget
 runtime safety
   -> session-level idle reentry guard
 ```
@@ -110,10 +129,12 @@ tool.execute.after
 
 - `session.idle` summary 主链有 session 级重入保护
 - observation 主文本优先保留工具结果语义
+- observation phase 已在 capture 时落盘，并暴露到 retrieval / timeline / details
 - decision 判定已收紧，避免普通“生成/输出”措辞造成过早 checkpoint
 - model-assisted summary 有 deterministic fallback，并新增 timeout
 - continuity internal tools 不会再次被 capture / retrieval / injection 吞回去
 - store 初始化时会清洗 legacy internal-tool observation 与 raw `read` payload 噪声
+- compaction continuity 已独立建模，不再只依赖正常对话时的 system injection
 
 ## 真实宿主验证补充
 
@@ -123,6 +144,7 @@ tool.execute.after
 - `memory_search` / `memory_timeline` / `memory_details` 会进入真实 tool surface
 - `read` observation 会真实写入 SQLite
 - `memory_timeline` 能在真实宿主返回最小时间上下文
+- 加入 `experimental.session.compacting` 后，插件仍能被真实宿主正常加载与执行，不会破坏 tool surface
 
 当前仍需记住的运行时边界：
 
