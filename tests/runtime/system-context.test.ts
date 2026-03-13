@@ -65,6 +65,55 @@ describe("buildSystemContinuityContext", () => {
     expect(text).toContain("Recent observations:")
     expect(text).toContain("evidence_source")
   })
+
+  test("respects count and character budgets", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_1",
+        requestSummary: "A",
+        outcomeSummary: "第一个很长的总结，用来占据大部分预算",
+        observationIDs: [],
+        createdAt: 10,
+      },
+      {
+        id: "sum_2",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_2",
+        requestSummary: "B",
+        outcomeSummary: "第二个总结不应该被纳入",
+        observationIDs: [],
+        createdAt: 20,
+      },
+    ]
+
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_1",
+        content: "第一条 observation 可能会被预算裁掉",
+      }),
+      buildObservation({
+        id: "obs_2",
+        content: "第二条 observation 也不一定能留下",
+      }),
+    ]
+
+    const system = buildSystemContinuityContext({
+      summaries,
+      observations,
+      maxSummaries: 1,
+      maxObservations: 1,
+      maxChars: 120,
+    })
+
+    const text = system.join("\n")
+    expect(text).toContain("第一个很长的总结")
+    expect(text).not.toContain("第二个总结不应该被纳入")
+    expect(text.length).toBeLessThanOrEqual(120)
+  })
 })
 
 function buildObservation(input: {

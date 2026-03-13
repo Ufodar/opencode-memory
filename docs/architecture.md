@@ -33,6 +33,9 @@
 - 当前策略：
   - summary-first
   - 仅补未被 summary 覆盖的 observation
+  - 优先注入当前 session continuity
+  - 若当前 session 没有 continuity，再回退到 project continuity
+  - 受 count 和 character budget 双重约束
 
 ### 检索器
 
@@ -42,6 +45,7 @@
 - 当前策略：
   - `memory_search` summary-first
   - `memory_details` mixed details
+  - `memory_search` 支持 `session / project` scope
 
 ## 当前已落地的最小数据链
 
@@ -62,6 +66,8 @@ retrieval
 injection
   -> summary-first system transform
   -> unsummarized observations only
+  -> session-first / project-fallback selection
+  -> count + character budget
 ```
 
 ## 数据流

@@ -67,15 +67,48 @@ describe("ContinuityStore retrieval surface", () => {
     expect(results).toHaveLength(2)
     expect(results.map((item) => item.kind)).toEqual(["summary", "observation"])
   })
+
+  test("supports session and project scope for search", () => {
+    store.saveSummary(
+      buildSummary({
+        id: "sum_session",
+        outcomeSummary: "当前会话已完成资格条件抽取",
+        sessionID: "ses_current",
+      }),
+    )
+    store.saveSummary(
+      buildSummary({
+        id: "sum_other",
+        outcomeSummary: "其他会话已完成资格条件抽取",
+        sessionID: "ses_other",
+      }),
+    )
+
+    const sessionResults = store.searchContinuityRecords({
+      projectPath: "/workspace/demo",
+      sessionID: "ses_current",
+      query: "资格条件",
+      limit: 10,
+    })
+    const projectResults = store.searchContinuityRecords({
+      projectPath: "/workspace/demo",
+      query: "资格条件",
+      limit: 10,
+    })
+
+    expect(sessionResults.map((item) => item.id)).toEqual(["sum_session"])
+    expect(projectResults.map((item) => item.id)).toEqual(["sum_session", "sum_other"])
+  })
 })
 
 function buildSummary(input: {
   id: string
   outcomeSummary: string
+  sessionID?: string
 }): SummaryRecord {
   return {
     id: input.id,
-    sessionID: "ses_demo",
+    sessionID: input.sessionID ?? "ses_demo",
     projectPath: "/workspace/demo",
     requestAnchorID: "req_1",
     requestSummary: "抽取资格条件并检查缺材料",

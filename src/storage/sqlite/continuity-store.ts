@@ -344,38 +344,76 @@ export class ContinuityStore {
 
   searchContinuityRecords(input: {
     projectPath: string
+    sessionID?: string
     query: string
     limit: number
   }): ContinuitySearchRecord[] {
     const pattern = `%${input.query.toLowerCase()}%`
-    const summaries = this.db
-      .prepare(`
-        SELECT * FROM summaries
-        WHERE project_path = ?
-          AND (
-            lower(request_summary) LIKE ?
-            OR lower(outcome_summary) LIKE ?
-            OR lower(COALESCE(next_step, '')) LIKE ?
-          )
-        ORDER BY created_at DESC
-        LIMIT ?
-      `)
-      .all(input.projectPath, pattern, pattern, pattern, input.limit) as SummaryRow[]
+    const summaries = input.sessionID
+      ? (this.db
+          .prepare(`
+            SELECT * FROM summaries
+            WHERE project_path = ? AND session_id = ?
+              AND (
+                lower(request_summary) LIKE ?
+                OR lower(outcome_summary) LIKE ?
+                OR lower(COALESCE(next_step, '')) LIKE ?
+              )
+            ORDER BY created_at DESC
+            LIMIT ?
+          `)
+          .all(input.projectPath, input.sessionID, pattern, pattern, pattern, input.limit) as SummaryRow[])
+      : (this.db
+          .prepare(`
+            SELECT * FROM summaries
+            WHERE project_path = ?
+              AND (
+                lower(request_summary) LIKE ?
+                OR lower(outcome_summary) LIKE ?
+                OR lower(COALESCE(next_step, '')) LIKE ?
+              )
+            ORDER BY created_at DESC
+            LIMIT ?
+          `)
+          .all(input.projectPath, pattern, pattern, pattern, input.limit) as SummaryRow[])
 
-    const observations = this.db
-      .prepare(`
-        SELECT * FROM observations
-        WHERE project_path = ?
-          AND (
-            lower(content) LIKE ?
-            OR lower(input_summary) LIKE ?
-            OR lower(output_summary) LIKE ?
-            OR lower(tags_json) LIKE ?
-          )
-        ORDER BY created_at DESC
-        LIMIT ?
-      `)
-      .all(input.projectPath, pattern, pattern, pattern, pattern, input.limit) as ObservationRow[]
+    const observations = input.sessionID
+      ? (this.db
+          .prepare(`
+            SELECT * FROM observations
+            WHERE project_path = ? AND session_id = ?
+              AND (
+                lower(content) LIKE ?
+                OR lower(input_summary) LIKE ?
+                OR lower(output_summary) LIKE ?
+                OR lower(tags_json) LIKE ?
+              )
+            ORDER BY created_at DESC
+            LIMIT ?
+          `)
+          .all(
+            input.projectPath,
+            input.sessionID,
+            pattern,
+            pattern,
+            pattern,
+            pattern,
+            input.limit,
+          ) as ObservationRow[])
+      : (this.db
+          .prepare(`
+            SELECT * FROM observations
+            WHERE project_path = ?
+              AND (
+                lower(content) LIKE ?
+                OR lower(input_summary) LIKE ?
+                OR lower(output_summary) LIKE ?
+                OR lower(tags_json) LIKE ?
+              )
+            ORDER BY created_at DESC
+            LIMIT ?
+          `)
+          .all(input.projectPath, pattern, pattern, pattern, pattern, input.limit) as ObservationRow[])
 
     const summaryRecords: ContinuitySearchRecord[] = summaries.map((row) => ({
       kind: "summary",

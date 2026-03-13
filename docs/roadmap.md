@@ -40,5 +40,7 @@
 ## v0.6.0 Storage & Ranking
 
 - SQLite 真源
+- session / project scope 控制
+- injection count / character budget
 - vector/keyword hybrid ranking
 - retention / cleanup

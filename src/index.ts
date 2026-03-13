@@ -1,8 +1,10 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { getDefaultDatabasePath } from "./config/paths.js"
+import { DEFAULTS } from "./config/defaults.js"
 import { captureRequestAnchor } from "./runtime/hooks/chat-message.js"
 import { captureToolObservation } from "./runtime/hooks/tool-after.js"
 import { buildSystemContinuityContext } from "./runtime/injection/system-context.js"
+import { selectInjectionRecords } from "./runtime/injection/select-context.js"
 import { shouldAggregateRequestWindow, summarizeRequestWindow } from "./memory/summary/aggregate.js"
 import { ContinuityStore } from "./storage/sqlite/continuity-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
@@ -84,20 +86,20 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
     },
 
     "experimental.chat.system.transform": async (input, output) => {
-      const summaries = store.listRecentSummaries({
+      const selected = selectInjectionRecords({
+        store,
         projectPath: directory,
         sessionID: input.sessionID,
-        limit: 3,
-      })
-      const observations = store.listRecentObservations({
-        projectPath: directory,
-        sessionID: input.sessionID,
-        limit: 5,
+        maxSummaries: DEFAULTS.maxInjectedSummaries,
+        maxObservations: DEFAULTS.maxInjectedObservations,
       })
 
       const system = buildSystemContinuityContext({
-        summaries,
-        observations,
+        summaries: selected.summaries,
+        observations: selected.observations,
+        maxSummaries: DEFAULTS.maxInjectedSummaries,
+        maxObservations: DEFAULTS.maxInjectedObservations,
+        maxChars: DEFAULTS.maxInjectedChars,
       })
 
       if (system.length > 0) {

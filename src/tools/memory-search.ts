@@ -7,10 +7,12 @@ export function createMemorySearchTool(store: ContinuityStore, projectPath: stri
     args: {
       query: tool.schema.string(),
       limit: tool.schema.number().optional(),
+      scope: tool.schema.enum(["session", "project"]).optional(),
     },
-    async execute(args) {
+    async execute(args, toolCtx) {
       const results = store.searchContinuityRecords({
         projectPath,
+        sessionID: args.scope === "session" ? toolCtx.sessionID : undefined,
         query: args.query,
         limit: args.limit ?? 10,
       })
@@ -18,6 +20,7 @@ export function createMemorySearchTool(store: ContinuityStore, projectPath: stri
       return JSON.stringify({
         success: true,
         count: results.length,
+        scope: args.scope ?? "project",
         results,
       })
     },
