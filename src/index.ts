@@ -14,6 +14,7 @@ import { generateModelSummary } from "./services/ai/model-summary.js"
 import { ContinuityStore } from "./storage/sqlite/continuity-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
 import { createMemoryDetailsTool } from "./tools/memory-details.js"
+import { createMemoryTimelineTool } from "./tools/memory-timeline.js"
 import { log } from "./services/logger.js"
 
 export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
@@ -132,6 +133,7 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
 
     tool: {
       memory_search: createMemorySearchTool(store, directory),
+      memory_timeline: createMemoryTimelineTool(store, directory),
       memory_details: createMemoryDetailsTool(store),
     },
   }

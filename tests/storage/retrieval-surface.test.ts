@@ -190,6 +190,174 @@ describe("ContinuityStore retrieval surface", () => {
       "obs_low_recent",
     ])
   })
+
+  test("excludes internal continuity tool observations from search results", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_internal",
+        content: "memory_search returned README continuity rows",
+        createdAt: 30,
+        toolName: "memory_search",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_real",
+        content: "读取 README.md 并确认 continuity 插件已加载",
+        createdAt: 20,
+        toolName: "read",
+      }),
+    )
+
+    const results = store.searchContinuityRecords({
+      projectPath: "/workspace/demo",
+      query: "README",
+      limit: 10,
+    })
+
+    expect(results.map((item) => item.id)).toEqual(["obs_real"])
+  })
+
+  test("excludes memory_timeline observations from search results", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_internal_timeline",
+        content: "memory_timeline returned README continuity rows",
+        createdAt: 30,
+        toolName: "memory_timeline",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_real",
+        content: "读取 README.md 并确认 timeline 工具已加载",
+        createdAt: 20,
+        toolName: "read",
+      }),
+    )
+
+    const results = store.searchContinuityRecords({
+      projectPath: "/workspace/demo",
+      query: "timeline",
+      limit: 10,
+    })
+
+    expect(results.map((item) => item.id)).toEqual(["obs_real"])
+  })
+
+  test("builds chronological timeline around an explicit summary anchor", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_before",
+        content: "读取资格条件正文并确认3条核心约束",
+        createdAt: 10,
+      }),
+    )
+    store.saveSummary(
+      buildSummary({
+        id: "sum_anchor",
+        outcomeSummary: "已完成资格条件抽取，并确认存在材料缺口",
+        observationIDs: ["obs_before"],
+        createdAt: 20,
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_after",
+        content: "输出缺口清单草稿，并标记需要补充业绩证明",
+        createdAt: 30,
+      }),
+    )
+
+    const timeline = store.getContinuityTimeline({
+      projectPath: "/workspace/demo",
+      anchorID: "sum_anchor",
+      depthBefore: 1,
+      depthAfter: 1,
+    })
+
+    expect(timeline?.anchor.id).toBe("sum_anchor")
+    expect(timeline?.items.map((item) => item.id)).toEqual(["sum_anchor", "obs_after"])
+    expect(timeline?.items.map((item) => item.kind)).toEqual(["summary", "observation"])
+    expect(timeline?.items[0]?.isAnchor).toBe(true)
+  })
+
+  test("keeps covered observation when it is the explicit timeline anchor", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_anchor",
+        content: "读取资格条件正文并确认3条核心约束",
+        createdAt: 10,
+      }),
+    )
+    store.saveSummary(
+      buildSummary({
+        id: "sum_cover",
+        outcomeSummary: "已完成资格条件抽取，并确认存在材料缺口",
+        observationIDs: ["obs_anchor"],
+        createdAt: 20,
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_after",
+        content: "输出缺口清单草稿，并标记需要补充业绩证明",
+        createdAt: 30,
+      }),
+    )
+
+    const timeline = store.getContinuityTimeline({
+      projectPath: "/workspace/demo",
+      anchorID: "obs_anchor",
+      depthBefore: 0,
+      depthAfter: 2,
+    })
+
+    expect(timeline?.anchor.id).toBe("obs_anchor")
+    expect(timeline?.items.map((item) => item.id)).toEqual(["obs_anchor", "sum_cover", "obs_after"])
+    expect(timeline?.items[0]?.isAnchor).toBe(true)
+  })
+
+  test("resolves query timeline from top continuity hit within session scope", () => {
+    store.saveSummary(
+      buildSummary({
+        id: "sum_other_session",
+        outcomeSummary: "其他会话已完成资格条件抽取",
+        sessionID: "ses_other",
+        createdAt: 10,
+      }),
+    )
+    store.saveSummary(
+      buildSummary({
+        id: "sum_current_session",
+        outcomeSummary: "当前会话已完成资格条件抽取，并确认存在材料缺口",
+        sessionID: "ses_current",
+        createdAt: 20,
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_current_after",
+        content: "输出当前会话的缺口清单",
+        createdAt: 30,
+        sessionID: "ses_current",
+      }),
+    )
+
+    const timeline = store.getContinuityTimeline({
+      projectPath: "/workspace/demo",
+      sessionID: "ses_current",
+      query: "资格条件",
+      depthBefore: 1,
+      depthAfter: 1,
+    })
+
+    expect(timeline?.anchor.id).toBe("sum_current_session")
+    expect(timeline?.items.map((item) => item.id)).toEqual([
+      "sum_current_session",
+      "obs_current_after",
+    ])
+  })
 })
 
 function buildSummary(input: {
@@ -218,15 +386,17 @@ function buildObservation(input: {
   content: string
   createdAt?: number
   importance?: number
+  toolName?: string
+  sessionID?: string
 }): ObservationRecord {
   return {
     id: input.id,
     content: input.content,
-    sessionID: "ses_demo",
+    sessionID: input.sessionID ?? "ses_demo",
     projectPath: "/workspace/demo",
     createdAt: input.createdAt ?? 10,
     tool: {
-      name: "read",
+      name: input.toolName ?? "read",
       callID: `call_${input.id}`,
       status: "success",
     },

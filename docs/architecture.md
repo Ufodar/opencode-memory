@@ -47,13 +47,19 @@
 
 - 第一版工具面：
   - `memory_search`
+  - `memory_timeline`
   - `memory_details`
 - 当前策略：
   - `memory_search` summary-first
+  - `memory_timeline` 围绕 summary / observation anchor 返回时间上下文
   - `memory_details` mixed details
   - `memory_search` 支持 `session / project` scope
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
   - `memory_search` 在组内按命中强度与重要度做 deterministic ranking
+  - internal continuity tool 不进入 continuity 自身：
+    - `memory_search`
+    - `memory_timeline`
+    - `memory_details`
 
 ## 当前已落地的最小数据链
 
@@ -70,7 +76,7 @@ session.idle
   -> summary persistence
   -> request anchor checkpoint updated
 retrieval
-  -> summary-first memory_search / mixed memory_details
+  -> summary-first memory_search / timeline / mixed memory_details
 injection
   -> summary-first system transform
   -> unsummarized observations only
@@ -106,3 +112,23 @@ tool.execute.after
 - observation 主文本优先保留工具结果语义
 - decision 判定已收紧，避免普通“生成/输出”措辞造成过早 checkpoint
 - model-assisted summary 有 deterministic fallback，并新增 timeout
+- continuity internal tools 不会再次被 capture / retrieval / injection 吞回去
+- store 初始化时会清洗 legacy internal-tool observation 与 raw `read` payload 噪声
+
+## 真实宿主验证补充
+
+当前已经用本地 OpenCode 宿主完成 smoke test，确认：
+
+- plugin 能被真实宿主加载
+- `memory_search` / `memory_timeline` / `memory_details` 会进入真实 tool surface
+- `read` observation 会真实写入 SQLite
+- `memory_timeline` 能在真实宿主返回最小时间上下文
+
+当前仍需记住的运行时边界：
+
+- OpenCode 本地插件开发存在模块缓存现象
+- 重新 build 不一定意味着当前宿主已经加载新代码
+- 因此真实宿主验证应优先使用：
+  - 新的本地插件文件名
+  - 或新的 import query string
+  - 或新的临时 workspace / runtime

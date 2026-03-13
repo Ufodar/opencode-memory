@@ -19,11 +19,16 @@ export function captureToolObservation(input: {
 
   if (!candidate.capture) return null
 
-  const content = buildObservationContent(input.tool, output.title, output.output)
+  const summaries = buildObservationSummaries({
+    tool: input.tool,
+    args: input.args,
+    title: output.title,
+    output: output.output,
+  })
 
   return {
     id: `obs_${Date.now()}_${input.callID}`,
-    content,
+    content: summaries.content,
     sessionID: input.sessionID,
     projectPath: input.projectPath,
     createdAt: Date.now(),
@@ -37,7 +42,7 @@ export function captureToolObservation(input: {
       summary: truncate(JSON.stringify(input.args)),
     },
     output: {
-      summary: truncate(output.output),
+      summary: summaries.outputSummary,
     },
     retrieval: {
       importance: 0.6,
@@ -60,6 +65,74 @@ function buildObservationContent(tool: string, title: string, output: string): s
   return `${tool}: ${title || "captured tool result"}`
 }
 
+function buildObservationSummaries(input: {
+  tool: string
+  args: unknown
+  title: string
+  output: string
+}): {
+  content: string
+  outputSummary: string
+} {
+  if (input.tool === "read") {
+    const filePath = readFilePathFromArgs(input.args) ?? readFilePathFromOutput(input.output)
+    const normalizedOutput = collapseWhitespace(input.output)
+
+    if (normalizedOutput && !looksLikeRawReadPayload(input.output)) {
+      const semantic = truncate(normalizedOutput, 220)
+      return {
+        content: semantic,
+        outputSummary: semantic,
+      }
+    }
+
+    if (input.title.trim()) {
+      const titled = `read: ${input.title.trim()}`
+      return {
+        content: titled,
+        outputSummary: titled,
+      }
+    }
+
+    const label = filePath ? summarizePath(filePath) : "captured file"
+    const value = `read: ${label}`
+    return {
+      content: value,
+      outputSummary: value,
+    }
+  }
+
+  const content = buildObservationContent(input.tool, input.title, input.output)
+  return {
+    content,
+    outputSummary: truncate(collapseWhitespace(input.output), 220),
+  }
+}
+
 function collapseWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim()
+}
+
+function readFilePathFromArgs(args: unknown): string | undefined {
+  if (!args || typeof args !== "object") return undefined
+  const record = args as Record<string, unknown>
+  const value = record.filePath ?? record.file ?? record.path
+  return typeof value === "string" && value.trim() ? value.trim() : undefined
+}
+
+function readFilePathFromOutput(output: string): string | undefined {
+  const match = output.match(/<path>(.*?)<\/path>/u)
+  return match?.[1]?.trim() || undefined
+}
+
+function summarizePath(value: string): string {
+  const normalized = value.trim()
+  const segments = normalized.split("/").filter(Boolean)
+  if (segments.length === 0) return normalized
+  if (segments.length === 1) return segments[0]!
+  return segments.slice(-2).join("/")
+}
+
+function looksLikeRawReadPayload(output: string): boolean {
+  return /<path>.*<\/path>/us.test(output) || /<content>.*<\/content>/us.test(output)
 }

@@ -13,6 +13,9 @@ const HIGH_VALUE_TOOLS = new Set([
 const LOW_VALUE_TOOLS = new Set([
   "ls",
   "pwd",
+  "memory_search",
+  "memory_timeline",
+  "memory_details",
 ])
 
 export function shouldCaptureToolObservation(input: {

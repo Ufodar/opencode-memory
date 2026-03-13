@@ -46,6 +46,9 @@ interface SummaryRow {
   created_at: number
 }
 
+const INTERNAL_CONTINUITY_TOOLS = ["memory_search", "memory_timeline", "memory_details"] as const
+const INTERNAL_TOOL_SQL_LIST = INTERNAL_CONTINUITY_TOOLS.map((tool) => `'${tool}'`).join(", ")
+
 export type ContinuitySearchRecord =
   | {
       kind: "summary"
@@ -62,6 +65,27 @@ export type ContinuitySearchRecord =
       tool: string
       importance: number
       tags: string[]
+    }
+
+export type ContinuityTimelineItem =
+  | {
+      kind: "summary"
+      id: string
+      content: string
+      createdAt: number
+      requestSummary: string
+      nextStep?: string
+      isAnchor: boolean
+    }
+  | {
+      kind: "observation"
+      id: string
+      content: string
+      createdAt: number
+      tool: string
+      importance: number
+      tags: string[]
+      isAnchor: boolean
     }
 
 export class ContinuityStore {
@@ -129,6 +153,7 @@ export class ContinuityStore {
     `)
 
     this.ensureColumn("request_anchors", "last_checkpoint_observation_at", "INTEGER")
+    this.cleanupLegacyObservationNoise()
   }
 
   saveObservation(record: ObservationRecord) {
@@ -215,11 +240,12 @@ export class ContinuityStore {
     if (input.sessionID) {
       const rows = this.db
         .prepare(`
-          SELECT * FROM observations
-          WHERE project_path = ? AND session_id = ?
-          ORDER BY created_at DESC
-          LIMIT ?
-        `)
+        SELECT * FROM observations
+        WHERE project_path = ? AND session_id = ?
+          AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+        ORDER BY created_at DESC
+        LIMIT ?
+      `)
         .all(input.projectPath, input.sessionID, input.limit) as ObservationRow[]
 
       return rows.map((row) => this.mapObservation(row))
@@ -227,11 +253,12 @@ export class ContinuityStore {
 
     const rows = this.db
       .prepare(`
-        SELECT * FROM observations
-        WHERE project_path = ?
-        ORDER BY created_at DESC
-        LIMIT ?
-      `)
+      SELECT * FROM observations
+      WHERE project_path = ?
+        AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+      ORDER BY created_at DESC
+      LIMIT ?
+    `)
       .all(input.projectPath, input.limit) as ObservationRow[]
 
     return rows.map((row) => this.mapObservation(row))
@@ -247,6 +274,7 @@ export class ContinuityStore {
       .prepare(`
         SELECT * FROM observations
         WHERE project_path = ?
+          AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
           AND (
             lower(content) LIKE ?
             OR lower(input_summary) LIKE ?
@@ -286,6 +314,7 @@ export class ContinuityStore {
       .prepare(`
         SELECT * FROM observations
         WHERE project_path = ? AND session_id = ? AND created_at > ?
+          AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
         ORDER BY created_at ASC
         LIMIT ?
       `)
@@ -391,6 +420,7 @@ export class ContinuityStore {
           .prepare(`
             SELECT * FROM observations
             WHERE project_path = ? AND session_id = ?
+              AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
               AND (
                 lower(content) LIKE ?
                 OR lower(input_summary) LIKE ?
@@ -413,6 +443,7 @@ export class ContinuityStore {
           .prepare(`
             SELECT * FROM observations
             WHERE project_path = ?
+              AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
               AND (
                 lower(content) LIKE ?
                 OR lower(input_summary) LIKE ?
@@ -505,8 +536,208 @@ export class ContinuityStore {
     ]
   }
 
+  getContinuityTimeline(input: {
+    projectPath: string
+    sessionID?: string
+    anchorID?: string
+    query?: string
+    depthBefore: number
+    depthAfter: number
+  }): {
+    anchor: ContinuityTimelineItem
+    items: ContinuityTimelineItem[]
+  } | null {
+    const anchor = this.resolveTimelineAnchor(input)
+    if (!anchor) return null
+
+    const summaries = this.listTimelineSummaries(input)
+    const allCoveredObservationIDs = new Set(
+      summaries.flatMap((row) => parseStringArray(row.observation_ids_json)),
+    )
+
+    const observations = this.listTimelineObservations(input)
+      .filter((row) => row.id === anchor.id || !allCoveredObservationIDs.has(row.id))
+
+    const items = [
+      ...summaries.map((row) => this.mapTimelineSummary(row, row.id === anchor.id)),
+      ...observations.map((row) => this.mapTimelineObservation(row, row.id === anchor.id)),
+    ].sort((a, b) => a.createdAt - b.createdAt || compareTimelineKinds(a.kind, b.kind))
+
+    const anchorIndex = items.findIndex((item) => item.id === anchor.id && item.kind === anchor.kind)
+    if (anchorIndex === -1) return null
+
+    const start = Math.max(0, anchorIndex - input.depthBefore)
+    const end = Math.min(items.length, anchorIndex + input.depthAfter + 1)
+
+    return {
+      anchor: items[anchorIndex]!,
+      items: items.slice(start, end),
+    }
+  }
+
   close() {
     this.db.close()
+  }
+
+  private resolveTimelineAnchor(input: {
+    projectPath: string
+    sessionID?: string
+    anchorID?: string
+    query?: string
+  }): ContinuityTimelineItem | null {
+    if (input.anchorID) {
+      const explicit = this.getContinuityDetails([input.anchorID])[0]
+      if (!explicit) return null
+      if (input.sessionID && !this.belongsToSession(explicit.kind, explicit.id, input.sessionID)) {
+        return null
+      }
+      return explicit.kind === "summary"
+        ? {
+            kind: "summary",
+            id: explicit.id,
+            content: explicit.content,
+            createdAt: explicit.createdAt,
+            requestSummary: this.getSummaryRequestSummary(explicit.id) ?? "",
+            nextStep: explicit.nextStep,
+            isAnchor: true,
+          }
+        : {
+            kind: "observation",
+            id: explicit.id,
+            content: explicit.content,
+            createdAt: explicit.createdAt,
+            tool: explicit.tool,
+            importance: explicit.importance,
+            tags: explicit.tags,
+            isAnchor: true,
+          }
+    }
+
+    if (!input.query) return null
+
+    const result = this.searchContinuityRecords({
+      projectPath: input.projectPath,
+      sessionID: input.sessionID,
+      query: input.query,
+      limit: 1,
+    })[0]
+
+    if (!result) return null
+
+    return result.kind === "summary"
+      ? {
+          kind: "summary",
+          id: result.id,
+          content: result.content,
+          createdAt: result.createdAt,
+          requestSummary: this.getSummaryRequestSummary(result.id) ?? "",
+          nextStep: result.nextStep,
+          isAnchor: true,
+        }
+      : {
+          kind: "observation",
+          id: result.id,
+          content: result.content,
+          createdAt: result.createdAt,
+          tool: result.tool,
+          importance: result.importance,
+          tags: result.tags,
+          isAnchor: true,
+        }
+  }
+
+  private listTimelineSummaries(input: {
+    projectPath: string
+    sessionID?: string
+  }): SummaryRow[] {
+    if (input.sessionID) {
+      return this.db
+        .prepare(`
+          SELECT * FROM summaries
+          WHERE project_path = ? AND session_id = ?
+          ORDER BY created_at ASC
+        `)
+        .all(input.projectPath, input.sessionID) as SummaryRow[]
+    }
+
+    return this.db
+      .prepare(`
+        SELECT * FROM summaries
+        WHERE project_path = ?
+        ORDER BY created_at ASC
+      `)
+      .all(input.projectPath) as SummaryRow[]
+  }
+
+  private listTimelineObservations(input: {
+    projectPath: string
+    sessionID?: string
+  }): ObservationRow[] {
+    if (input.sessionID) {
+      return this.db
+        .prepare(`
+          SELECT * FROM observations
+          WHERE project_path = ? AND session_id = ?
+            AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+          ORDER BY created_at ASC
+        `)
+        .all(input.projectPath, input.sessionID) as ObservationRow[]
+    }
+
+    return this.db
+      .prepare(`
+        SELECT * FROM observations
+        WHERE project_path = ?
+          AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+        ORDER BY created_at ASC
+      `)
+      .all(input.projectPath) as ObservationRow[]
+  }
+
+  private belongsToSession(kind: "summary" | "observation", id: string, sessionID: string): boolean {
+    const row =
+      kind === "summary"
+        ? (this.db
+            .prepare(`SELECT session_id FROM summaries WHERE id = ? LIMIT 1`)
+            .get(id) as { session_id: string } | null)
+        : (this.db
+            .prepare(`SELECT session_id FROM observations WHERE id = ? LIMIT 1`)
+            .get(id) as { session_id: string } | null)
+
+    return row?.session_id === sessionID
+  }
+
+  private getSummaryRequestSummary(id: string): string | null {
+    const row = this.db
+      .prepare(`SELECT request_summary FROM summaries WHERE id = ? LIMIT 1`)
+      .get(id) as { request_summary: string } | null
+
+    return row?.request_summary ?? null
+  }
+
+  private mapTimelineSummary(row: SummaryRow, isAnchor: boolean): ContinuityTimelineItem {
+    return {
+      kind: "summary",
+      id: row.id,
+      content: row.outcome_summary,
+      createdAt: row.created_at,
+      requestSummary: row.request_summary,
+      nextStep: row.next_step ?? undefined,
+      isAnchor,
+    }
+  }
+
+  private mapTimelineObservation(row: ObservationRow, isAnchor: boolean): ContinuityTimelineItem {
+    return {
+      kind: "observation",
+      id: row.id,
+      content: row.content,
+      createdAt: row.created_at,
+      tool: row.tool_name,
+      importance: row.importance,
+      tags: parseStringArray(row.tags_json),
+      isAnchor,
+    }
   }
 
   private mapObservation(row: ObservationRow): ObservationRecord {
@@ -555,6 +786,42 @@ export class ContinuityStore {
     this.db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
   }
 
+  private cleanupLegacyObservationNoise() {
+    this.db
+      .prepare(
+        `DELETE FROM observations WHERE tool_name IN (${INTERNAL_TOOL_SQL_LIST})`,
+      )
+      .run()
+
+    const legacyReadRows = this.db
+      .prepare(`
+        SELECT id, content, output_summary, tool_title
+        FROM observations
+        WHERE tool_name = 'read'
+          AND (
+            content LIKE '<path>%'
+            OR output_summary LIKE '<path>%'
+          )
+      `)
+      .all() as Array<{
+      id: string
+      content: string
+      output_summary: string
+      tool_title: string | null
+    }>
+
+    const update = this.db.prepare(`
+      UPDATE observations
+      SET content = ?, output_summary = ?
+      WHERE id = ?
+    `)
+
+    for (const row of legacyReadRows) {
+      const normalized = summarizeLegacyReadRow(row.tool_title, row.content, row.output_summary)
+      update.run(normalized, normalized, row.id)
+    }
+  }
+
   private mapSummary(row: SummaryRow): SummaryRecord {
     return {
       id: row.id,
@@ -568,6 +835,11 @@ export class ContinuityStore {
       createdAt: row.created_at,
     }
   }
+}
+
+function compareTimelineKinds(a: "summary" | "observation", b: "summary" | "observation") {
+  if (a === b) return 0
+  return a === "observation" ? -1 : 1
 }
 
 function parseStringArray(value: string): string[] {
@@ -591,6 +863,37 @@ function parseTrace(value: string): ObservationRecord["trace"] {
 function normalizeStatus(value: string): ObservationRecord["tool"]["status"] {
   if (value === "success" || value === "error" || value === "unknown") return value
   return "unknown"
+}
+
+function summarizeLegacyReadRow(
+  toolTitle: string | null,
+  content: string,
+  outputSummary: string,
+): string {
+  const fromTitle = (toolTitle ?? "").trim()
+  if (fromTitle) {
+    return `read: ${fromTitle}`
+  }
+
+  const path = extractLegacyPath(content) ?? extractLegacyPath(outputSummary)
+  if (path) {
+    return `read: ${summarizeLegacyPath(path)}`
+  }
+
+  return "read: captured file"
+}
+
+function extractLegacyPath(value: string): string | undefined {
+  const match = value.match(/<path>(.*?)<\/path>/u)
+  return match?.[1]?.trim() || undefined
+}
+
+function summarizeLegacyPath(value: string): string {
+  const normalized = value.trim()
+  const segments = normalized.split("/").filter(Boolean)
+  if (segments.length === 0) return normalized
+  if (segments.length === 1) return segments[0]!
+  return segments.slice(-2).join("/")
 }
 
 function scoreSummaryRow(row: SummaryRow, query: string): number {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { Database } from "bun:sqlite"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import { ContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
@@ -84,6 +85,78 @@ describe("ContinuityStore", () => {
 
     expect(results).toHaveLength(2)
     expect(results.map((item) => item.id)).toEqual(["obs_a", "obs_b"])
+  })
+
+  test("cleans legacy internal-tool rows and normalizes legacy read payloads on init", () => {
+    const dbPath = join(tempDir, "continuity.sqlite")
+    store.close()
+
+    const rawDb = new Database(dbPath)
+
+    rawDb
+      .prepare(`
+        INSERT INTO observations (
+          id, content, session_id, project_path, prompt_id, created_at,
+          tool_name, call_id, tool_title, tool_status,
+          input_summary, output_summary, importance, tags_json, trace_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        "obs_internal",
+        "{\"success\":true,\"count\":0,\"scope\":\"session\",\"results\":[]}",
+        "ses_demo",
+        "/workspace/demo",
+        null,
+        100,
+        "memory_search",
+        "call_internal",
+        "",
+        "success",
+        "{\"query\":\"README\"}",
+        "{\"success\":true}",
+        0.6,
+        "[\"memory_search\",\"observation\"]",
+        "{}",
+      )
+
+    rawDb
+      .prepare(`
+        INSERT INTO observations (
+          id, content, session_id, project_path, prompt_id, created_at,
+          tool_name, call_id, tool_title, tool_status,
+          input_summary, output_summary, importance, tags_json, trace_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      .run(
+        "obs_legacy_read",
+        "<path>/workspace/demo/README.md</path>\n<type>file</type>\n<content>1: # Demo\n2: body</content>",
+        "ses_demo",
+        "/workspace/demo",
+        null,
+        200,
+        "read",
+        "call_read",
+        "workspace/demo/README.md",
+        "success",
+        "{\"filePath\":\"/workspace/demo/README.md\"}",
+        "<path>/workspace/demo/README.md</path>\n<content>body</content>",
+        0.6,
+        "[\"read\",\"observation\"]",
+        "{}",
+      )
+
+    rawDb.close()
+
+    store = new ContinuityStore(dbPath)
+
+    const observations = store.listRecentObservations({
+      projectPath: "/workspace/demo",
+      limit: 10,
+    })
+
+    expect(observations.map((item) => item.id)).toEqual(["obs_legacy_read"])
+    expect(observations[0]?.content).toBe("read: workspace/demo/README.md")
+    expect(observations[0]?.output.summary).toBe("read: workspace/demo/README.md")
   })
 })
 

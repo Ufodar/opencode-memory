@@ -67,6 +67,7 @@ docs/
 - 同一 request anchor 已支持多 checkpoint summary
 - request checkpoint 已支持第一版 phase-aware 切分
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
+- `memory_timeline` 已支持围绕 summary / observation anchor 查看时间上下文
 - `memory_search` 已过滤被返回 summary 覆盖的 observation
 - `memory_search` 已具备第一版 deterministic ranking
 - summary 已支持可选 model-assisted 生成，并保留 deterministic fallback
@@ -79,6 +80,18 @@ docs/
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
 - `session.idle` summary 主链已加入 session 级重入保护
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
+- internal continuity tool 已统一过滤：
+  - `memory_search`
+  - `memory_timeline`
+  - `memory_details`
+- 已完成本地 OpenCode 真实宿主 smoke test：
+  - plugin 能被宿主加载
+  - `memory_search` / `memory_timeline` / `memory_details` 会进入真实 tool surface
+  - `read` observation 会真实落库
+  - `memory_timeline` 已能在真实宿主返回时间上下文
+- 已加入 legacy observation 噪声清洗：
+  - 旧 `memory_*` 自查询 observation 会在初始化时清除
+  - 旧 raw `read` observation 会在初始化时归一化
 - 第一版架构和路线图文档
 
 下一步建议优先实现：
@@ -87,6 +100,34 @@ docs/
 2. 继续增强 ranking，而不是停在当前启发式分数
 3. 再评估是否需要轻量外部 worker
 4. 如进入 worker 化，优先保持当前 deterministic 主链不变，只迁移 runtime 边界
+
+## 开发与真实测试说明
+
+### OpenCode 本地宿主验证
+
+当前已用本地 OpenCode 宿主完成 smoke test，验证过：
+
+- plugin 能被真实宿主加载
+- `memory_search`
+- `memory_timeline`
+- `memory_details`
+
+都会进入真实 tool surface。
+
+### 开发时要注意的宿主缓存问题
+
+OpenCode 本地插件在开发时存在模块缓存特征：
+
+- 仅重新 `bun run build`，不一定会让当前宿主重新加载新代码
+- 若需要做真实宿主验证，最好：
+  1. 使用新的本地插件文件名或新的 import query string
+  2. 或重启 OpenCode runtime
+  3. 或切换到新的临时 workspace
+
+否则会出现：
+
+- 测试和构建都已通过
+- 但真实宿主仍在运行旧插件代码
 
 ## 可选模型配置
 

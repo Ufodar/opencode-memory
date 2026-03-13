@@ -43,4 +43,46 @@ describe("captureToolObservation", () => {
     expect(observation).not.toBeNull()
     expect(observation?.content).toBe("read: 读取招标文件第3章")
   })
+
+  test("summarizes read output without dumping raw file contents", () => {
+    const observation = captureToolObservation(
+      {
+        tool: "read",
+        sessionID: "ses_demo",
+        callID: "call_3",
+        args: { filePath: "/workspace/demo/README.md" },
+        projectPath: "/workspace/demo",
+      },
+      {
+        title: "",
+        output: `<path>/workspace/demo/README.md</path>\n<type>file</type>\n<content>1: # Demo\n2: \n3: This is a very long file body that should not become the observation summary.</content>`,
+        metadata: {},
+      },
+    )
+
+    expect(observation).not.toBeNull()
+    expect(observation?.content).toContain("README.md")
+    expect(observation?.content).not.toContain("This is a very long file body")
+    expect(observation?.output.summary).toContain("README.md")
+    expect(observation?.output.summary).not.toContain("This is a very long file body")
+  })
+
+  test("does not capture continuity self-query tools", () => {
+    const observation = captureToolObservation(
+      {
+        tool: "memory_timeline",
+        sessionID: "ses_demo",
+        callID: "call_4",
+        args: { query: "README" },
+        projectPath: "/workspace/demo",
+      },
+      {
+        title: "",
+        output: "{\"success\":true,\"count\":1,\"results\":[]}",
+        metadata: {},
+      },
+    )
+
+    expect(observation).toBeNull()
+  })
 })

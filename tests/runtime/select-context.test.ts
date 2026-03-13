@@ -53,6 +53,65 @@ describe("selectInjectionRecords", () => {
     expect(selected.scope).toBe("project")
     expect(selected.summaries.map((item) => item.id)).toEqual(["sum_project"])
   })
+
+  test("ignores internal continuity tool observations during injection selection", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_internal",
+        sessionID: "ses_current",
+        createdAt: 20,
+        toolName: "memory_search",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_real",
+        sessionID: "ses_current",
+        createdAt: 30,
+        toolName: "read",
+      }),
+    )
+
+    const selected = selectInjectionRecords({
+      store,
+      projectPath: "/workspace/demo",
+      sessionID: "ses_current",
+      maxSummaries: 3,
+      maxObservations: 5,
+    })
+
+    expect(selected.scope).toBe("session")
+    expect(selected.observations.map((item) => item.id)).toEqual(["obs_real"])
+  })
+
+  test("ignores memory_timeline observations during injection selection", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_internal_timeline",
+        sessionID: "ses_current",
+        createdAt: 20,
+        toolName: "memory_timeline",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_real",
+        sessionID: "ses_current",
+        createdAt: 30,
+        toolName: "read",
+      }),
+    )
+
+    const selected = selectInjectionRecords({
+      store,
+      projectPath: "/workspace/demo",
+      sessionID: "ses_current",
+      maxSummaries: 3,
+      maxObservations: 5,
+    })
+
+    expect(selected.observations.map((item) => item.id)).toEqual(["obs_real"])
+  })
 })
 
 function buildSummary(input: {
@@ -77,6 +136,7 @@ function buildObservation(input: {
   id: string
   sessionID: string
   createdAt: number
+  toolName?: string
 }): ObservationRecord {
   return {
     id: input.id,
@@ -85,7 +145,7 @@ function buildObservation(input: {
     projectPath: "/workspace/demo",
     createdAt: input.createdAt,
     tool: {
-      name: "read",
+      name: input.toolName ?? "read",
       callID: `call_${input.id}`,
       status: "success",
     },

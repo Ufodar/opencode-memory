@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "OpenCode plugin for persistent work continuity using observations, summaries, and system-context injection",
   "type": "module",
-  "main": "dist/plugin.js",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",

@@ -44,3 +44,11 @@
 - injection count / character budget
 - vector/keyword hybrid ranking
 - retention / cleanup
+
+## v0.7.0 Timeline Retrieval
+
+- `memory_timeline`
+- query / anchor 双入口
+- summary / observation 混合时间视图
+- covered observation 默认去重，但允许 anchor 保留
+- 与 `search -> timeline -> details` 渐进检索纪律对齐
