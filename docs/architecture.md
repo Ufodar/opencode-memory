@@ -1,0 +1,56 @@
+# opencode-continuity 架构说明
+
+## 目标
+
+`opencode-continuity` 是一个面向 OpenCode 的通用 memory continuity 插件底座。
+
+它要逼近的不是 `claude-mem` 的平台实现，而是它的四个核心机制角色：
+
+1. 采集器
+2. 压缩器
+3. 回注器
+4. 检索器
+
+## 第一版角色映射
+
+### 采集器
+
+- OpenCode 等价点：`tool.execute.after`
+- 作用：把高价值工具调用转成 observation 候选
+
+### 压缩器
+
+- 第一版不做外部 worker
+- 先在插件内部完成：
+  - observation capture
+  - summary 聚合占位
+
+### 回注器
+
+- OpenCode 等价点：`experimental.chat.system.transform`
+- 作用：把 continuity 结果注入到 system/background，而不是普通消息
+
+### 检索器
+
+- 第一版工具面：
+  - `memory_search`
+  - `memory_details`
+
+## 数据流
+
+```text
+tool.execute.after
+  -> observation candidate
+  -> observation record
+  -> summary aggregator (later)
+  -> system injection
+  -> layered retrieval
+```
+
+## 当前刻意不做的事
+
+- 不做业务特化 memory schema
+- 不做外部 worker
+- 不做 timeline
+- 不做复杂 reranking
+- 不做团队知识库

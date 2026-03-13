@@ -1,0 +1,47 @@
+{
+  "name": "opencode-continuity",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for persistent work continuity using observations, summaries, and system-context injection",
+  "type": "module",
+  "main": "dist/plugin.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\" \"docs/**/*.md\" README.md",
+    "format:check": "prettier --check \"src/**/*.ts\" \"docs/**/*.md\" README.md"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "memory",
+    "continuity",
+    "observation",
+    "summary"
+  ],
+  "author": "Ufodar",
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.0.162"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.8",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  },
+  "opencode": {
+    "type": "plugin",
+    "hooks": [
+      "chat.message",
+      "event",
+      "tool.execute.after",
+      "experimental.chat.system.transform"
+    ]
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ]
+}

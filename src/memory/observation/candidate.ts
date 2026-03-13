@@ -1,0 +1,39 @@
+import type { ObservationCandidate } from "./types.js"
+
+const HIGH_VALUE_TOOLS = new Set([
+  "read",
+  "grep",
+  "glob",
+  "edit",
+  "write",
+  "patch",
+  "task",
+])
+
+const LOW_VALUE_TOOLS = new Set([
+  "ls",
+  "pwd",
+])
+
+export function shouldCaptureToolObservation(input: {
+  tool: string
+  args: unknown
+}, output: {
+  title?: string
+  output?: string
+}): ObservationCandidate {
+  if (LOW_VALUE_TOOLS.has(input.tool)) {
+    return { capture: false, reason: "low-information tool" }
+  }
+
+  if (HIGH_VALUE_TOOLS.has(input.tool)) {
+    return { capture: true, reason: "high-value tool category" }
+  }
+
+  const text = typeof output.output === "string" ? output.output.trim() : ""
+  if (text.length >= 40) {
+    return { capture: true, reason: "meaningful output length" }
+  }
+
+  return { capture: false, reason: "insufficient signal" }
+}
