@@ -70,6 +70,20 @@ export type ContinuitySearchRecord =
       tags: string[]
     }
 
+export type ContinuityObservationDetailRecord = {
+  kind: "observation"
+  id: string
+  content: string
+  createdAt: number
+  phase?: ObservationRecord["phase"]
+  tool: string
+  importance: number
+  tags: string[]
+  inputSummary: string
+  outputSummary: string
+  trace: ObservationRecord["trace"]
+}
+
 export type ContinuityDetailRecord =
   | {
       kind: "summary"
@@ -79,20 +93,9 @@ export type ContinuityDetailRecord =
       requestSummary: string
       nextStep?: string
       observationIDs: string[]
+      coveredObservations: ContinuityObservationDetailRecord[]
     }
-  | {
-      kind: "observation"
-      id: string
-      content: string
-      createdAt: number
-      phase?: ObservationRecord["phase"]
-      tool: string
-      importance: number
-      tags: string[]
-      inputSummary: string
-      outputSummary: string
-      trace: ObservationRecord["trace"]
-    }
+  | ContinuityObservationDetailRecord
 
 export type ContinuityTimelineItem =
   | {
@@ -549,6 +552,24 @@ export class ContinuityStore {
       `)
       .all(...ids) as ObservationRow[]
 
+    const coveredObservationIDs = Array.from(
+      new Set(summaries.flatMap((row) => parseStringArray(row.observation_ids_json))),
+    )
+    const coveredObservationRows =
+      coveredObservationIDs.length > 0
+        ? (this.db
+            .prepare(`
+              SELECT * FROM observations
+              WHERE id IN (${coveredObservationIDs.map(() => "?").join(", ")})
+              ORDER BY created_at ASC
+            `)
+            .all(...coveredObservationIDs) as ObservationRow[])
+        : []
+
+    const coveredObservationMap = new Map(
+      coveredObservationRows.map((row) => [row.id, this.mapObservationDetail(row)]),
+    )
+
     return [
       ...summaries.map((row) => ({
         kind: "summary" as const,
@@ -558,20 +579,11 @@ export class ContinuityStore {
         requestSummary: row.request_summary,
         nextStep: row.next_step ?? undefined,
         observationIDs: parseStringArray(row.observation_ids_json),
+        coveredObservations: parseStringArray(row.observation_ids_json)
+          .map((id) => coveredObservationMap.get(id))
+          .filter((value): value is ContinuityObservationDetailRecord => Boolean(value)),
       })),
-      ...observations.map((row) => ({
-        kind: "observation" as const,
-        id: row.id,
-        content: row.content,
-        createdAt: row.created_at,
-        phase: classifyObservationPhase(this.mapObservation(row)),
-        tool: row.tool_name,
-        importance: row.importance,
-        tags: parseStringArray(row.tags_json),
-        inputSummary: row.input_summary,
-        outputSummary: row.output_summary,
-        trace: parseTrace(row.trace_json),
-      })),
+      ...observations.map((row) => this.mapObservationDetail(row)),
     ]
   }
 
@@ -779,6 +791,23 @@ export class ContinuityStore {
       importance: row.importance,
       tags: parseStringArray(row.tags_json),
       isAnchor,
+    }
+  }
+
+  private mapObservationDetail(row: ObservationRow): ContinuityObservationDetailRecord {
+    const observation = this.mapObservation(row)
+    return {
+      kind: "observation",
+      id: row.id,
+      content: row.content,
+      createdAt: row.created_at,
+      phase: classifyObservationPhase(observation),
+      tool: row.tool_name,
+      importance: row.importance,
+      tags: parseStringArray(row.tags_json),
+      inputSummary: row.input_summary,
+      outputSummary: row.output_summary,
+      trace: parseTrace(row.trace_json),
     }
   }
 

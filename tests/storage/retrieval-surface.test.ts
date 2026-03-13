@@ -74,6 +74,13 @@ describe("ContinuityStore retrieval surface", () => {
       id: "sum_1",
       requestSummary: "抽取资格条件并形成缺口判断",
       observationIDs: ["obs_1"],
+      coveredObservations: [
+        {
+          kind: "observation",
+          id: "obs_1",
+          outputSummary: "形成决策：先输出缺口清单",
+        },
+      ],
     })
     expect(results[1]).toMatchObject({
       kind: "observation",
