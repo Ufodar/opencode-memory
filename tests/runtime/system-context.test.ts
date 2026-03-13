@@ -56,14 +56,36 @@ describe("buildSystemContinuityContext", () => {
     ]
 
     const system = buildSystemContinuityContext({
+      scope: "project",
       summaries: [],
       observations,
     })
 
     const text = system.join("\n")
+    expect(text).toContain("Scope: project continuity")
     expect(text).not.toContain("Recent summaries:")
     expect(text).toContain("Recent observations:")
     expect(text).toContain("evidence_source")
+  })
+
+  test("shows observation phases when falling back to observations", () => {
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_1",
+        content: "读取 requirements.csv 并发现 evidence_source 列缺失",
+        phase: "research",
+      }),
+    ]
+
+    const system = buildSystemContinuityContext({
+      scope: "session",
+      summaries: [],
+      observations,
+    })
+
+    const text = system.join("\n")
+    expect(text).toContain("Scope: current session continuity")
+    expect(text).toContain("[research] 读取 requirements.csv 并发现 evidence_source 列缺失")
   })
 
   test("respects count and character budgets", () => {
@@ -119,6 +141,7 @@ describe("buildSystemContinuityContext", () => {
 function buildObservation(input: {
   id: string
   content: string
+  phase?: ObservationRecord["phase"]
 }): ObservationRecord {
   return {
     id: input.id,
@@ -126,6 +149,7 @@ function buildObservation(input: {
     sessionID: "ses_demo",
     projectPath: "/workspace/demo",
     createdAt: 10,
+    phase: input.phase,
     tool: {
       name: "read",
       callID: `call_${input.id}`,

@@ -4,6 +4,7 @@ import type { SummaryRecord } from "../../memory/summary/types.js"
 export function buildSystemContinuityContext(input: {
   summaries: SummaryRecord[]
   observations: ObservationRecord[]
+  scope?: "session" | "project"
   maxSummaries?: number
   maxObservations?: number
   maxChars?: number
@@ -18,6 +19,15 @@ export function buildSystemContinuityContext(input: {
     pushLine(system, "[CONTINUITY]")
     if (!canFit(currentLength, "[CONTINUITY]", maxChars)) return system
     currentLength = nextLength(currentLength, "[CONTINUITY]")
+
+    if (input.scope) {
+      const scopeLine =
+        input.scope === "session" ? "Scope: current session continuity" : "Scope: project continuity"
+      if (canFit(currentLength, scopeLine, maxChars)) {
+        pushLine(system, scopeLine)
+        currentLength = nextLength(currentLength, scopeLine)
+      }
+    }
 
     if (canFit(currentLength, "Recent summaries:", maxChars)) {
       pushLine(system, "Recent summaries:")
@@ -49,13 +59,23 @@ export function buildSystemContinuityContext(input: {
   )
 
   if (observations.length > 0) {
+    if (summaries.length === 0 && input.scope) {
+      const scopeLine =
+        input.scope === "session" ? "Scope: current session continuity" : "Scope: project continuity"
+      if (canFit(currentLength, scopeLine, maxChars)) {
+        pushLine(system, scopeLine)
+        currentLength = nextLength(currentLength, scopeLine)
+      }
+    }
+
     const header = summaries.length > 0 ? "Recent unsummarized observations:" : "Recent observations:"
     if (canFit(currentLength, header, maxChars)) {
       pushLine(system, header)
       currentLength = nextLength(currentLength, header)
     }
     for (const observation of observations) {
-      const line = `- ${observation.content}`
+      const phasePrefix = observation.phase ? `[${observation.phase}] ` : ""
+      const line = `- ${phasePrefix}${observation.content}`
       if (!canFit(currentLength, line, maxChars)) break
       pushLine(system, line)
       currentLength = nextLength(currentLength, line)

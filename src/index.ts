@@ -120,6 +120,7 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
       })
 
       const system = buildSystemContinuityContext({
+        scope: selected.scope,
         summaries: selected.summaries,
         observations: selected.observations,
         maxSummaries: DEFAULTS.maxInjectedSummaries,
