@@ -35,29 +35,34 @@ export async function generateModelSummary(
   deps: {
     env?: NodeJS.ProcessEnv
     fetchImpl?: typeof fetch
+    timeoutMs?: number
   } = {},
 ): Promise<ModelSummaryResult | null> {
   const config = getModelSummaryConfig(deps.env ?? process.env)
   if (!config) return null
 
   const fetchImpl = deps.fetchImpl ?? fetch
+  const timeoutMs = deps.timeoutMs ?? 4000
 
   try {
-    const response = await fetchImpl(`${config.apiUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${config.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: buildMessages(input),
-        temperature: 0.2,
-        response_format: {
-          type: "json_object",
+    const response = await withTimeout(
+      fetchImpl(`${config.apiUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${config.apiKey}`,
         },
+        body: JSON.stringify({
+          model: config.model,
+          messages: buildMessages(input),
+          temperature: 0.2,
+          response_format: {
+            type: "json_object",
+          },
+        }),
       }),
-    })
+      timeoutMs,
+    )
 
     if (!response.ok) {
       log("model summary request failed", {
@@ -181,4 +186,23 @@ function isWeakNextStep(value: string): boolean {
 
 function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max - 3)}...`
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Model summary request timed out after ${timeoutMs}ms`))
+    }, timeoutMs)
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
 }

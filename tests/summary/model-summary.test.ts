@@ -163,6 +163,28 @@ describe("model summary", () => {
     expect(result?.outcomeSummary.length).toBeLessThanOrEqual(160)
     expect(result?.nextStep).toBeUndefined()
   })
+
+  test("returns null when model request exceeds timeout", async () => {
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+
+    const result = await generateModelSummary(
+      {
+        request: buildRequest(),
+        observations: [buildObservation()],
+      },
+      {
+        timeoutMs: 5,
+        fetchImpl: async () =>
+          await new Promise<Response>(() => {
+            // Never resolves - simulates a hung provider request
+          }),
+      },
+    )
+
+    expect(result).toBeNull()
+  })
 })
 
 function buildRequest(): RequestAnchorRecord {
