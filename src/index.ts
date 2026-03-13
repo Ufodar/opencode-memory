@@ -2,6 +2,7 @@ import type { Plugin } from "@opencode-ai/plugin"
 import { getDefaultDatabasePath } from "./config/paths.js"
 import { DEFAULTS } from "./config/defaults.js"
 import { captureRequestAnchor } from "./runtime/hooks/chat-message.js"
+import { createSessionReentryGuard } from "./runtime/hooks/idle-summary-guard.js"
 import { captureToolObservation } from "./runtime/hooks/tool-after.js"
 import { buildSystemContinuityContext } from "./runtime/injection/system-context.js"
 import { selectInjectionRecords } from "./runtime/injection/select-context.js"
@@ -17,6 +18,7 @@ import { log } from "./services/logger.js"
 
 export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
   const store = new ContinuityStore(getDefaultDatabasePath())
+  const idleSummaryGuard = createSessionReentryGuard()
 
   return {
     "chat.message": async (input, output) => {
@@ -40,48 +42,55 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
     event: async ({ event }) => {
       if (event.type === "session.idle") {
         const sessionID = event.properties.sessionID
-        const requestAnchor = store.getLatestRequestAnchor({
-          projectPath: directory,
-          sessionID,
-        })
-
-        if (!requestAnchor) {
-          log("session.idle without pending request anchor", { sessionID })
-          return
-        }
-
-        const observations = store.listObservationsForRequestWindow({
-          projectPath: directory,
-          sessionID,
-          afterCreatedAtExclusive:
-            requestAnchor.lastCheckpointObservationAt ?? requestAnchor.createdAt - 1,
-        })
-
-        const checkpointObservations = selectCheckpointObservations({ observations })
-
-        if (checkpointObservations.length === 0) {
-          log("session.idle without aggregatable observations", {
+        const guardResult = await idleSummaryGuard.run(sessionID, async () => {
+          const requestAnchor = store.getLatestRequestAnchor({
+            projectPath: directory,
             sessionID,
-            requestAnchorID: requestAnchor.id,
           })
+
+          if (!requestAnchor) {
+            log("session.idle without pending request anchor", { sessionID })
+            return
+          }
+
+          const observations = store.listObservationsForRequestWindow({
+            projectPath: directory,
+            sessionID,
+            afterCreatedAtExclusive:
+              requestAnchor.lastCheckpointObservationAt ?? requestAnchor.createdAt - 1,
+          })
+
+          const checkpointObservations = selectCheckpointObservations({ observations })
+
+          if (checkpointObservations.length === 0) {
+            log("session.idle without aggregatable observations", {
+              sessionID,
+              requestAnchorID: requestAnchor.id,
+            })
+            return
+          }
+
+          const summary = await buildSummaryRecord({
+            request: requestAnchor,
+            observations: checkpointObservations,
+            generateModelSummary,
+          })
+
+          store.saveSummary(summary)
+          store.updateRequestAnchorCheckpoint({
+            id: requestAnchor.id,
+            summarizedAt: Date.now(),
+            lastCheckpointObservationAt: Math.max(
+              ...checkpointObservations.map((item) => item.createdAt),
+            ),
+          })
+          log("captured summary", { id: summary.id, sessionID })
+        })
+
+        if (!guardResult.ran) {
+          log("session.idle skipped because summary is already in flight", { sessionID })
           return
         }
-
-        const summary = await buildSummaryRecord({
-          request: requestAnchor,
-          observations: checkpointObservations,
-          generateModelSummary,
-        })
-
-        store.saveSummary(summary)
-        store.updateRequestAnchorCheckpoint({
-          id: requestAnchor.id,
-          summarizedAt: Date.now(),
-          lastCheckpointObservationAt: Math.max(
-            ...checkpointObservations.map((item) => item.createdAt),
-          ),
-        })
-        log("captured summary", { id: summary.id, sessionID })
       }
     },
 
