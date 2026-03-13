@@ -2,6 +2,8 @@ import type { ObservationRecord } from "../observation/types.js"
 import type { RequestAnchorRecord } from "../request/types.js"
 import type { SummaryRecord } from "./types.js"
 
+type ObservationPhase = "planning" | "research" | "execution" | "verification" | "decision" | "other"
+
 export function summarizeRequestWindow(input: {
   request: RequestAnchorRecord
   observations: ObservationRecord[]
@@ -30,7 +32,45 @@ export function shouldAggregateRequestWindow(input: {
 }): boolean {
   if (input.observations.length >= 2) return true
 
-  return input.observations.some((item) => item.retrieval.importance >= 0.9)
+  if (input.observations.some((item) => item.retrieval.importance >= 0.9)) return true
+
+  if (input.observations.length === 1) {
+    const phase = classifyObservationPhase(input.observations[0]!)
+    return phase === "execution" || phase === "verification" || phase === "decision"
+  }
+
+  return false
+}
+
+export function selectCheckpointObservations(input: {
+  observations: ObservationRecord[]
+}): ObservationRecord[] {
+  const ordered = [...input.observations].sort((a, b) => a.createdAt - b.createdAt)
+  if (ordered.length === 0) return []
+
+  const decisionIndex = findLastIndex(ordered, (item) => classifyObservationPhase(item) === "decision")
+  if (decisionIndex >= 0) {
+    const selected = ordered.slice(0, decisionIndex + 1)
+    return shouldAggregateRequestWindow({ observations: selected }) ? selected : []
+  }
+
+  const phases = ordered.map((item) => classifyObservationPhase(item))
+  const lastPhase = phases[phases.length - 1]
+
+  let boundaryStart = 0
+  for (let index = phases.length - 1; index >= 0; index -= 1) {
+    if (phases[index] !== lastPhase) {
+      boundaryStart = index + 1
+      break
+    }
+  }
+
+  if (boundaryStart > 0) {
+    const selected = ordered.slice(0, boundaryStart)
+    return shouldAggregateRequestWindow({ observations: selected }) ? selected : []
+  }
+
+  return shouldAggregateRequestWindow({ observations: ordered }) ? ordered : []
 }
 
 function extractNextStep(content: string): string {
@@ -43,4 +83,35 @@ function extractNextStep(content: string): string {
 
 function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max)}...`
+}
+
+function classifyObservationPhase(observation: ObservationRecord): ObservationPhase {
+  const text = `${observation.content}\n${observation.output.summary}`.toLowerCase()
+  if (/(决策|下一步|先|继续|生成|输出)/.test(text)) return "decision"
+
+  switch (observation.tool.name) {
+    case "task":
+      return "planning"
+    case "read":
+    case "grep":
+    case "glob":
+      return "research"
+    case "edit":
+    case "write":
+    case "patch":
+      return "execution"
+    case "test":
+    case "lint":
+    case "check":
+      return "verification"
+    default:
+      return "other"
+  }
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (predicate(items[index]!)) return index
+  }
+  return -1
 }

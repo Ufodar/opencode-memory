@@ -65,6 +65,7 @@ docs/
 - request anchor 持久化
 - deterministic summary aggregation
 - 同一 request anchor 已支持多 checkpoint summary
+- request checkpoint 已支持第一版 phase-aware 切分
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_search` 已过滤被返回 summary 覆盖的 observation
 - `memory_search` 已具备第一版 deterministic ranking
@@ -76,8 +77,8 @@ docs/
 
 下一步建议优先实现：
 
-1. 更细的 request window 切分
-2. summary / observation 排序与去重策略
+1. 继续细化 phase-aware checkpoint，而不是停在当前启发式 phase
+2. 继续增强 ranking，而不是停在当前启发式分数
 3. model-assisted summary
 4. 再评估是否需要轻量外部 worker
 

@@ -26,6 +26,7 @@
   - request anchor
   - summary 聚合
   - 同一 request anchor 可多次 checkpoint
+  - checkpoint 可基于 phase 信号切分
 
 ### 回注器
 
@@ -91,3 +92,4 @@ tool.execute.after
 - 不做 timeline
 - 不做复杂 reranking
 - 不做团队知识库
+- 不做 model-assisted phase classification

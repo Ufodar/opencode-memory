@@ -5,7 +5,10 @@ import { captureRequestAnchor } from "./runtime/hooks/chat-message.js"
 import { captureToolObservation } from "./runtime/hooks/tool-after.js"
 import { buildSystemContinuityContext } from "./runtime/injection/system-context.js"
 import { selectInjectionRecords } from "./runtime/injection/select-context.js"
-import { shouldAggregateRequestWindow, summarizeRequestWindow } from "./memory/summary/aggregate.js"
+import {
+  selectCheckpointObservations,
+  summarizeRequestWindow,
+} from "./memory/summary/aggregate.js"
 import { ContinuityStore } from "./storage/sqlite/continuity-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
 import { createMemoryDetailsTool } from "./tools/memory-details.js"
@@ -53,7 +56,9 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
             requestAnchor.lastCheckpointObservationAt ?? requestAnchor.createdAt - 1,
         })
 
-        if (!shouldAggregateRequestWindow({ observations })) {
+        const checkpointObservations = selectCheckpointObservations({ observations })
+
+        if (checkpointObservations.length === 0) {
           log("session.idle without aggregatable observations", {
             sessionID,
             requestAnchorID: requestAnchor.id,
@@ -63,14 +68,16 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
 
         const summary = summarizeRequestWindow({
           request: requestAnchor,
-          observations,
+          observations: checkpointObservations,
         })
 
         store.saveSummary(summary)
         store.updateRequestAnchorCheckpoint({
           id: requestAnchor.id,
           summarizedAt: Date.now(),
-          lastCheckpointObservationAt: Math.max(...observations.map((item) => item.createdAt)),
+          lastCheckpointObservationAt: Math.max(
+            ...checkpointObservations.map((item) => item.createdAt),
+          ),
         })
         log("captured summary", { id: summary.id, sessionID })
       }
