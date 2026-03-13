@@ -16,7 +16,7 @@
 ### 采集器
 
 - OpenCode 等价点：`tool.execute.after`
-- 作用：把高价值工具调用转成 observation 候选
+- 作用：把高价值工具调用转成 observation 候选并落库
 
 ### 压缩器
 
@@ -35,6 +35,17 @@
 - 第一版工具面：
   - `memory_search`
   - `memory_details`
+
+## 当前已落地的最小数据链
+
+```text
+tool.execute.after
+  -> candidate rule
+  -> observation record
+  -> SQLite persistence
+  -> memory_search / memory_details
+  -> system transform 读取最近 observation
+```
 
 ## 数据流
 

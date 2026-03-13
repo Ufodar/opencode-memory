@@ -1,12 +1,14 @@
 import type { Plugin } from "@opencode-ai/plugin"
+import { getDefaultDatabasePath } from "./config/paths.js"
 import { captureToolObservation } from "./runtime/hooks/tool-after.js"
 import { buildSystemContinuityContext } from "./runtime/injection/system-context.js"
-import { memorySearchTool } from "./tools/memory-search.js"
-import { memoryDetailsTool } from "./tools/memory-details.js"
+import { ContinuityStore } from "./storage/sqlite/continuity-store.js"
+import { createMemorySearchTool } from "./tools/memory-search.js"
+import { createMemoryDetailsTool } from "./tools/memory-details.js"
 import { log } from "./services/logger.js"
 
-export const OpenCodeContinuityPlugin: Plugin = async () => {
-  const recentObservations: ReturnType<typeof captureToolObservation>[] = []
+export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
+  const store = new ContinuityStore(getDefaultDatabasePath())
 
   return {
     "chat.message": async () => {
@@ -20,20 +22,29 @@ export const OpenCodeContinuityPlugin: Plugin = async () => {
     },
 
     "tool.execute.after": async (input, output) => {
-      const observation = captureToolObservation(input, output)
+      const observation = captureToolObservation(
+        {
+          ...input,
+          projectPath: directory,
+        },
+        output,
+      )
       if (!observation) return
 
-      recentObservations.unshift(observation)
-      if (recentObservations.length > 20) recentObservations.pop()
+      store.saveObservation(observation)
       log("captured observation", { id: observation.id, tool: observation.tool.name })
     },
 
-    "experimental.chat.system.transform": async (_input, output) => {
+    "experimental.chat.system.transform": async (input, output) => {
+      const observations = store.listRecentObservations({
+        projectPath: directory,
+        sessionID: input.sessionID,
+        limit: 5,
+      })
+
       const system = buildSystemContinuityContext({
         summaries: [],
-        observations: recentObservations.filter(Boolean).slice(0, 5) as NonNullable<
-          ReturnType<typeof captureToolObservation>
-        >[],
+        observations,
       })
 
       if (system.length > 0) {
@@ -42,8 +53,8 @@ export const OpenCodeContinuityPlugin: Plugin = async () => {
     },
 
     tool: {
-      memory_search: memorySearchTool,
-      memory_details: memoryDetailsTool,
+      memory_search: createMemorySearchTool(store, directory),
+      memory_details: createMemoryDetailsTool(store),
     },
   }
 }

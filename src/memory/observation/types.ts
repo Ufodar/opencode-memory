@@ -2,6 +2,7 @@ export interface ObservationRecord {
   id: string
   content: string
   sessionID: string
+  projectPath: string
   promptId?: string
   createdAt: number
   tool: {

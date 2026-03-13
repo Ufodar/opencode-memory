@@ -61,14 +61,16 @@ docs/
 - MIT 许可
 - OpenCode plugin 最小骨架
 - 核心 observation / summary 类型
+- SQLite observation 持久化
+- `memory_search` / `memory_details` 真实读取 observation
 - 第一版架构和路线图文档
 
 下一步建议优先实现：
 
-1. `tool.execute.after` observation capture
+1. request anchor 持久化
 2. observation batch -> summary aggregation
-3. `experimental.chat.system.transform` 注入
-4. `memory_search` / `memory_details`
+3. summary 持久化与 system 注入优先级
+4. retrieval 结果排序和 scope 控制
 
 ## 致谢
 

@@ -11,7 +11,7 @@
 ## v0.2.0 Observation Pipeline
 
 - `tool.execute.after` 候选筛选
-- observation 存储接口
+- observation SQLite 存储接口
 - 输入/输出摘要规则
 - 基础 tags / importance
 

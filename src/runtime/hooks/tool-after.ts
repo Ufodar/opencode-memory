@@ -6,6 +6,7 @@ export function captureToolObservation(input: {
   sessionID: string
   callID: string
   args: unknown
+  projectPath: string
 }, output: {
   title: string
   output: string
@@ -22,6 +23,7 @@ export function captureToolObservation(input: {
     id: `obs_${Date.now()}_${input.callID}`,
     content: `${input.tool}: ${output.title || "captured tool result"}`,
     sessionID: input.sessionID,
+    projectPath: input.projectPath,
     createdAt: Date.now(),
     tool: {
       name: input.tool,
