@@ -53,7 +53,9 @@ describe("ContinuityStore retrieval surface", () => {
     store.saveSummary(
       buildSummary({
         id: "sum_1",
+        requestSummary: "抽取资格条件并形成缺口判断",
         outcomeSummary: "已识别材料缺口并暂停正式写作",
+        observationIDs: ["obs_1"],
       }),
     )
     store.saveObservation(
@@ -67,6 +69,17 @@ describe("ContinuityStore retrieval surface", () => {
 
     expect(results).toHaveLength(2)
     expect(results.map((item) => item.kind)).toEqual(["summary", "observation"])
+    expect(results[0]).toMatchObject({
+      kind: "summary",
+      id: "sum_1",
+      requestSummary: "抽取资格条件并形成缺口判断",
+      observationIDs: ["obs_1"],
+    })
+    expect(results[1]).toMatchObject({
+      kind: "observation",
+      id: "obs_1",
+      outputSummary: "形成决策：先输出缺口清单",
+    })
   })
 
   test("supports session and project scope for search", () => {

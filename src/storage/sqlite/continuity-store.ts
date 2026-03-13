@@ -70,6 +70,30 @@ export type ContinuitySearchRecord =
       tags: string[]
     }
 
+export type ContinuityDetailRecord =
+  | {
+      kind: "summary"
+      id: string
+      content: string
+      createdAt: number
+      requestSummary: string
+      nextStep?: string
+      observationIDs: string[]
+    }
+  | {
+      kind: "observation"
+      id: string
+      content: string
+      createdAt: number
+      phase?: ObservationRecord["phase"]
+      tool: string
+      importance: number
+      tags: string[]
+      inputSummary: string
+      outputSummary: string
+      trace: ObservationRecord["trace"]
+    }
+
 export type ContinuityTimelineItem =
   | {
       kind: "summary"
@@ -504,7 +528,7 @@ export class ContinuityStore {
     return [...summaryRecords, ...observationRecords].slice(0, input.limit)
   }
 
-  getContinuityDetails(ids: string[]): ContinuitySearchRecord[] {
+  getContinuityDetails(ids: string[]): ContinuityDetailRecord[] {
     if (ids.length === 0) return []
 
     const placeholders = ids.map(() => "?").join(", ")
@@ -531,7 +555,9 @@ export class ContinuityStore {
         id: row.id,
         content: row.outcome_summary,
         createdAt: row.created_at,
+        requestSummary: row.request_summary,
         nextStep: row.next_step ?? undefined,
+        observationIDs: parseStringArray(row.observation_ids_json),
       })),
       ...observations.map((row) => ({
         kind: "observation" as const,
@@ -542,6 +568,9 @@ export class ContinuityStore {
         tool: row.tool_name,
         importance: row.importance,
         tags: parseStringArray(row.tags_json),
+        inputSummary: row.input_summary,
+        outputSummary: row.output_summary,
+        trace: parseTrace(row.trace_json),
       })),
     ]
   }
