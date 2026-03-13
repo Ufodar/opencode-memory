@@ -130,6 +130,66 @@ describe("ContinuityStore retrieval surface", () => {
 
     expect(results.map((item) => item.id)).toEqual(["sum_1", "obs_2"])
   })
+
+  test("ranks summaries by stronger outcome matches before weaker request-only matches", () => {
+    store.saveSummary(
+      buildSummary({
+        id: "sum_request_only",
+        requestSummary: "资格条件梳理",
+        outcomeSummary: "已完成材料盘点",
+        createdAt: 30,
+      }),
+    )
+    store.saveSummary(
+      buildSummary({
+        id: "sum_outcome_match",
+        requestSummary: "材料梳理",
+        outcomeSummary: "已完成资格条件抽取，并确认存在材料缺口",
+        createdAt: 20,
+      }),
+    )
+
+    const results = store.searchContinuityRecords({
+      projectPath: "/workspace/demo",
+      query: "资格条件",
+      limit: 10,
+    })
+
+    expect(results.slice(0, 2).map((item) => item.id)).toEqual([
+      "sum_outcome_match",
+      "sum_request_only",
+    ])
+  })
+
+  test("ranks equally matching observations by importance before recency", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_low_recent",
+        content: "读取资格条件附表并记录1条补充要求",
+        createdAt: 30,
+        importance: 0.6,
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_high_older",
+        content: "读取资格条件正文并确认核心准入约束",
+        createdAt: 20,
+        importance: 0.95,
+      }),
+    )
+
+    const results = store.searchContinuityRecords({
+      projectPath: "/workspace/demo",
+      query: "资格条件",
+      limit: 10,
+    })
+
+    expect(results.filter((item) => item.kind === "observation").map((item) => item.id)).toEqual([
+      "obs_high_older",
+      "obs_low_recent",
+    ])
+  })
 })
 
 function buildSummary(input: {
@@ -137,30 +197,34 @@ function buildSummary(input: {
   outcomeSummary: string
   sessionID?: string
   observationIDs?: string[]
+  requestSummary?: string
+  createdAt?: number
 }): SummaryRecord {
   return {
     id: input.id,
     sessionID: input.sessionID ?? "ses_demo",
     projectPath: "/workspace/demo",
     requestAnchorID: "req_1",
-    requestSummary: "抽取资格条件并检查缺材料",
+    requestSummary: input.requestSummary ?? "抽取资格条件并检查缺材料",
     outcomeSummary: input.outcomeSummary,
     nextStep: "输出缺口清单",
     observationIDs: input.observationIDs ?? ["obs_1"],
-    createdAt: 20,
+    createdAt: input.createdAt ?? 20,
   }
 }
 
 function buildObservation(input: {
   id: string
   content: string
+  createdAt?: number
+  importance?: number
 }): ObservationRecord {
   return {
     id: input.id,
     content: input.content,
     sessionID: "ses_demo",
     projectPath: "/workspace/demo",
-    createdAt: 10,
+    createdAt: input.createdAt ?? 10,
     tool: {
       name: "read",
       callID: `call_${input.id}`,
@@ -173,7 +237,7 @@ function buildObservation(input: {
       summary: input.content,
     },
     retrieval: {
-      importance: 0.8,
+      importance: input.importance ?? 0.8,
       tags: ["observation"],
     },
     trace: {},

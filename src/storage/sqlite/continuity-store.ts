@@ -424,7 +424,13 @@ export class ContinuityStore {
           `)
           .all(input.projectPath, pattern, pattern, pattern, pattern, input.limit) as ObservationRow[])
 
-    const summaryRecords: ContinuitySearchRecord[] = summaries.map((row) => ({
+    const rankedSummaries = [...summaries].sort(
+      (a, b) =>
+        scoreSummaryRow(b, input.query) - scoreSummaryRow(a, input.query) ||
+        b.created_at - a.created_at,
+    )
+
+    const summaryRecords: ContinuitySearchRecord[] = rankedSummaries.map((row) => ({
       kind: "summary",
       id: row.id,
       content: row.outcome_summary,
@@ -433,10 +439,17 @@ export class ContinuityStore {
     }))
 
     const coveredObservationIDs = new Set(
-      summaries.flatMap((row) => parseStringArray(row.observation_ids_json)),
+      rankedSummaries.flatMap((row) => parseStringArray(row.observation_ids_json)),
     )
 
-    const observationRecords: ContinuitySearchRecord[] = observations
+    const rankedObservations = [...observations].sort(
+      (a, b) =>
+        scoreObservationRow(b, input.query) - scoreObservationRow(a, input.query) ||
+        b.importance - a.importance ||
+        b.created_at - a.created_at,
+    )
+
+    const observationRecords: ContinuitySearchRecord[] = rankedObservations
       .filter((row) => !coveredObservationIDs.has(row.id))
       .map((row) => ({
         kind: "observation",
@@ -578,4 +591,27 @@ function parseTrace(value: string): ObservationRecord["trace"] {
 function normalizeStatus(value: string): ObservationRecord["tool"]["status"] {
   if (value === "success" || value === "error" || value === "unknown") return value
   return "unknown"
+}
+
+function scoreSummaryRow(row: SummaryRow, query: string): number {
+  const q = query.toLowerCase()
+  let score = 0
+
+  if (row.outcome_summary.toLowerCase().includes(q)) score += 30
+  if (row.request_summary.toLowerCase().includes(q)) score += 10
+  if ((row.next_step ?? "").toLowerCase().includes(q)) score += 5
+
+  return score
+}
+
+function scoreObservationRow(row: ObservationRow, query: string): number {
+  const q = query.toLowerCase()
+  let score = 0
+
+  if (row.content.toLowerCase().includes(q)) score += 30
+  if (row.output_summary.toLowerCase().includes(q)) score += 10
+  if (row.input_summary.toLowerCase().includes(q)) score += 5
+  if (row.tags_json.toLowerCase().includes(q)) score += 3
+
+  return score
 }

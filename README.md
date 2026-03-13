@@ -67,6 +67,7 @@ docs/
 - 同一 request anchor 已支持多 checkpoint summary
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_search` 已过滤被返回 summary 覆盖的 observation
+- `memory_search` 已具备第一版 deterministic ranking
 - system injection 已升级为 summary-first，并自动过滤已被 summary 覆盖的 observation
 - retrieval 已支持 `session / project` scope
 - system injection 已支持 session-first / project-fallback 选择

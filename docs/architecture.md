@@ -48,6 +48,7 @@
   - `memory_details` mixed details
   - `memory_search` 支持 `session / project` scope
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
+  - `memory_search` 在组内按命中强度与重要度做 deterministic ranking
 
 ## 当前已落地的最小数据链
 
