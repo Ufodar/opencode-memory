@@ -21,6 +21,7 @@
 ### 压缩器
 
 - 第一版不做外部 worker
+- 当前仍是 `plugin-internal pipeline`，不是 `thin hook -> worker`
 - 先在插件内部完成：
   - observation capture
   - request anchor
@@ -29,6 +30,7 @@
   - checkpoint 可基于 phase 信号切分
   - summary 可选走 model-assisted，但必须可回退到 deterministic
   - model-assisted 输出必须经过归一化和约束收口
+  - model-assisted 请求必须受 timeout 约束
 
 ### 回注器
 
@@ -74,6 +76,8 @@ injection
   -> unsummarized observations only
   -> session-first / project-fallback selection
   -> count + character budget
+runtime safety
+  -> session-level idle reentry guard
 ```
 
 ## 数据流
@@ -95,3 +99,10 @@ tool.execute.after
 - 不做复杂 reranking
 - 不做团队知识库
 - 不做 model-assisted phase classification
+
+## 当前质量护栏
+
+- `session.idle` summary 主链有 session 级重入保护
+- observation 主文本优先保留工具结果语义
+- decision 判定已收紧，避免普通“生成/输出”措辞造成过早 checkpoint
+- model-assisted summary 有 deterministic fallback，并新增 timeout

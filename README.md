@@ -71,18 +71,22 @@ docs/
 - `memory_search` 已具备第一版 deterministic ranking
 - summary 已支持可选 model-assisted 生成，并保留 deterministic fallback
 - model-assisted summary 已加入输出归一化、长度约束与弱 nextStep 过滤
+- model-assisted summary 已加入 timeout，provider 卡住时会自动回退
 - system injection 已升级为 summary-first，并自动过滤已被 summary 覆盖的 observation
 - retrieval 已支持 `session / project` scope
 - system injection 已支持 session-first / project-fallback 选择
 - system injection 已支持 count + character budget
+- observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
+- `session.idle` summary 主链已加入 session 级重入保护
+- decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
 - 第一版架构和路线图文档
 
 下一步建议优先实现：
 
 1. 继续细化 phase-aware checkpoint，而不是停在当前启发式 phase
 2. 继续增强 ranking，而不是停在当前启发式分数
-3. model-assisted summary
-4. 再评估是否需要轻量外部 worker
+3. 再评估是否需要轻量外部 worker
+4. 如进入 worker 化，优先保持当前 deterministic 主链不变，只迁移 runtime 边界
 
 ## 可选模型配置
 
