@@ -19,9 +19,11 @@ export function captureToolObservation(input: {
 
   if (!candidate.capture) return null
 
+  const content = buildObservationContent(input.tool, output.title, output.output)
+
   return {
     id: `obs_${Date.now()}_${input.callID}`,
-    content: `${input.tool}: ${output.title || "captured tool result"}`,
+    content,
     sessionID: input.sessionID,
     projectPath: input.projectPath,
     createdAt: Date.now(),
@@ -47,4 +49,17 @@ export function captureToolObservation(input: {
 
 function truncate(value: string, max = 220): string {
   return value.length <= max ? value : `${value.slice(0, max)}...`
+}
+
+function buildObservationContent(tool: string, title: string, output: string): string {
+  const normalizedOutput = collapseWhitespace(output)
+  if (normalizedOutput) {
+    return truncate(normalizedOutput, 220)
+  }
+
+  return `${tool}: ${title || "captured tool result"}`
+}
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim()
 }
