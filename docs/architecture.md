@@ -36,6 +36,9 @@
 - 第一版工具面：
   - `memory_search`
   - `memory_details`
+- 当前策略：
+  - `memory_search` summary-first
+  - `memory_details` mixed details
 
 ## 当前已落地的最小数据链
 
@@ -52,7 +55,7 @@ session.idle
   -> summary persistence
   -> request anchor summarized
 retrieval
-  -> memory_search / memory_details
+  -> summary-first memory_search / mixed memory_details
   -> system transform 读取最近 observation
 ```
 

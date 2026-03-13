@@ -8,7 +8,7 @@ export function createMemoryDetailsTool(store: ContinuityStore) {
       ids: tool.schema.array(tool.schema.string()).min(1),
     },
     async execute(args) {
-      const results = store.getObservationsByIds(args.ids)
+      const results = store.getContinuityDetails(args.ids)
 
       return JSON.stringify({
         success: true,

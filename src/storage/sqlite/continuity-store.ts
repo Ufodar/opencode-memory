@@ -45,6 +45,24 @@ interface SummaryRow {
   created_at: number
 }
 
+export type ContinuitySearchRecord =
+  | {
+      kind: "summary"
+      id: string
+      content: string
+      createdAt: number
+      nextStep?: string
+    }
+  | {
+      kind: "observation"
+      id: string
+      content: string
+      createdAt: number
+      tool: string
+      importance: number
+      tags: string[]
+    }
+
 export class ContinuityStore {
   private readonly db: Database
 
@@ -322,6 +340,103 @@ export class ContinuityStore {
       .all(input.projectPath, input.limit) as SummaryRow[]
 
     return rows.map((row) => this.mapSummary(row))
+  }
+
+  searchContinuityRecords(input: {
+    projectPath: string
+    query: string
+    limit: number
+  }): ContinuitySearchRecord[] {
+    const pattern = `%${input.query.toLowerCase()}%`
+    const summaries = this.db
+      .prepare(`
+        SELECT * FROM summaries
+        WHERE project_path = ?
+          AND (
+            lower(request_summary) LIKE ?
+            OR lower(outcome_summary) LIKE ?
+            OR lower(COALESCE(next_step, '')) LIKE ?
+          )
+        ORDER BY created_at DESC
+        LIMIT ?
+      `)
+      .all(input.projectPath, pattern, pattern, pattern, input.limit) as SummaryRow[]
+
+    const observations = this.db
+      .prepare(`
+        SELECT * FROM observations
+        WHERE project_path = ?
+          AND (
+            lower(content) LIKE ?
+            OR lower(input_summary) LIKE ?
+            OR lower(output_summary) LIKE ?
+            OR lower(tags_json) LIKE ?
+          )
+        ORDER BY created_at DESC
+        LIMIT ?
+      `)
+      .all(input.projectPath, pattern, pattern, pattern, pattern, input.limit) as ObservationRow[]
+
+    const summaryRecords: ContinuitySearchRecord[] = summaries.map((row) => ({
+      kind: "summary",
+      id: row.id,
+      content: row.outcome_summary,
+      createdAt: row.created_at,
+      nextStep: row.next_step ?? undefined,
+    }))
+
+    const observationRecords: ContinuitySearchRecord[] = observations.map((row) => ({
+      kind: "observation",
+      id: row.id,
+      content: row.content,
+      createdAt: row.created_at,
+      tool: row.tool_name,
+      importance: row.importance,
+      tags: parseStringArray(row.tags_json),
+    }))
+
+    return [...summaryRecords, ...observationRecords].slice(0, input.limit)
+  }
+
+  getContinuityDetails(ids: string[]): ContinuitySearchRecord[] {
+    if (ids.length === 0) return []
+
+    const placeholders = ids.map(() => "?").join(", ")
+
+    const summaries = this.db
+      .prepare(`
+        SELECT * FROM summaries
+        WHERE id IN (${placeholders})
+        ORDER BY created_at ASC
+      `)
+      .all(...ids) as SummaryRow[]
+
+    const observations = this.db
+      .prepare(`
+        SELECT * FROM observations
+        WHERE id IN (${placeholders})
+        ORDER BY created_at ASC
+      `)
+      .all(...ids) as ObservationRow[]
+
+    return [
+      ...summaries.map((row) => ({
+        kind: "summary" as const,
+        id: row.id,
+        content: row.outcome_summary,
+        createdAt: row.created_at,
+        nextStep: row.next_step ?? undefined,
+      })),
+      ...observations.map((row) => ({
+        kind: "observation" as const,
+        id: row.id,
+        content: row.content,
+        createdAt: row.created_at,
+        tool: row.tool_name,
+        importance: row.importance,
+        tags: parseStringArray(row.tags_json),
+      })),
+    ]
   }
 
   close() {

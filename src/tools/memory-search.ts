@@ -9,7 +9,7 @@ export function createMemorySearchTool(store: ContinuityStore, projectPath: stri
       limit: tool.schema.number().optional(),
     },
     async execute(args) {
-      const results = store.searchObservations({
+      const results = store.searchContinuityRecords({
         projectPath,
         query: args.query,
         limit: args.limit ?? 10,
@@ -18,14 +18,7 @@ export function createMemorySearchTool(store: ContinuityStore, projectPath: stri
       return JSON.stringify({
         success: true,
         count: results.length,
-        results: results.map((item) => ({
-          id: item.id,
-          content: item.content,
-          createdAt: item.createdAt,
-          tool: item.tool.name,
-          importance: item.retrieval.importance,
-          tags: item.retrieval.tags,
-        })),
+        results,
       })
     },
   })

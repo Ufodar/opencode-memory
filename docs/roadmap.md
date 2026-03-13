@@ -34,6 +34,7 @@
 - `memory_search`
 - `memory_details`
 - 检索结果结构化返回
+- summary-first 检索顺序
 
 ## v0.6.0 Storage & Ranking
 
