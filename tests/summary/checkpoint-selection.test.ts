@@ -66,6 +66,27 @@ describe("selectCheckpointObservations", () => {
 
     expect(selected.map((item) => item.id)).toEqual(["obs_1"])
   })
+
+  test("does not treat generic output wording as a decision signal", () => {
+    const observations = [
+      buildObservation({
+        id: "obs_1",
+        toolName: "read",
+        content: "读取资格条件正文，定位到3条硬约束",
+        createdAt: 10,
+      }),
+      buildObservation({
+        id: "obs_2",
+        toolName: "write",
+        content: "生成缺口清单初稿",
+        createdAt: 20,
+      }),
+    ]
+
+    const selected = selectCheckpointObservations({ observations })
+
+    expect(selected.map((item) => item.id)).toEqual([])
+  })
 })
 
 function buildObservation(input: {

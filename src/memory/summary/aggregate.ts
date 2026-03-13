@@ -13,7 +13,7 @@ export function summarizeRequestWindow(input: {
   const topOutcomeBits = ordered.slice(0, 3).map((item) => item.output.summary || item.content)
   const decisionLike = [...ordered]
     .reverse()
-    .find((item) => /(决策|下一步|先|继续|生成|输出)/.test(item.content))
+    .find((item) => looksLikeDecisionSignal(item.content))
 
   return {
     id: `sum_${Date.now()}_${input.request.id}`,
@@ -111,7 +111,7 @@ function truncate(value: string, max: number): string {
 
 function classifyObservationPhase(observation: ObservationRecord): ObservationPhase {
   const text = `${observation.content}\n${observation.output.summary}`.toLowerCase()
-  if (/(决策|下一步|先|继续|生成|输出)/.test(text)) return "decision"
+  if (looksLikeDecisionSignal(text)) return "decision"
 
   switch (observation.tool.name) {
     case "task":
@@ -138,4 +138,10 @@ function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
     if (predicate(items[index]!)) return index
   }
   return -1
+}
+
+function looksLikeDecisionSignal(value: string): boolean {
+  return /(形成决策|明确决策|决策[:：]|决定[:：]?|下一步[:：]?|先[^，。；]{0,40}(?:[，,。；;]|$))/u.test(
+    value,
+  )
 }
