@@ -47,6 +47,7 @@
   - `memory_search` summary-first
   - `memory_details` mixed details
   - `memory_search` 支持 `session / project` scope
+  - `memory_search` 会过滤被返回 summary 覆盖的 observation
 
 ## 当前已落地的最小数据链
 

@@ -26,6 +26,7 @@ describe("ContinuityStore retrieval surface", () => {
       buildSummary({
         id: "sum_1",
         outcomeSummary: "已完成资格条件抽取，并确认存在业绩证明缺口",
+        observationIDs: ["obs_other"],
       }),
     )
     store.saveObservation(
@@ -99,12 +100,43 @@ describe("ContinuityStore retrieval surface", () => {
     expect(sessionResults.map((item) => item.id)).toEqual(["sum_session"])
     expect(projectResults.map((item) => item.id)).toEqual(["sum_session", "sum_other"])
   })
+
+  test("hides observations already covered by returned summaries", () => {
+    store.saveSummary(
+      buildSummary({
+        id: "sum_1",
+        outcomeSummary: "已完成资格条件抽取，并确认存在材料缺口",
+        observationIDs: ["obs_1"],
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_1",
+        content: "读取第3章资格条件并发现3条硬约束",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_2",
+        content: "补充读取资格条件附表，发现业绩年限描述仍需核实",
+      }),
+    )
+
+    const results = store.searchContinuityRecords({
+      projectPath: "/workspace/demo",
+      query: "资格条件",
+      limit: 10,
+    })
+
+    expect(results.map((item) => item.id)).toEqual(["sum_1", "obs_2"])
+  })
 })
 
 function buildSummary(input: {
   id: string
   outcomeSummary: string
   sessionID?: string
+  observationIDs?: string[]
 }): SummaryRecord {
   return {
     id: input.id,
@@ -114,7 +146,7 @@ function buildSummary(input: {
     requestSummary: "抽取资格条件并检查缺材料",
     outcomeSummary: input.outcomeSummary,
     nextStep: "输出缺口清单",
-    observationIDs: ["obs_1"],
+    observationIDs: input.observationIDs ?? ["obs_1"],
     createdAt: 20,
   }
 }

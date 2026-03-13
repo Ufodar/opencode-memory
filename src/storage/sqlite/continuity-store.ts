@@ -432,15 +432,21 @@ export class ContinuityStore {
       nextStep: row.next_step ?? undefined,
     }))
 
-    const observationRecords: ContinuitySearchRecord[] = observations.map((row) => ({
-      kind: "observation",
-      id: row.id,
-      content: row.content,
-      createdAt: row.created_at,
-      tool: row.tool_name,
-      importance: row.importance,
-      tags: parseStringArray(row.tags_json),
-    }))
+    const coveredObservationIDs = new Set(
+      summaries.flatMap((row) => parseStringArray(row.observation_ids_json)),
+    )
+
+    const observationRecords: ContinuitySearchRecord[] = observations
+      .filter((row) => !coveredObservationIDs.has(row.id))
+      .map((row) => ({
+        kind: "observation",
+        id: row.id,
+        content: row.content,
+        createdAt: row.created_at,
+        tool: row.tool_name,
+        importance: row.importance,
+        tags: parseStringArray(row.tags_json),
+      }))
 
     return [...summaryRecords, ...observationRecords].slice(0, input.limit)
   }
