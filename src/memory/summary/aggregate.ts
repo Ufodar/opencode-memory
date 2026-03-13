@@ -1,6 +1,7 @@
 import type { ObservationRecord } from "../observation/types.js"
 import type { RequestAnchorRecord } from "../request/types.js"
 import type { SummaryRecord } from "./types.js"
+import type { ModelSummaryResult } from "../../services/ai/model-summary.js"
 
 type ObservationPhase = "planning" | "research" | "execution" | "verification" | "decision" | "other"
 
@@ -24,6 +25,29 @@ export function summarizeRequestWindow(input: {
     nextStep: decisionLike ? extractNextStep(decisionLike.content) : undefined,
     observationIDs: ordered.map((item) => item.id),
     createdAt: Date.now(),
+  }
+}
+
+export async function buildSummaryRecord(input: {
+  request: RequestAnchorRecord
+  observations: ObservationRecord[]
+  generateModelSummary?: (input: {
+    request: RequestAnchorRecord
+    observations: ObservationRecord[]
+  }) => Promise<ModelSummaryResult | null>
+}): Promise<SummaryRecord> {
+  const deterministic = summarizeRequestWindow(input)
+  const assisted = await input.generateModelSummary?.({
+    request: input.request,
+    observations: input.observations,
+  })
+
+  if (!assisted) return deterministic
+
+  return {
+    ...deterministic,
+    outcomeSummary: assisted.outcomeSummary,
+    nextStep: assisted.nextStep ?? deterministic.nextStep,
   }
 }
 

@@ -6,9 +6,10 @@ import { captureToolObservation } from "./runtime/hooks/tool-after.js"
 import { buildSystemContinuityContext } from "./runtime/injection/system-context.js"
 import { selectInjectionRecords } from "./runtime/injection/select-context.js"
 import {
+  buildSummaryRecord,
   selectCheckpointObservations,
-  summarizeRequestWindow,
 } from "./memory/summary/aggregate.js"
+import { generateModelSummary } from "./services/ai/model-summary.js"
 import { ContinuityStore } from "./storage/sqlite/continuity-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
 import { createMemoryDetailsTool } from "./tools/memory-details.js"
@@ -66,9 +67,10 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
           return
         }
 
-        const summary = summarizeRequestWindow({
+        const summary = await buildSummaryRecord({
           request: requestAnchor,
           observations: checkpointObservations,
+          generateModelSummary,
         })
 
         store.saveSummary(summary)

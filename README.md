@@ -69,6 +69,7 @@ docs/
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_search` 已过滤被返回 summary 覆盖的 observation
 - `memory_search` 已具备第一版 deterministic ranking
+- summary 已支持可选 model-assisted 生成，并保留 deterministic fallback
 - system injection 已升级为 summary-first，并自动过滤已被 summary 覆盖的 observation
 - retrieval 已支持 `session / project` scope
 - system injection 已支持 session-first / project-fallback 选择
@@ -81,6 +82,17 @@ docs/
 2. 继续增强 ranking，而不是停在当前启发式分数
 3. model-assisted summary
 4. 再评估是否需要轻量外部 worker
+
+## 可选模型配置
+
+如果你希望 summary 走 model-assisted 路径，而不是只用 deterministic 聚合，需要提供：
+
+- `OPENCODE_CONTINUITY_SUMMARY_API_URL`
+- `OPENCODE_CONTINUITY_SUMMARY_API_KEY`
+- `OPENCODE_CONTINUITY_SUMMARY_MODEL`
+
+当前实现假设这是一个 OpenAI-compatible `chat/completions` 接口。  
+如果未配置或返回异常，插件会自动回退到 deterministic summary，不会中断主链。
 
 ## 致谢
 

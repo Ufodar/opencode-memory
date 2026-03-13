@@ -27,6 +27,7 @@
   - summary 聚合
   - 同一 request anchor 可多次 checkpoint
   - checkpoint 可基于 phase 信号切分
+  - summary 可选走 model-assisted，但必须可回退到 deterministic
 
 ### 回注器
 
