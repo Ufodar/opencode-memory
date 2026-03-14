@@ -3,18 +3,19 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 
+import type { ContinuityInjectionStore } from "../../src/continuity/contracts.js"
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
-import { ContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
+import { SQLiteContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
 import { selectInjectionRecords } from "../../src/runtime/injection/select-context.js"
 
 describe("selectInjectionRecords", () => {
   let tempDir: string
-  let store: ContinuityStore
+  let store: SQLiteContinuityStore & ContinuityInjectionStore
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "opencode-continuity-"))
-    store = new ContinuityStore(join(tempDir, "continuity.sqlite"))
+    store = new SQLiteContinuityStore(join(tempDir, "continuity.sqlite"))
   })
 
   afterEach(() => {

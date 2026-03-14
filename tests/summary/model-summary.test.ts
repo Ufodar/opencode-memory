@@ -185,6 +185,40 @@ describe("model summary", () => {
 
     expect(result).toBeNull()
   })
+
+  test("aborts the provider request when timeout elapses", async () => {
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+
+    let aborted = false
+
+    const result = await generateModelSummary(
+      {
+        request: buildRequest(),
+        observations: [buildObservation()],
+      },
+      {
+        timeoutMs: 5,
+        fetchImpl: async (_input, init) =>
+          await new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal
+            if (!(signal instanceof AbortSignal)) {
+              reject(new Error("missing abort signal"))
+              return
+            }
+
+            signal.addEventListener("abort", () => {
+              aborted = true
+              reject(new Error("aborted"))
+            })
+          }),
+      },
+    )
+
+    expect(result).toBeNull()
+    expect(aborted).toBe(true)
+  })
 })
 
 function buildRequest(): RequestAnchorRecord {

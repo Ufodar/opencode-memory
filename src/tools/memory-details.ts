@@ -1,7 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import type { ContinuityStore } from "../storage/sqlite/continuity-store.js"
+import type { ContinuityDetailsStore } from "../continuity/contracts.js"
 
-export function createMemoryDetailsTool(store: ContinuityStore) {
+export function createMemoryDetailsTool(store: ContinuityDetailsStore) {
   return tool({
     description: "Fetch detailed continuity records for specific observation or summary IDs.",
     args: {

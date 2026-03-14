@@ -1,7 +1,7 @@
 import { tool } from "@opencode-ai/plugin"
-import type { ContinuityStore } from "../storage/sqlite/continuity-store.js"
+import type { ContinuitySearchStore } from "../continuity/contracts.js"
 
-export function createMemorySearchTool(store: ContinuityStore, projectPath: string) {
+export function createMemorySearchTool(store: ContinuitySearchStore, projectPath: string) {
   return tool({
     description:
       "Search continuity memory by keywords or technical tags. If scope is omitted, search current session first and fall back to project history.",

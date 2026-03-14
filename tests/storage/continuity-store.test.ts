@@ -5,15 +5,15 @@ import { tmpdir } from "node:os"
 import { Database } from "bun:sqlite"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
-import { ContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
+import { SQLiteContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
 
-describe("ContinuityStore", () => {
+describe("SQLiteContinuityStore", () => {
   let tempDir: string
-  let store: ContinuityStore
+  let store: SQLiteContinuityStore
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), "opencode-continuity-"))
-    store = new ContinuityStore(join(tempDir, "continuity.sqlite"))
+    store = new SQLiteContinuityStore(join(tempDir, "continuity.sqlite"))
   })
 
   afterEach(() => {
@@ -165,7 +165,7 @@ describe("ContinuityStore", () => {
 
     rawDb.close()
 
-    store = new ContinuityStore(dbPath)
+    store = new SQLiteContinuityStore(dbPath)
 
     const observations = store.listRecentObservations({
       projectPath: "/workspace/demo",

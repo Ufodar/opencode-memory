@@ -38,10 +38,14 @@ OpenCode 的通用 memory continuity 插件底座。
 ```text
 src/
   index.ts
+  continuity/
+    contracts.ts
   config/
   runtime/
+    handlers/
     hooks/
     injection/
+    pipelines/
   memory/
     observation/
     summary/
@@ -75,6 +79,13 @@ docs/
   - `decision`
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_timeline` 已支持围绕 summary / observation anchor 查看时间上下文
+- SQLite 存储层已开始按长期架构目标拆分：
+  - `SQLiteContinuityStore`
+  - `SQLiteContinuityDatabase`
+  - `ObservationRepository`
+  - `RequestAnchorRepository`
+  - `SummaryRepository`
+  - `ContinuityRetrievalService`
 - `memory_search` / `memory_timeline` 在未显式指定 `scope` 时已默认：
   - 先查当前 session
   - 再回退 project
@@ -94,6 +105,22 @@ docs/
 - system injection 已支持 count + character budget
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
 - `session.idle` summary 主链已加入 session 级重入保护
+- `session.idle -> summary` 主链已从 plugin 入口抽成独立 `pipeline`
+- continuity 领域 contracts 已开始独立：
+  - `src/continuity/contracts.ts`
+  - retrieval / injection / idle summary pipeline 已依赖最小接口
+  - 上层不再直接绑定 SQLite 目录内的结果类型
+- runtime handlers 已开始独立：
+  - `chat-message-event`
+  - `session-idle-event`
+  - `tool-execute-after`
+  - `system-transform`
+  - `session-compacting`
+- plugin 入口已进一步收紧为：
+  - 创建 store
+  - 创建 reentry guard
+  - 组装 handlers
+  - 暴露 tools
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
 - internal continuity tool 已统一过滤：
   - `memory_search`
@@ -155,6 +182,22 @@ OpenCode 本地插件在开发时存在模块缓存特征：
 
 当前实现假设这是一个 OpenAI-compatible `chat/completions` 接口。  
 如果未配置或返回异常，插件会自动回退到 deterministic summary，不会中断主链。
+
+## 命名约定
+
+- `SQLite*`
+  - 表示这是绑定 SQLite 的具体实现
+- `*Repository`
+  - 只负责单类对象的持久化读写
+- `*Service`
+  - 负责跨对象的查询、组装或排序
+- `*Pipeline`
+  - 负责 runtime 时序编排
+- `*Handler`
+  - 负责单类 OpenCode hook 的胶水编排
+- `continuity/contracts.ts`
+  - continuity 领域的 backend-agnostic 类型与最小接口
+  - runtime / tools / injection 依赖这里，不直接依赖 SQLite 目录类型
 
 ## 致谢
 

@@ -1,10 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
-import type { ContinuityStore } from "../storage/sqlite/continuity-store.js"
+import type { ContinuityTimelineStore } from "../continuity/contracts.js"
 
 const DEFAULT_DEPTH_BEFORE = 3
 const DEFAULT_DEPTH_AFTER = 3
 
-export function createMemoryTimelineTool(store: ContinuityStore, projectPath: string) {
+export function createMemoryTimelineTool(store: ContinuityTimelineStore, projectPath: string) {
   return tool({
     description:
       "Show chronological continuity context around a summary or observation anchor. Prefer this after memory_search and before memory_details. If scope is omitted, resolve the timeline from current session first and then fall back to project history.",

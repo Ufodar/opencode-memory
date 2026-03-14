@@ -1,9 +1,9 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
-import type { ContinuityStore } from "../../storage/sqlite/continuity-store.js"
+import type { ContinuityInjectionStore } from "../../continuity/contracts.js"
 
 export function selectInjectionRecords(input: {
-  store: ContinuityStore
+  store: ContinuityInjectionStore
   projectPath: string
   sessionID?: string
   maxSummaries: number

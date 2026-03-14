@@ -1,8 +1,13 @@
 import { describe, expect, test } from "bun:test"
 
+import type {
+  ContinuitySearchRecord,
+  ContinuitySearchStore,
+  ContinuityTimelineItem,
+  ContinuityTimelineStore,
+} from "../../src/continuity/contracts.js"
 import { createMemorySearchTool } from "../../src/tools/memory-search.js"
 import { createMemoryTimelineTool } from "../../src/tools/memory-timeline.js"
-import type { ContinuitySearchRecord, ContinuityStore, ContinuityTimelineItem } from "../../src/storage/sqlite/continuity-store.js"
 
 describe("retrieval tools", () => {
   test("memory_search defaults to session-first and falls back to project", async () => {
@@ -21,7 +26,7 @@ describe("retrieval tools", () => {
             },
           ] satisfies ContinuitySearchRecord[]
         },
-      } as Pick<ContinuityStore, "searchContinuityRecords"> as ContinuityStore,
+      } as ContinuitySearchStore,
       "/workspace/demo",
     )
 
@@ -68,7 +73,7 @@ describe("retrieval tools", () => {
             ],
           }
         },
-      } as Pick<ContinuityStore, "getContinuityTimeline"> as ContinuityStore,
+      } as ContinuityTimelineStore,
       "/workspace/demo",
     )
 

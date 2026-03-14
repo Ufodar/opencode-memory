@@ -14,6 +14,27 @@
 
 ## 第一版角色映射
 
+## 命名约定
+
+- `SQLite*`
+  - 具体后端实现，强调这是当前持久化绑定层
+- `*Repository`
+  - 单对象持久化边界：
+    - observation
+    - request anchor
+    - summary
+- `*Service`
+  - 跨对象查询与组装边界
+- `*Pipeline`
+  - runtime 编排边界
+- `*Handler`
+  - 单类 OpenCode hook 的胶水编排边界
+- `*Context`
+  - 注入文本构造边界
+- `continuity/contracts.ts`
+  - continuity 领域边界
+  - 放 backend-agnostic 结果类型和上层最小 store interfaces
+
 ### 采集器
 
 - OpenCode 等价点：`tool.execute.after`
@@ -103,6 +124,8 @@ compaction
   -> separate compaction budget
 runtime safety
   -> session-level idle reentry guard
+runtime orchestration
+  -> idle summary pipeline
 ```
 
 ## 数据流
@@ -128,6 +151,7 @@ tool.execute.after
 ## 当前质量护栏
 
 - `session.idle` summary 主链有 session 级重入保护
+- `session.idle` summary 主链已抽成独立 pipeline，不再继续堆在 plugin 入口
 - observation 主文本优先保留工具结果语义
 - observation phase 已在 capture 时落盘，并暴露到 retrieval / timeline / details
 - decision 判定已收紧，避免普通“生成/输出”措辞造成过早 checkpoint
@@ -135,6 +159,45 @@ tool.execute.after
 - continuity internal tools 不会再次被 capture / retrieval / injection 吞回去
 - store 初始化时会清洗 legacy internal-tool observation 与 raw `read` payload 噪声
 - compaction continuity 已独立建模，不再只依赖正常对话时的 system injection
+
+## 当前局部重写进度
+
+已完成第一阶段：
+
+- `ContinuityStore` 已收紧为 `SQLiteContinuityStore`
+- SQLite 层已拆出：
+  - `SQLiteContinuityDatabase`
+  - `ObservationRepository`
+  - `RequestAnchorRepository`
+  - `SummaryRepository`
+  - `ContinuityRetrievalService`
+- `session.idle -> summary` 已抽成 `runtime/pipelines/idle-summary-pipeline.ts`
+- continuity 领域 contracts 已抽出到：
+  - `src/continuity/contracts.ts`
+- 当前已经完成的上层解耦：
+  - `select-context`
+  - `memory_search`
+  - `memory_details`
+  - `memory_timeline`
+  - `idle-summary-pipeline`
+  这些上层点已经依赖领域 contracts，而不是 SQLite 目录内的具体类型
+- 当前已经完成的 runtime 抽离：
+  - `chat-message-event`
+  - `session-idle-event`
+  - `tool-execute-after`
+  - `system-transform`
+  - `session-compacting`
+- `index.ts` 当前已进一步收紧为 composition root：
+  - 创建 store
+  - 创建 guard
+  - 组装 handlers
+  - 暴露 tools
+
+仍未完成的下一阶段：
+
+- 如有必要，再把 tool 组装层单独抽出
+- 再决定是否需要 provider abstraction
+- 再考虑是否把 `index.ts` 对 `SQLiteContinuityStore` 的创建继续压到更薄的 composition 边界
 
 ## 真实宿主验证补充
 

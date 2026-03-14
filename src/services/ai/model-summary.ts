@@ -45,6 +45,7 @@ export async function generateModelSummary(
   const timeoutMs = deps.timeoutMs ?? 4000
 
   try {
+    const controller = new AbortController()
     const response = await withTimeout(
       fetchImpl(`${config.apiUrl}/chat/completions`, {
         method: "POST",
@@ -52,6 +53,7 @@ export async function generateModelSummary(
           "content-type": "application/json",
           authorization: `Bearer ${config.apiKey}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: config.model,
           messages: buildMessages(input),
@@ -62,6 +64,7 @@ export async function generateModelSummary(
         }),
       }),
       timeoutMs,
+      () => controller.abort(),
     )
 
     if (!response.ok) {
@@ -188,9 +191,14 @@ function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max - 3)}...`
 }
 
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  onTimeout?: () => void,
+): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
+      onTimeout?.()
       reject(new Error(`Model summary request timed out after ${timeoutMs}ms`))
     }, timeoutMs)
 
