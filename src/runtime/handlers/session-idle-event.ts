@@ -25,6 +25,11 @@ export function createSessionIdleEventHandler(
 
     const result = await input.worker.handleSessionIdle(sessionID)
 
+    if ("accepted" in result) {
+      log("session.idle queued summary job", { sessionID })
+      return
+    }
+
     if (result.status === "busy") {
       log("session.idle skipped because summary is already in flight", { sessionID })
       return

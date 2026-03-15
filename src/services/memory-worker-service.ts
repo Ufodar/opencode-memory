@@ -18,6 +18,7 @@ import { buildSystemMemoryContext as defaultBuildSystemMemoryContext } from "../
 import { selectInjectionRecords as defaultSelectInjectionRecords } from "../runtime/injection/select-context.js"
 import { runIdleSummaryPipeline as defaultRunIdleSummaryPipeline } from "../runtime/pipelines/idle-summary-pipeline.js"
 import type { ModelSummaryResult } from "./ai/model-summary.js"
+import type { IdleSummaryResponse } from "../worker/protocol.js"
 
 type CaptureRequestAnchor = typeof defaultCaptureRequestAnchor
 type CaptureToolObservation = typeof defaultCaptureToolObservation
@@ -43,7 +44,6 @@ type IdleSummaryGuard = {
 }
 
 type InjectionSelection = ReturnType<typeof defaultSelectInjectionRecords>
-type IdleSummaryResult = Awaited<ReturnType<typeof defaultRunIdleSummaryPipeline>> | { status: "busy" }
 export type Awaitable<T> = T | Promise<T>
 
 export interface MemoryWorkerService {
@@ -65,7 +65,7 @@ export interface MemoryWorkerService {
       metadata: Record<string, unknown>
     },
   ): Awaitable<ObservationRecord | null>
-  handleSessionIdle(sessionID: string): Awaitable<IdleSummaryResult>
+  handleSessionIdle(sessionID: string): Awaitable<IdleSummaryResponse>
   selectInjectionRecords(input: {
     sessionID?: string
     maxSummaries: number

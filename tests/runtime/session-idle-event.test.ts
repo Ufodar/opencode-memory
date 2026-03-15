@@ -59,4 +59,32 @@ describe("createSessionIdleEventHandler", () => {
       "log:session.idle skipped because summary is already in flight",
     ])
   })
+
+  test("logs queued when the summary job is accepted for background processing", async () => {
+    const calls: string[] = []
+
+    const handler = createSessionIdleEventHandler({
+      worker: {
+        async handleSessionIdle(sessionID) {
+          calls.push(`idle:${sessionID}`)
+          return { accepted: true as const }
+        },
+      } as Pick<MemoryWorkerService, "handleSessionIdle">,
+      log: (message) => {
+        calls.push(`log:${message}`)
+      },
+    })
+
+    await handler({
+      event: {
+        type: "session.idle",
+        properties: { sessionID: "ses_demo" },
+      },
+    })
+
+    expect(calls).toEqual([
+      "idle:ses_demo",
+      "log:session.idle queued summary job",
+    ])
+  })
 })

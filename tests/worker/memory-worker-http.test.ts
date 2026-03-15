@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite"
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -85,7 +86,8 @@ describe("memory worker http server", () => {
     expect(decisionObservation).toBeNull()
 
     const summaryResult = await worker.handleSessionIdle("ses_demo")
-    expect(summaryResult.status).toBe("summarized")
+    expect(summaryResult).toEqual({ accepted: true })
+    await waitForSummary(databasePath, 1)
 
     const systemContext = await worker.buildSystemContext({
       sessionID: "ses_demo",
@@ -205,3 +207,26 @@ describe("memory worker http server", () => {
     expect(removedRecord).toBeUndefined()
   })
 })
+
+async function waitForSummary(databasePath: string, minimumCount: number) {
+  const deadline = Date.now() + 1_000
+
+  while (Date.now() < deadline) {
+    const db = new Database(databasePath, { readonly: true })
+    try {
+      const row = db
+        .query("SELECT COUNT(*) as count FROM summaries")
+        .get() as { count: number } | undefined
+
+      if ((row?.count ?? 0) >= minimumCount) {
+        return
+      }
+    } finally {
+      db.close()
+    }
+
+    await Bun.sleep(20)
+  }
+
+  throw new Error(`Timed out waiting for ${minimumCount} summaries in ${databasePath}`)
+}

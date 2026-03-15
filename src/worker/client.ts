@@ -58,7 +58,7 @@ export function createMemoryWorkerHttpClient(input: {
     handleSessionIdle(sessionID) {
       return post<IdleSummaryRequest, IdleSummaryResponse>(
         fetchImpl,
-        `${baseUrl}/session/idle`,
+        `${baseUrl}/enqueue/session-idle`,
         { sessionID },
         requestTimeoutMs,
       )

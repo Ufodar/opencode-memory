@@ -116,6 +116,8 @@ chat.message
   -> worker session queue
   -> request anchor
 session.idle
+  -> enqueue summary job
+  -> worker session queue
   -> request checkpoint observations
   -> summary aggregation
   -> summary persistence
@@ -190,6 +192,10 @@ tool.execute.after
     - plugin -> worker 的 request anchor / observation capture 已改成“先接收，再排队”
     - plugin 不再同步等待 capture 真正完成
     - 更接近 `claude-mem` 的 hook 提交形态
+  - summary quick-ack：
+    - plugin -> worker 的 `session.idle` / flush summary 请求已改成“先接收，再排队”
+    - plugin 不再同步等待 summary 真正聚合与写库
+    - 更接近 `claude-mem` 的 summarize queued 形态
   - session 级 job 串行：
     - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler
     - 避免同一会话内写入、summary、回查依赖 HTTP 到达顺序碰运气

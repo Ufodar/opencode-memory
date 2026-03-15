@@ -154,6 +154,11 @@ docs/
   - worker HTTP 层先接收并入 session 队列
   - 真正写入在 worker 内部异步完成
   - 这一层已经更接近 `claude-mem` 的 `hook -> worker` ingestion 形态
+- summary 触发也已改成异步 quick-ack：
+  - plugin 侧不再等待 summary 真正生成完成
+  - worker HTTP 层先接收 `session.idle` / flush 请求并入 session 队列
+  - 真正的 summary 聚合与落盘在 worker 内部异步完成
+  - 这一层继续向 `claude-mem` 的 `Stop -> summarize queued` 形态靠拢
 - plugin 到 worker 的 HTTP 请求已加入 timeout + abort：
   - 普通 worker 请求超时会主动中止
   - health check 超时会直接视为不健康
@@ -210,6 +215,7 @@ docs/
 当前 smoke 的写入链判定也已对齐这条异步事实：
 
 - 不再要求 plugin 日志里同步出现 `captured observation`
+- 不再要求 plugin 日志里同步出现 `captured summary`
 - 而是以最终 SQLite 里的：
   - `request_anchors`
   - `observations`

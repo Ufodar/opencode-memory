@@ -114,6 +114,13 @@ export async function startMemoryWorkerServer(input: {
             })
             return json({ accepted: true } satisfies WorkerAcceptedResponse)
           }
+          case "/enqueue/session-idle": {
+            const payload = await readJson<IdleSummaryRequest>(request)
+            sessionJobs.enqueue(payload.sessionID, async () => {
+              await worker.handleSessionIdle(payload.sessionID)
+            })
+            return json({ accepted: true } satisfies WorkerAcceptedResponse)
+          }
           case "/capture/request-anchor": {
             const payload = await readJson<CaptureRequestAnchorRequest>(request)
             return json(

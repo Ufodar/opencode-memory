@@ -35,7 +35,7 @@ export interface IdleSummaryRequest {
   sessionID: string
 }
 
-export type IdleSummaryResponse =
+export type IdleSummaryResult =
   | { status: "busy" }
   | { status: "missing-request" }
   | { status: "no-op"; requestAnchorID?: string }
@@ -45,6 +45,8 @@ export type IdleSummaryResponse =
       summaryID: string
       checkpointObservationAt: number
     }
+
+export type IdleSummaryResponse = WorkerAcceptedResponse | IdleSummaryResult
 
 export interface SelectInjectionRequest {
   sessionID?: string
