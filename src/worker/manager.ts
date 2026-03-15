@@ -3,9 +3,16 @@ import { once } from "node:events"
 import { createServer } from "node:net"
 import { fileURLToPath } from "node:url"
 
+import { getDefaultWorkerRegistryPath } from "../config/paths.js"
 import { log } from "../services/logger.js"
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 import { checkMemoryWorkerHealth, createMemoryWorkerHttpClient } from "./client.js"
+import {
+  buildWorkerKey,
+  readWorkerRegistryRecord,
+  removeWorkerRegistryRecord,
+  writeWorkerRegistryRecord,
+} from "./registry.js"
 
 const STARTUP_TIMEOUT_MS = 5000
 
@@ -38,6 +45,10 @@ interface ManagedMemoryWorkerManagerDependencies {
     projectPath: string
     databasePath: string
   }): Promise<ManagedMemoryWorkerProcess>
+  recoverProcess?(input: {
+    projectPath: string
+    databasePath: string
+  }): Promise<ManagedMemoryWorkerProcess | undefined>
   registerProcessCleanup(stopAll: () => Promise<void>): void
 }
 
@@ -69,7 +80,8 @@ export function createManagedMemoryWorkerManager(
       return createLease(entries, existing, dependencies)
     }
 
-    const process = await dependencies.createProcess(input)
+    const process =
+      (await dependencies.recoverProcess?.(input)) ?? (await dependencies.createProcess(input))
     const entry: ManagedMemoryWorkerEntry = {
       key,
       input,
@@ -87,7 +99,8 @@ export function createManagedMemoryWorkerManager(
 
 const defaultManager = createManagedMemoryWorkerManager({
   createProcess: startManagedMemoryWorkerProcess,
-  registerProcessCleanup: registerProcessCleanup,
+  recoverProcess: recoverManagedMemoryWorkerProcess,
+  registerProcessCleanup: registerPersistentProcessCleanup,
 })
 
 export async function startManagedMemoryWorker(input: {
@@ -122,22 +135,28 @@ async function startManagedMemoryWorkerProcess(input: {
     ],
     {
       env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: "ignore",
+      detached: true,
     },
   )
-
-  child.stdout?.on("data", (chunk) => {
-    process.stdout.write(chunk)
-  })
-  child.stderr?.on("data", (chunk) => {
-    process.stderr.write(chunk)
-  })
+  child.unref()
   child.on("exit", (code, signal) => {
     log("memory worker exited", { code, signal })
   })
 
   const baseUrl = `http://127.0.0.1:${port}`
   await waitForWorkerHealth(baseUrl, child)
+  if (!child.pid) {
+    throw new Error("Memory worker started without a child pid")
+  }
+
+  writeWorkerRegistryRecord({
+    registryPath: getDefaultWorkerRegistryPath(),
+    projectPath: input.projectPath,
+    databasePath: input.databasePath,
+    port,
+    pid: child.pid,
+  })
 
   return {
     worker: createMemoryWorkerHttpClient({ baseUrl }),
@@ -148,7 +167,51 @@ async function startManagedMemoryWorkerProcess(input: {
 
       return checkMemoryWorkerHealth({ baseUrl })
     },
-    stop: createStopHandle(child),
+    stop: createStopHandle({
+      pid: child.pid,
+      projectPath: input.projectPath,
+      databasePath: input.databasePath,
+    }),
+  }
+}
+
+async function recoverManagedMemoryWorkerProcess(input: {
+  projectPath: string
+  databasePath: string
+}): Promise<ManagedMemoryWorkerProcess | undefined> {
+  const registryPath = getDefaultWorkerRegistryPath()
+  const record = readWorkerRegistryRecord({
+    registryPath,
+    projectPath: input.projectPath,
+    databasePath: input.databasePath,
+  })
+
+  if (!record) {
+    return undefined
+  }
+
+  const baseUrl = `http://127.0.0.1:${record.port}`
+  const healthy = await checkMemoryWorkerHealth({ baseUrl })
+
+  if (!healthy) {
+    removeWorkerRegistryRecord({
+      registryPath,
+      projectPath: input.projectPath,
+      databasePath: input.databasePath,
+    })
+    return undefined
+  }
+
+  return {
+    worker: createMemoryWorkerHttpClient({ baseUrl }),
+    async isHealthy() {
+      return checkMemoryWorkerHealth({ baseUrl })
+    },
+    stop: createStopHandle({
+      pid: record.pid,
+      projectPath: input.projectPath,
+      databasePath: input.databasePath,
+    }),
   }
 }
 
@@ -291,10 +354,6 @@ async function retireEntry(
   await entry.stopPromise
 }
 
-function buildWorkerKey(input: { projectPath: string; databasePath: string }) {
-  return `${input.projectPath}::${input.databasePath}`
-}
-
 async function findAvailablePort(): Promise<number> {
   const server = createServer()
   server.listen(0, "127.0.0.1")
@@ -342,32 +401,62 @@ async function waitForWorkerHealth(
   throw new Error(`Memory worker did not become healthy within ${STARTUP_TIMEOUT_MS}ms`)
 }
 
-function createStopHandle(child: ReturnType<typeof spawn>) {
+function createStopHandle(input: {
+  pid: number | undefined
+  projectPath: string
+  databasePath: string
+}) {
   let stopped = false
 
   return async () => {
     if (stopped) return
     stopped = true
 
-    if (child.exitCode !== null) {
+    if (!input.pid) {
       return
     }
 
-    child.kill("SIGTERM")
-    await once(child, "exit").catch(() => undefined)
+    try {
+      process.kill(input.pid, 0)
+    } catch {
+      removeWorkerRegistryRecord({
+        registryPath: getDefaultWorkerRegistryPath(),
+        projectPath: input.projectPath,
+        databasePath: input.databasePath,
+      })
+      return
+    }
+
+    process.kill(input.pid, "SIGTERM")
+    await waitForPidExit(input.pid).catch(() => undefined)
+    removeWorkerRegistryRecord({
+      registryPath: getDefaultWorkerRegistryPath(),
+      projectPath: input.projectPath,
+      databasePath: input.databasePath,
+    })
   }
 }
 
-function registerProcessCleanup(stopAll: () => Promise<void>) {
-  const cleanup = () => {
-    void stopAll()
-  }
-
-  process.once("exit", cleanup)
-  process.once("SIGINT", cleanup)
-  process.once("SIGTERM", cleanup)
+function registerPersistentProcessCleanup(_stopAll: () => Promise<void>) {
+  // Intentionally left blank.
+  // We keep workers alive across multiple `opencode run` invocations
+  // and rely on explicit stop/recovery instead of parent-process exit cleanup.
 }
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function waitForPidExit(pid: number, timeoutMs = STARTUP_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    try {
+      process.kill(pid, 0)
+    } catch {
+      return
+    }
+
+    await sleep(100)
+  }
 }

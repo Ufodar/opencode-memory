@@ -169,6 +169,7 @@ tool.execute.after
   - 暴露 HTTP client 给 plugin 入口
 - worker lifecycle 第一版治理已落地：
   - 同 key worker 复用
+  - plugin 启动时会先读取本地 worker 注册信息，优先恢复健康的已有 worker
   - 不健康 worker 自动替换
   - 已发出的 handle 通过代理层自动切到新 worker
 - worker 运行时当前已加入两层额外治理：
@@ -228,8 +229,8 @@ tool.execute.after
 
 - 继续把 context builder / summary orchestration 更彻底地收进 worker 内核
 - 再决定是否需要更完整的 worker 生命周期治理：
-  - 持久 worker 复用
   - 崩溃恢复
+  - stale worker 清理
   - 更明确的启动/关闭策略
 - 再考虑是否需要队列化或批处理，而不是让 plugin 入口直接逐请求等待
 

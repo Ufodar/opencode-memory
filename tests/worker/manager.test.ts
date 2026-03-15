@@ -167,4 +167,68 @@ describe("managed memory worker manager", () => {
 
     await handle.stop()
   })
+
+  test("reuses a recovered worker process before spawning a new one", async () => {
+    let created = 0
+    let recovered = 0
+
+    const recoveredWorker = {
+      async searchMemoryRecords() {
+        return {
+          scope: "session",
+          results: [
+            {
+              kind: "summary" as const,
+              id: "sum_recovered",
+              content: "worker_recovered",
+              createdAt: 1,
+            },
+          ],
+        }
+      },
+    } as unknown as MemoryWorkerService
+
+    const manager = createManagedMemoryWorkerManager({
+      registerProcessCleanup() {},
+      async recoverProcess() {
+        recovered += 1
+        return {
+          worker: recoveredWorker,
+          async isHealthy() {
+            return true
+          },
+          async stop() {},
+        }
+      },
+      async createProcess() {
+        created += 1
+        return {
+          worker: {} as MemoryWorkerService,
+          async isHealthy() {
+            return true
+          },
+          async stop() {},
+        }
+      },
+    })
+
+    const handle = await manager.start({
+      projectPath: "/workspace/demo",
+      databasePath: "/tmp/demo.sqlite",
+    })
+
+    expect(recovered).toBe(1)
+    expect(created).toBe(0)
+    await expect(
+      handle.worker.searchMemoryRecords({
+        sessionID: "ses_demo",
+        query: "资格条件",
+        limit: 5,
+      }),
+    ).resolves.toMatchObject({
+      results: [{ id: "sum_recovered" }],
+    })
+
+    await handle.stop()
+  })
 })

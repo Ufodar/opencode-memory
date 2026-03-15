@@ -135,7 +135,8 @@ docs/
   - client：`src/worker/client.ts`
   - entry：`src/worker/run-memory-worker.ts`
 - worker lifecycle 第一版治理已落地：
-  - 同一项目路径下复用同一个 worker 进程
+  - 同一项目路径 + database 路径下复用同一个 worker 进程
+  - 跨多次 `opencode run` 会先尝试从本地注册文件恢复已有 worker
   - 旧 worker 不健康时自动替换
   - 已发出的 handle 会通过代理对象自动切到新 worker
 - worker 内部已加入按 `sessionID` 串行的 job 调度：
@@ -177,7 +178,7 @@ docs/
 2. 继续增强 ranking，而不是停在当前启发式分数
 3. 继续增强 compaction 记忆保留，而不是只影响正常对话
 4. 继续收紧 worker 内部编排与 context builder 边界
-5. 再评估是否需要更重的 worker 生命周期治理，而不是继续在 plugin 主链里堆逻辑
+5. 继续补 stale worker 清理和更明确的关闭策略，而不是只停在“能跨 run 复用”
 6. 继续补 worker 级调度与失败恢复，而不是只停在“有子进程”
 
 ## 开发与真实测试说明
