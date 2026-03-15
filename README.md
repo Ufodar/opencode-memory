@@ -165,6 +165,11 @@ docs/
   - worker 重启时会先把 `processing` job 重置回 `pending`
   - 再自动恢复未完成 session 的 job
   - 这一层继续向 `claude-mem` 的“先持久化，再处理”队列形态靠拢
+- pending queue 已加入失败状态与重试上限：
+  - 同一个 job 不会无限次回到 `pending`
+  - 达到上限后会标成 `failed`
+  - 不再继续堵住同一 session 后面的正常 job
+  - 这一层继续向 `claude-mem` 的“poison message 不无限自旋”队列形态靠拢
 - plugin 到 worker 的 HTTP 请求已加入 timeout + abort：
   - 普通 worker 请求超时会主动中止
   - health check 超时会直接视为不健康
@@ -204,6 +209,7 @@ docs/
 5. 继续补 stale worker 清理和更明确的关闭策略，而不是只停在“能跨 run 复用”
 6. 继续补 worker 级调度与失败恢复，而不是只停在“有子进程”
 7. 继续补 pending queue 的失败状态、重试上限与可观测性，而不是只停在“worker 重启后能恢复”
+8. 继续补 failed queue 的可见性与手动恢复路径，而不是只停在“内部状态正确”
 
 ## 开发与真实测试说明
 

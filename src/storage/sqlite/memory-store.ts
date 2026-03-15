@@ -157,8 +157,8 @@ export class SQLiteMemoryStore
     this.pendingJobs.complete(id)
   }
 
-  releasePendingJobForRetry(id: number, error: string) {
-    this.pendingJobs.releaseForRetry(id, error)
+  recordPendingJobFailure(id: number, error: string): "pending" | "failed" {
+    return this.pendingJobs.recordFailure(id, error)
   }
 
   listSessionIDsWithPendingJobs(): string[] {

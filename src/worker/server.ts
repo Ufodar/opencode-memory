@@ -65,8 +65,8 @@ export async function startMemoryWorkerServer(input: {
       complete(id) {
         store.completePendingJob(id)
       },
-      releaseForRetry(id, error) {
-        store.releasePendingJobForRetry(id, error)
+      recordFailure(id, error) {
+        return store.recordPendingJobFailure(id, error)
       },
       listSessionIDsWithPendingJobs() {
         return store.listSessionIDsWithPendingJobs()

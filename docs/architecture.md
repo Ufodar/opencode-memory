@@ -204,6 +204,10 @@ tool.execute.after
     - 不再只依赖进程内存队列
     - worker 重启时会先把 `processing` 重置回 `pending`
     - 再按 session 自动恢复未完成 job
+  - failed 状态与重试上限：
+    - 同一个坏 job 不会无限次在 `pending -> processing` 之间自旋
+    - 达到上限后会标成 `failed`
+    - worker 会继续处理同一 session 后面的正常 job
   - session 级 job 串行：
     - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler
     - 避免同一会话内写入、summary、回查依赖 HTTP 到达顺序碰运气
@@ -264,6 +268,7 @@ tool.execute.after
   - stale worker 清理
   - 更明确的启动/关闭策略
 - 继续补 pending queue 的失败状态、重试上限与队列可观测性
+- 继续补 failed queue 的查询、人工重试和恢复入口
 
 ## 真实宿主验证补充
 

@@ -27,8 +27,10 @@ export function createPendingJobProcessor(input: {
         await executeJob(job, input.worker)
         input.store.complete(job.id)
       } catch (error) {
-        input.store.releaseForRetry(job.id, normalizeError(error))
-        return
+        const failureStatus = input.store.recordFailure(job.id, normalizeError(error))
+        if (failureStatus === "pending") {
+          return
+        }
       }
     }
   }

@@ -5,7 +5,7 @@ import type {
 } from "./protocol.js"
 
 export type PendingJobKind = "request-anchor" | "observation" | "session-idle"
-export type PendingJobStatus = "pending" | "processing"
+export type PendingJobStatus = "pending" | "processing" | "failed"
 
 export type PendingJobPayload =
   | CaptureRequestAnchorRequest
@@ -47,7 +47,7 @@ export interface PendingJobStore {
   enqueue(input: PendingJobEnqueueInput): number
   claimNext(sessionID: string): PendingJobRecord | null
   complete(id: number): void
-  releaseForRetry(id: number, error: string): void
+  recordFailure(id: number, error: string): "pending" | "failed"
   listSessionIDsWithPendingJobs(): string[]
   resetProcessingToPending(): number
 }

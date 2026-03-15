@@ -21,7 +21,12 @@ type PendingJobRow = {
 }
 
 export class PendingJobRepository implements PendingJobStore {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly options: {
+      maxAttempts?: number
+    } = {},
+  ) {}
 
   enqueue(input: PendingJobEnqueueInput): number {
     const now = Date.now()
@@ -78,16 +83,32 @@ export class PendingJobRepository implements PendingJobStore {
     this.db.prepare(`DELETE FROM pending_jobs WHERE id = ?`).run(id)
   }
 
-  releaseForRetry(id: number, error: string) {
+  recordFailure(id: number, error: string): "pending" | "failed" {
+    const row = this.db
+      .prepare(`
+        SELECT attempt_count
+        FROM pending_jobs
+        WHERE id = ?
+      `)
+      .get(id) as { attempt_count: number } | null
+
+    if (!row) {
+      return "failed"
+    }
+
+    const status = row.attempt_count >= this.getMaxAttempts() ? "failed" : "pending"
+
     this.db
       .prepare(`
         UPDATE pending_jobs
-        SET status = 'pending',
+        SET status = ?,
             updated_at = ?,
             last_error = ?
         WHERE id = ?
       `)
-      .run(Date.now(), error, id)
+      .run(status, Date.now(), error, id)
+
+    return status
   }
 
   listSessionIDsWithPendingJobs(): string[] {
@@ -115,6 +136,10 @@ export class PendingJobRepository implements PendingJobStore {
       .run(Date.now())
 
     return result.changes
+  }
+
+  private getMaxAttempts() {
+    return this.options.maxAttempts ?? 3
   }
 }
 

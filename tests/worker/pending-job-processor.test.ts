@@ -49,12 +49,13 @@ describe("pending job processor", () => {
         const index = pending.findIndex((job) => job.id === id)
         if (index >= 0) pending.splice(index, 1)
       },
-      releaseForRetry(id, error) {
+      recordFailure(id, error) {
         const job = pending.find((entry) => entry.id === id)
         if (job) {
           job.status = "pending"
           job.lastError = error
         }
+        return "pending"
       },
       listSessionIDsWithPendingJobs() {
         return Array.from(new Set(pending.filter((job) => job.status === "pending").map((job) => job.sessionID)))
@@ -115,7 +116,9 @@ describe("pending job processor", () => {
         return null
       },
       complete() {},
-      releaseForRetry() {},
+      recordFailure() {
+        return "pending"
+      },
       listSessionIDsWithPendingJobs() {
         return ["ses_a", "ses_b"]
       },
@@ -152,5 +155,100 @@ describe("pending job processor", () => {
 
     expect(resetCount).toBe(2)
     expect(scheduled).toEqual(["ses_a", "ses_b"])
+  })
+
+  test("marks permanently failing job as failed and continues later jobs in the same session", async () => {
+    const calls: string[] = []
+    const failedIds: number[] = []
+    const pending: PendingJobRecord[] = [
+      {
+        id: 1,
+        sessionID: "ses_demo",
+        kind: "request-anchor",
+        payload: { sessionID: "ses_demo", messageID: "msg_1", text: "梳理第3章资格条件" },
+        status: "pending",
+        attemptCount: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        lastError: null,
+      },
+      {
+        id: 2,
+        sessionID: "ses_demo",
+        kind: "session-idle",
+        payload: { sessionID: "ses_demo" },
+        status: "pending",
+        attemptCount: 0,
+        createdAt: 2,
+        updatedAt: 2,
+        lastError: null,
+      },
+    ]
+
+    const store: PendingJobStore = {
+      enqueue() {
+        throw new Error("not needed")
+      },
+      claimNext(sessionID) {
+        const next = pending.find((job) => job.sessionID === sessionID && job.status === "pending") ?? null
+        if (!next) return null
+        next.status = "processing"
+        return next
+      },
+      complete(id) {
+        const index = pending.findIndex((job) => job.id === id)
+        if (index >= 0) pending.splice(index, 1)
+      },
+      recordFailure(id, error) {
+        const job = pending.find((entry) => entry.id === id)
+        if (!job) return "failed"
+        job.status = "failed"
+        job.lastError = error
+        failedIds.push(id)
+        return "failed"
+      },
+      listSessionIDsWithPendingJobs() {
+        return []
+      },
+      resetProcessingToPending() {
+        return 0
+      },
+    }
+
+    const processor = createPendingJobProcessor({
+      store,
+      scheduler: {
+        run(_sessionID, task) {
+          return task()
+        },
+        enqueue(_sessionID, job) {
+          void job()
+        },
+      },
+      worker: {
+        captureRequestAnchorFromMessage() {
+          throw new Error("persistent failure")
+        },
+        captureObservationFromToolCall() {
+          return null
+        },
+        handleSessionIdle(sessionID) {
+          calls.push(`summary:${sessionID}`)
+          return { status: "summarized" as const, requestAnchorID: "msg_1", summaryID: "sum_1", checkpointObservationAt: 2 }
+        },
+      },
+    })
+
+    await processor.processSessionJobs("ses_demo")
+
+    expect(failedIds).toEqual([1])
+    expect(calls).toEqual(["summary:ses_demo"])
+    expect(pending).toEqual([
+      expect.objectContaining({
+        id: 1,
+        status: "failed",
+        lastError: "persistent failure",
+      }),
+    ])
   })
 })

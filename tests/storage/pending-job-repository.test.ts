@@ -81,12 +81,57 @@ describe("PendingJobRepository", () => {
     const job = repository.claimNext("ses_demo")
     expect(job?.status).toBe("processing")
 
-    repository.releaseForRetry(job!.id, "temporary failure")
+    expect(repository.recordFailure(job!.id, "temporary failure")).toBe("pending")
     repository.resetProcessingToPending()
 
     const retried = repository.claimNext("ses_demo")
     expect(retried?.status).toBe("processing")
     expect(retried?.attemptCount).toBeGreaterThanOrEqual(1)
     expect(retried?.lastError).toBe("temporary failure")
+  })
+
+  test("marks a repeatedly failing job as failed after max attempts", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-pending-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const database = new SQLiteMemoryDatabase(path.join(root, "memory.sqlite"))
+    cleanupTasks.push(async () => database.close())
+
+    const repository = new PendingJobRepository(database.handle, { maxAttempts: 2 })
+
+    repository.enqueue({
+      sessionID: "ses_demo",
+      kind: "session-idle",
+      payload: { sessionID: "ses_demo" },
+    })
+
+    const firstAttempt = repository.claimNext("ses_demo")
+    expect(firstAttempt?.attemptCount).toBe(1)
+    expect(repository.recordFailure(firstAttempt!.id, "first failure")).toBe("pending")
+
+    const secondAttempt = repository.claimNext("ses_demo")
+    expect(secondAttempt?.attemptCount).toBe(2)
+    expect(repository.recordFailure(secondAttempt!.id, "second failure")).toBe("failed")
+
+    expect(repository.claimNext("ses_demo")).toBeNull()
+    expect(repository.listSessionIDsWithPendingJobs()).toEqual([])
+
+    const failedRow = database.handle
+      .prepare(`
+        SELECT status, attempt_count, last_error
+        FROM pending_jobs
+        WHERE id = ?
+      `)
+      .get(firstAttempt!.id) as {
+      status: string
+      attempt_count: number
+      last_error: string | null
+    }
+
+    expect(failedRow).toEqual({
+      status: "failed",
+      attempt_count: 2,
+      last_error: "second failure",
+    })
   })
 })
