@@ -138,6 +138,12 @@ docs/
   - 同一项目路径下复用同一个 worker 进程
   - 旧 worker 不健康时自动替换
   - 已发出的 handle 会通过代理对象自动切到新 worker
+- worker 内部已加入按 `sessionID` 串行的 job 调度：
+  - 同一 session 的 capture / summary / session-scoped retrieval 不再并发直进
+  - 不同 session 仍可并发
+- plugin 到 worker 的 HTTP 请求已加入 timeout + abort：
+  - 普通 worker 请求超时会主动中止
+  - health check 超时会直接视为不健康
 - `chat.message` 已加入 run-mode summary flush fallback：
   - 新用户消息进入时，先尝试 flush 上一个 request 的 summary
   - 再写入新的 request anchor
@@ -167,6 +173,7 @@ docs/
 3. 继续增强 compaction 记忆保留，而不是只影响正常对话
 4. 继续收紧 worker 内部编排与 context builder 边界
 5. 再评估是否需要更重的 worker 生命周期治理，而不是继续在 plugin 主链里堆逻辑
+6. 继续补 worker 级调度与失败恢复，而不是只停在“有子进程”
 
 ## 开发与真实测试说明
 

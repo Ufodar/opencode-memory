@@ -3,6 +3,7 @@ import { generateModelSummary } from "../services/ai/model-summary.js"
 import { log } from "../services/logger.js"
 import { createMemoryWorkerService } from "../services/memory-worker-service.js"
 import { SQLiteMemoryStore } from "../storage/sqlite/memory-store.js"
+import { createSessionJobScheduler } from "./session-job-scheduler.js"
 import type {
   BuildCompactionContextRequest,
   BuildCompactionContextResponse,
@@ -37,6 +38,7 @@ export async function startMemoryWorkerServer(input: {
 }): Promise<MemoryWorkerServerHandle> {
   const store = new SQLiteMemoryStore(input.databasePath)
   const idleSummaryGuard = createSessionReentryGuard()
+  const sessionJobs = createSessionJobScheduler()
   const worker = createMemoryWorkerService({
     projectPath: input.projectPath,
     store,
@@ -60,57 +62,60 @@ export async function startMemoryWorkerServer(input: {
 
       try {
         switch (url.pathname) {
-          case "/capture/request-anchor":
+          case "/capture/request-anchor": {
+            const payload = await readJson<CaptureRequestAnchorRequest>(request)
             return json(
-              await worker.captureRequestAnchorFromMessage(
-                await readJson<CaptureRequestAnchorRequest>(request),
-              ) satisfies CaptureRequestAnchorResponse,
+              await sessionJobs.run(
+                payload.sessionID,
+                async () =>
+                  await worker.captureRequestAnchorFromMessage(
+                    payload,
+                  ) satisfies CaptureRequestAnchorResponse,
+              ),
             )
+          }
           case "/capture/observation": {
             const payload = await readJson<CaptureObservationRequest>(request)
             return json(
-              await worker.captureObservationFromToolCall(
-                payload.toolInput,
-                payload.output,
+              await sessionJobs.run(
+                payload.toolInput.sessionID,
+                async () =>
+                  await worker.captureObservationFromToolCall(
+                    payload.toolInput,
+                    payload.output,
+                  ) satisfies CaptureObservationResponse,
               ) satisfies CaptureObservationResponse,
             )
           }
-          case "/session/idle":
+          case "/session/idle": {
+            const payload = await readJson<IdleSummaryRequest>(request)
             return json(
-              await worker.handleSessionIdle(
-                (await readJson<IdleSummaryRequest>(request)).sessionID,
+              await sessionJobs.run(
+                payload.sessionID,
+                async () => await worker.handleSessionIdle(payload.sessionID),
               ) satisfies IdleSummaryResponse,
             )
-          case "/injection/select":
-            return json(
-              await worker.selectInjectionRecords(
-                await readJson<SelectInjectionRequest>(request),
-              ) satisfies SelectInjectionResponse,
-            )
-          case "/injection/system-context":
-            return json(
-              await worker.buildSystemContext(
-                await readJson<BuildSystemContextRequest>(request),
-              ) satisfies BuildSystemContextResponse,
-            )
-          case "/injection/compaction-context":
-            return json(
-              await worker.buildCompactionContext(
-                await readJson<BuildCompactionContextRequest>(request),
-              ) satisfies BuildCompactionContextResponse,
-            )
-          case "/search":
-            return json(
-              await worker.searchMemoryRecords(
-                await readJson<SearchMemoryRequest>(request),
-              ) satisfies SearchMemoryResponse,
-            )
-          case "/timeline":
-            return json(
-              await worker.getMemoryTimeline(
-                await readJson<TimelineMemoryRequest>(request),
-              ) satisfies TimelineMemoryResponse,
-            )
+          }
+          case "/injection/select": {
+            const payload = await readJson<SelectInjectionRequest>(request)
+            return json(await runSessionScoped(payload.sessionID, sessionJobs, async () => worker.selectInjectionRecords(payload)) satisfies SelectInjectionResponse)
+          }
+          case "/injection/system-context": {
+            const payload = await readJson<BuildSystemContextRequest>(request)
+            return json(await runSessionScoped(payload.sessionID, sessionJobs, async () => worker.buildSystemContext(payload)) satisfies BuildSystemContextResponse)
+          }
+          case "/injection/compaction-context": {
+            const payload = await readJson<BuildCompactionContextRequest>(request)
+            return json(await runSessionScoped(payload.sessionID, sessionJobs, async () => worker.buildCompactionContext(payload)) satisfies BuildCompactionContextResponse)
+          }
+          case "/search": {
+            const payload = await readJson<SearchMemoryRequest>(request)
+            return json(await runSessionScoped(payload.sessionID, sessionJobs, async () => worker.searchMemoryRecords(payload)) satisfies SearchMemoryResponse)
+          }
+          case "/timeline": {
+            const payload = await readJson<TimelineMemoryRequest>(request)
+            return json(await runSessionScoped(payload.sessionID, sessionJobs, async () => worker.getMemoryTimeline(payload)) satisfies TimelineMemoryResponse)
+          }
           case "/details":
             return json(
               await worker.getMemoryDetails(
@@ -164,4 +169,16 @@ function json(value: unknown, init?: ResponseInit) {
       ...(init?.headers ?? {}),
     },
   })
+}
+
+async function runSessionScoped<T>(
+  sessionID: string | undefined,
+  scheduler: ReturnType<typeof createSessionJobScheduler>,
+  task: () => Promise<T>,
+): Promise<T> {
+  if (!sessionID) {
+    return task()
+  }
+
+  return scheduler.run(sessionID, task)
 }

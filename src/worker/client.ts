@@ -23,12 +23,17 @@ import type {
 
 type FetchLike = typeof fetch
 
+const DEFAULT_WORKER_REQUEST_TIMEOUT_MS = 5_000
+const DEFAULT_WORKER_HEALTH_TIMEOUT_MS = 1_000
+
 export function createMemoryWorkerHttpClient(input: {
   baseUrl: string
   fetchImpl?: FetchLike
+  requestTimeoutMs?: number
 }): MemoryWorkerService {
   const fetchImpl = input.fetchImpl ?? fetch
   const baseUrl = input.baseUrl.replace(/\/$/, "")
+  const requestTimeoutMs = input.requestTimeoutMs ?? DEFAULT_WORKER_REQUEST_TIMEOUT_MS
 
   return {
     captureRequestAnchorFromMessage(payload) {
@@ -36,6 +41,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/capture/request-anchor`,
         payload,
+        requestTimeoutMs,
       )
     },
 
@@ -44,6 +50,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/capture/observation`,
         { toolInput, output },
+        requestTimeoutMs,
       )
     },
 
@@ -52,6 +59,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/session/idle`,
         { sessionID },
+        requestTimeoutMs,
       )
     },
 
@@ -60,6 +68,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/injection/select`,
         payload,
+        requestTimeoutMs,
       )
     },
 
@@ -68,6 +77,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/injection/system-context`,
         payload,
+        requestTimeoutMs,
       )
     },
 
@@ -76,6 +86,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/injection/compaction-context`,
         payload,
+        requestTimeoutMs,
       )
     },
 
@@ -84,6 +95,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/search`,
         payload,
+        requestTimeoutMs,
       )
     },
 
@@ -92,6 +104,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/timeline`,
         payload,
+        requestTimeoutMs,
       )
     },
 
@@ -100,6 +113,7 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/details`,
         { ids },
+        requestTimeoutMs,
       )
     },
   }
@@ -108,11 +122,17 @@ export function createMemoryWorkerHttpClient(input: {
 export async function checkMemoryWorkerHealth(input: {
   baseUrl: string
   fetchImpl?: FetchLike
+  requestTimeoutMs?: number
 }): Promise<boolean> {
   const fetchImpl = input.fetchImpl ?? fetch
+  const requestTimeoutMs = input.requestTimeoutMs ?? DEFAULT_WORKER_HEALTH_TIMEOUT_MS
 
   try {
-    const response = await fetchImpl(`${input.baseUrl.replace(/\/$/, "")}/health`)
+    const response = await withRequestTimeout(
+      (signal) => fetchImpl(`${input.baseUrl.replace(/\/$/, "")}/health`, { signal }),
+      requestTimeoutMs,
+      "Memory worker health check",
+    )
     if (!response.ok) {
       return false
     }
@@ -128,14 +148,21 @@ async function post<TRequest, TResponse>(
   fetchImpl: FetchLike,
   url: string,
   payload: TRequest,
+  timeoutMs: number,
 ): Promise<TResponse> {
-  const response = await fetchImpl(url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  })
+  const response = await withRequestTimeout(
+    (signal) =>
+      fetchImpl(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal,
+      }),
+    timeoutMs,
+    "Memory worker request",
+  )
 
   if (!response.ok) {
     const message = await safeReadError(response)
@@ -143,6 +170,43 @@ async function post<TRequest, TResponse>(
   }
 
   return (await response.json()) as TResponse
+}
+
+async function withRequestTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  const controller = new AbortController()
+  const timeoutError = new Error(`${label} timed out after ${timeoutMs}ms`)
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    const timer = setTimeout(() => {
+      controller.abort(timeoutError)
+      reject(timeoutError)
+    }, timeoutMs)
+
+    controller.signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer)
+      },
+      { once: true },
+    )
+  })
+
+  try {
+    return await Promise.race([run(controller.signal), timeoutPromise])
+  } catch (error) {
+    if (controller.signal.aborted) {
+      const reason = controller.signal.reason
+      if (reason instanceof Error) {
+        throw reason
+      }
+      throw new Error(`${label} timed out after ${timeoutMs}ms`)
+    }
+
+    throw error
+  }
 }
 
 async function safeReadError(response: Response): Promise<string> {

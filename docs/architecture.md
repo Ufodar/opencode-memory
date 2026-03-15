@@ -171,6 +171,13 @@ tool.execute.after
   - 同 key worker 复用
   - 不健康 worker 自动替换
   - 已发出的 handle 通过代理层自动切到新 worker
+- worker 运行时当前已加入两层额外治理：
+  - session 级 job 串行：
+    - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler
+    - 避免同一会话内写入、summary、回查依赖 HTTP 到达顺序碰运气
+  - worker HTTP timeout：
+    - plugin -> worker 的请求有明确 timeout
+    - health check 超时直接视为不健康
 - run-mode summary fallback 已落地：
   - `chat.message` 进入时先尝试 flush 上一个 request 的 summary
   - 再记录新的 request anchor
