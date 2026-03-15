@@ -137,6 +137,8 @@ docs/
 - worker lifecycle 第一版治理已落地：
   - 同一项目路径 + database 路径下复用同一个 worker 进程
   - 跨多次 `opencode run` 会先尝试从本地注册文件恢复已有 worker
+  - 对最近刚启动但暂时还没 health 的 worker，会先等待短窗口，不会立刻判死
+  - PID 已死的 stale 注册记录会在恢复阶段直接清掉
   - 旧 worker 不健康时自动替换
   - 已发出的 handle 会通过代理对象自动切到新 worker
   - 关闭时会优先走 worker 自己的 `/shutdown`，失败后才回退到 PID kill

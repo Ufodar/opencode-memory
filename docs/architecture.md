@@ -170,6 +170,8 @@ tool.execute.after
 - worker lifecycle 第一版治理已落地：
   - 同 key worker 复用
   - plugin 启动时会先读取本地 worker 注册信息，优先恢复健康的已有 worker
+  - 如果记录对应的 worker 是最近刚启动、暂时还没 ready，会先等待短窗口再决定是否放弃
+  - 如果记录对应的 PID 已经不存在，会直接清掉 stale 注册信息
   - 不健康 worker 自动替换
   - 已发出的 handle 通过代理层自动切到新 worker
   - 关闭时优先调用 worker 自己的 `/shutdown`，再回退到 PID kill

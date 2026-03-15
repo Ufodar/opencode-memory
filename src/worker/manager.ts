@@ -19,6 +19,8 @@ import {
 } from "./registry.js"
 
 const STARTUP_TIMEOUT_MS = 5000
+const RECOVERY_COORDINATION_WINDOW_MS = 5_000
+const RECOVERY_POLL_INTERVAL_MS = 100
 
 export interface ManagedMemoryWorker {
   worker: MemoryWorkerService
@@ -180,11 +182,38 @@ async function startManagedMemoryWorkerProcess(input: {
   }
 }
 
-async function recoverManagedMemoryWorkerProcess(input: {
+interface RecoverManagedMemoryWorkerProcessDependencies {
+  registryPath: string
+  checkHealth(baseUrl: string): Promise<boolean>
+  shutdown(baseUrl: string): Promise<void>
+  isPidAlive(pid: number): boolean
+  sleep(ms: number): Promise<void>
+  now(): number
+}
+
+export async function recoverManagedMemoryWorkerProcess(input: {
   projectPath: string
   databasePath: string
+}, dependencies: RecoverManagedMemoryWorkerProcessDependencies = {
+  registryPath: getDefaultWorkerRegistryPath(),
+  checkHealth(baseUrl) {
+    return checkMemoryWorkerHealth({ baseUrl })
+  },
+  shutdown(baseUrl) {
+    return shutdownMemoryWorker({ baseUrl, requestTimeoutMs: 1_000 })
+  },
+  isPidAlive(pid) {
+    try {
+      process.kill(pid, 0)
+      return true
+    } catch {
+      return false
+    }
+  },
+  sleep,
+  now: () => Date.now(),
 }): Promise<ManagedMemoryWorkerProcess | undefined> {
-  const registryPath = getDefaultWorkerRegistryPath()
+  const registryPath = dependencies.registryPath
   const record = readWorkerRegistryRecord({
     registryPath,
     projectPath: input.projectPath,
@@ -195,10 +224,36 @@ async function recoverManagedMemoryWorkerProcess(input: {
     return undefined
   }
 
+  if (!dependencies.isPidAlive(record.pid)) {
+    removeWorkerRegistryRecord({
+      registryPath,
+      projectPath: input.projectPath,
+      databasePath: input.databasePath,
+    })
+    return undefined
+  }
+
   const baseUrl = `http://127.0.0.1:${record.port}`
-  const healthy = await checkMemoryWorkerHealth({ baseUrl })
+  let healthy = await dependencies.checkHealth(baseUrl)
+
+  if (!healthy && dependencies.now() - record.updatedAt < RECOVERY_COORDINATION_WINDOW_MS) {
+    const deadline = dependencies.now() + RECOVERY_COORDINATION_WINDOW_MS
+
+    while (dependencies.now() < deadline) {
+      if (!dependencies.isPidAlive(record.pid)) {
+        break
+      }
+
+      await dependencies.sleep(RECOVERY_POLL_INTERVAL_MS)
+      healthy = await dependencies.checkHealth(baseUrl)
+      if (healthy) {
+        break
+      }
+    }
+  }
 
   if (!healthy) {
+    await dependencies.shutdown(baseUrl).catch(() => undefined)
     removeWorkerRegistryRecord({
       registryPath,
       projectPath: input.projectPath,
@@ -469,7 +524,7 @@ function registerPersistentProcessCleanup(_stopAll: () => Promise<void>) {
 }
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
 async function waitForPidExit(pid: number, timeoutMs = STARTUP_TIMEOUT_MS) {
