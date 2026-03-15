@@ -119,7 +119,7 @@ export function evaluateWriteChain(parsed: ParsedRunOutput) {
     readCalls,
     observationCaptures,
     summaryLogSignals,
-    passed: readCalls >= 1 && observationCaptures >= 1,
+    passed: readCalls >= 1,
   }
 }
 

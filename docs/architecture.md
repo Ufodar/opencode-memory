@@ -106,9 +106,14 @@
 ```text
 tool.execute.after
   -> candidate rule
+  -> enqueue observation job
+  -> worker session queue
   -> observation record
   -> SQLite persistence
 chat.message
+  -> run-mode summary flush fallback
+  -> enqueue request anchor job
+  -> worker session queue
   -> request anchor
 session.idle
   -> request checkpoint observations
@@ -181,6 +186,10 @@ tool.execute.after
   - 已发出的 handle 通过代理层自动切到新 worker
   - 关闭时优先调用 worker 自己的 `/shutdown`，再回退到 PID kill
 - worker 运行时当前已加入两层额外治理：
+  - capture quick-ack：
+    - plugin -> worker 的 request anchor / observation capture 已改成“先接收，再排队”
+    - plugin 不再同步等待 capture 真正完成
+    - 更接近 `claude-mem` 的 hook 提交形态
   - session 级 job 串行：
     - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler
     - 避免同一会话内写入、summary、回查依赖 HTTP 到达顺序碰运气

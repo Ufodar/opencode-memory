@@ -3,6 +3,10 @@ import type { ObservationRecord } from "../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../memory/request/types.js"
 import type { SummaryRecord } from "../memory/summary/types.js"
 
+export interface WorkerAcceptedResponse {
+  accepted: true
+}
+
 export interface CaptureRequestAnchorRequest {
   sessionID: string
   messageID?: string

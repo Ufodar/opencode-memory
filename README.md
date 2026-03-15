@@ -149,6 +149,11 @@ docs/
 - worker 内部已加入按 `sessionID` 串行的 job 调度：
   - 同一 session 的 capture / summary / session-scoped retrieval 不再并发直进
   - 不同 session 仍可并发
+- request anchor / observation capture 已改成异步 quick-ack：
+  - plugin 侧不再等待 capture 真正落库后才继续
+  - worker HTTP 层先接收并入 session 队列
+  - 真正写入在 worker 内部异步完成
+  - 这一层已经更接近 `claude-mem` 的 `hook -> worker` ingestion 形态
 - plugin 到 worker 的 HTTP 请求已加入 timeout + abort：
   - 普通 worker 请求超时会主动中止
   - health check 超时会直接视为不健康
@@ -201,6 +206,15 @@ docs/
 - `memory_details`
 
 都会进入真实 tool surface。
+
+当前 smoke 的写入链判定也已对齐这条异步事实：
+
+- 不再要求 plugin 日志里同步出现 `captured observation`
+- 而是以最终 SQLite 里的：
+  - `request_anchors`
+  - `observations`
+  - `summaries`
+  作为真实落盘证据
 
 ### Host smoke runner
 

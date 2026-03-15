@@ -28,6 +28,7 @@ import type {
   SelectInjectionResponse,
   TimelineMemoryRequest,
   TimelineMemoryResponse,
+  WorkerAcceptedResponse,
 } from "./protocol.js"
 
 export interface MemoryWorkerServerHandle {
@@ -99,6 +100,20 @@ export async function startMemoryWorkerServer(input: {
 
       try {
         switch (url.pathname) {
+          case "/enqueue/request-anchor": {
+            const payload = await readJson<CaptureRequestAnchorRequest>(request)
+            sessionJobs.enqueue(payload.sessionID, async () => {
+              await worker.captureRequestAnchorFromMessage(payload)
+            })
+            return json({ accepted: true } satisfies WorkerAcceptedResponse)
+          }
+          case "/enqueue/observation": {
+            const payload = await readJson<CaptureObservationRequest>(request)
+            sessionJobs.enqueue(payload.toolInput.sessionID, async () => {
+              await worker.captureObservationFromToolCall(payload.toolInput, payload.output)
+            })
+            return json({ accepted: true } satisfies WorkerAcceptedResponse)
+          }
           case "/capture/request-anchor": {
             const payload = await readJson<CaptureRequestAnchorRequest>(request)
             return json(

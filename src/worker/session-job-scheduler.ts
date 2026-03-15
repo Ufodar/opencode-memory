@@ -1,5 +1,6 @@
 export interface SessionJobScheduler {
   run<T>(sessionID: string, job: () => Promise<T>): Promise<T>
+  enqueue(sessionID: string, job: () => Promise<unknown>): void
 }
 
 export function createSessionJobScheduler(): SessionJobScheduler {
@@ -25,6 +26,10 @@ export function createSessionJobScheduler(): SessionJobScheduler {
           tails.delete(sessionID)
         }
       }
+    },
+
+    enqueue(sessionID: string, job: () => Promise<unknown>) {
+      void this.run(sessionID, job).catch(() => undefined)
     },
   }
 }

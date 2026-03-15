@@ -18,6 +18,7 @@ import type {
   SelectInjectionResponse,
   TimelineMemoryRequest,
   TimelineMemoryResponse,
+  WorkerAcceptedResponse,
   WorkerHealthResponse,
 } from "./protocol.js"
 
@@ -37,21 +38,21 @@ export function createMemoryWorkerHttpClient(input: {
 
   return {
     captureRequestAnchorFromMessage(payload) {
-      return post<CaptureRequestAnchorRequest, CaptureRequestAnchorResponse>(
+      return post<CaptureRequestAnchorRequest, WorkerAcceptedResponse>(
         fetchImpl,
-        `${baseUrl}/capture/request-anchor`,
+        `${baseUrl}/enqueue/request-anchor`,
         payload,
         requestTimeoutMs,
-      )
+      ).then(() => null satisfies CaptureRequestAnchorResponse)
     },
 
     captureObservationFromToolCall(toolInput, output) {
-      return post<CaptureObservationRequest, CaptureObservationResponse>(
+      return post<CaptureObservationRequest, WorkerAcceptedResponse>(
         fetchImpl,
-        `${baseUrl}/capture/observation`,
+        `${baseUrl}/enqueue/observation`,
         { toolInput, output },
         requestTimeoutMs,
-      )
+      ).then(() => null satisfies CaptureObservationResponse)
     },
 
     handleSessionIdle(sessionID) {

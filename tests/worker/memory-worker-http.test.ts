@@ -46,7 +46,7 @@ describe("memory worker http server", () => {
       text: "梳理第3章资格条件",
     })
 
-    expect(request?.id).toBe("msg_1")
+    expect(request).toBeNull()
 
     const observation = await worker.captureObservationFromToolCall(
       {
@@ -64,8 +64,7 @@ describe("memory worker http server", () => {
       },
     )
 
-    expect(observation).not.toBeNull()
-    expect(observation?.tool.name).toBe("read")
+    expect(observation).toBeNull()
 
     const decisionObservation = await worker.captureObservationFromToolCall(
       {
@@ -83,8 +82,7 @@ describe("memory worker http server", () => {
       },
     )
 
-    expect(decisionObservation).not.toBeNull()
-    expect(decisionObservation?.tool.name).toBe("write")
+    expect(decisionObservation).toBeNull()
 
     const summaryResult = await worker.handleSessionIdle("ses_demo")
     expect(summaryResult.status).toBe("summarized")

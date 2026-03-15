@@ -44,6 +44,19 @@ describe("host smoke helpers", () => {
     expect(result.passed).toBe(true)
   })
 
+  test("treats read calls as the write-chain trigger even when async capture logs are absent", () => {
+    const runOutput = [
+      '{"type":"step_start","sessionID":"ses_demo_async"}',
+      '{"type":"tool_use","sessionID":"ses_demo_async","part":{"tool":"read","state":{"status":"completed"}}}',
+    ].join("\n")
+
+    const result = evaluateWriteChain(parseRunOutput(runOutput))
+
+    expect(result.readCalls).toBe(1)
+    expect(result.observationCaptures).toBe(0)
+    expect(result.passed).toBe(true)
+  })
+
   test("evaluates retrieval chain from memory tool usage", () => {
     const runOutput = [
       '{"type":"step_start","sessionID":"ses_demo_retrieval"}',
