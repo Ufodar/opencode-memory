@@ -167,6 +167,14 @@ tool.execute.after
   - 启动 Bun 子进程
   - 做 health check
   - 暴露 HTTP client 给 plugin 入口
+- worker lifecycle 第一版治理已落地：
+  - 同 key worker 复用
+  - 不健康 worker 自动替换
+  - 已发出的 handle 通过代理层自动切到新 worker
+- run-mode summary fallback 已落地：
+  - `chat.message` 进入时先尝试 flush 上一个 request 的 summary
+  - 再记录新的 request anchor
+  - 用来补 `session.idle` 在一次性 CLI 宿主中的不稳定性
 
 ## 当前局部重写进度
 

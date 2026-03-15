@@ -134,6 +134,14 @@ docs/
   - server：`src/worker/server.ts`
   - client：`src/worker/client.ts`
   - entry：`src/worker/run-memory-worker.ts`
+- worker lifecycle 第一版治理已落地：
+  - 同一项目路径下复用同一个 worker 进程
+  - 旧 worker 不健康时自动替换
+  - 已发出的 handle 会通过代理对象自动切到新 worker
+- `chat.message` 已加入 run-mode summary flush fallback：
+  - 新用户消息进入时，先尝试 flush 上一个 request 的 summary
+  - 再写入新的 request anchor
+  - 用来补 OpenCode `session.idle` 在一次性 `opencode run` 场景下不稳定的问题
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
 - internal memory tool 已统一过滤：
   - `memory_search`

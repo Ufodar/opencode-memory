@@ -12,6 +12,10 @@ describe("basic runtime handlers", () => {
 
     const handler = createChatMessageHandler({
       worker: {
+        async handleSessionIdle(sessionID) {
+          calls.push(`idle:${sessionID}`)
+          return { status: "no-op" as const }
+        },
         captureRequestAnchorFromMessage(input) {
           calls.push(`request:${input.sessionID}:${input.messageID}`)
           return {
@@ -22,7 +26,7 @@ describe("basic runtime handlers", () => {
             createdAt: 1,
           } satisfies RequestAnchorRecord
         },
-      } as Pick<MemoryWorkerService, "captureRequestAnchorFromMessage">,
+      } as Pick<MemoryWorkerService, "handleSessionIdle" | "captureRequestAnchorFromMessage">,
     })
 
     await handler(
@@ -36,7 +40,7 @@ describe("basic runtime handlers", () => {
       },
     )
 
-    expect(calls).toEqual(["request:ses_demo:msg_1"])
+    expect(calls).toEqual(["idle:ses_demo", "request:ses_demo:msg_1"])
   })
 
   test("tool.execute.after delegates observation capture to the memory worker", async () => {

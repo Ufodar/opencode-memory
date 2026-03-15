@@ -36,7 +36,10 @@ const CONTROL_PROMPT = (workspace: string) =>
   `只读取这两个绝对路径，且不要改写路径：${path.join(workspace, "brief.txt")} 和 ${path.join(
     workspace,
     "checklist.md",
-  )}。先读取，再用一句话说明这两个文件各自是什么。不要调用任何 memory 工具，不要读取任何其他路径。`
+  )}。先读取，再必须调用 write 工具把一句话总结写入这个绝对路径：${path.join(
+    workspace,
+    "smoke-summary.txt",
+  )}。不要调用任何 memory 工具，不要读取任何其他路径。`
 
 const ROBUST_PROMPT = "读取 brief.txt 和 checklist.md，然后用一句话说明这两个文件各自是什么。不要调用任何 memory 工具。"
 
@@ -137,7 +140,6 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
   const parsedWrite = parseRunOutput(await readFile(run1Path, "utf8"))
   const sessionId = extractSessionId(parsedWrite)
   const writeChain = evaluateWriteChain(parsedWrite)
-  const sqliteCounts = readSqliteCounts(dbPath)
 
   let retrievalChain = undefined
 
@@ -223,6 +225,8 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
 
     retrievalChain = evaluateRetrievalChain(parseRunOutput(combinedRetrievalOutput))
   }
+
+  const sqliteCounts = readSqliteCounts(dbPath)
 
   const report = buildSmokeReport({
     mode,
