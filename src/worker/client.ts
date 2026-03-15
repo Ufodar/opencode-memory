@@ -124,6 +124,15 @@ export async function checkMemoryWorkerHealth(input: {
   fetchImpl?: FetchLike
   requestTimeoutMs?: number
 }): Promise<boolean> {
+  const payload = await getMemoryWorkerHealth(input)
+  return payload?.ok === true
+}
+
+export async function getMemoryWorkerHealth(input: {
+  baseUrl: string
+  fetchImpl?: FetchLike
+  requestTimeoutMs?: number
+}): Promise<WorkerHealthResponse | undefined> {
   const fetchImpl = input.fetchImpl ?? fetch
   const requestTimeoutMs = input.requestTimeoutMs ?? DEFAULT_WORKER_HEALTH_TIMEOUT_MS
 
@@ -134,13 +143,13 @@ export async function checkMemoryWorkerHealth(input: {
       "Memory worker health check",
     )
     if (!response.ok) {
-      return false
+      return undefined
     }
 
     const payload = (await response.json()) as WorkerHealthResponse
-    return payload.ok === true
+    return payload
   } catch {
-    return false
+    return undefined
   }
 }
 

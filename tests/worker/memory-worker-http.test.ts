@@ -6,6 +6,7 @@ import path from "node:path"
 import {
   checkMemoryWorkerHealth,
   createMemoryWorkerHttpClient,
+  getMemoryWorkerHealth,
   shutdownMemoryWorker,
 } from "../../src/worker/client.js"
 import { readWorkerRegistryRecord } from "../../src/worker/registry.js"
@@ -142,6 +143,27 @@ describe("memory worker http server", () => {
     })
 
     expect(healthy).toBe(false)
+  })
+
+  test("reports worker version from health endpoint", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-worker-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const databasePath = path.join(root, "memory.sqlite")
+    const server = await startMemoryWorkerServer({
+      port: 0,
+      projectPath: "/workspace/demo",
+      databasePath,
+    })
+    cleanupTasks.push(() => server.stop())
+
+    const payload = await getMemoryWorkerHealth({
+      baseUrl: server.baseUrl,
+    })
+
+    expect(payload?.ok).toBe(true)
+    expect(typeof payload?.version).toBe("string")
+    expect(payload?.version.length).toBeGreaterThan(0)
   })
 
   test("refreshes worker registry heartbeat and removes it on shutdown", async () => {

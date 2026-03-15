@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test"
 
-import { checkMemoryWorkerHealth, createMemoryWorkerHttpClient } from "../../src/worker/client.js"
+import {
+  checkMemoryWorkerHealth,
+  createMemoryWorkerHttpClient,
+  getMemoryWorkerHealth,
+} from "../../src/worker/client.js"
 
 describe("memory worker http client timeout", () => {
   test("aborts a hanging worker request after timeout", async () => {
@@ -43,5 +47,23 @@ describe("memory worker http client timeout", () => {
 
     expect(healthy).toBe(false)
     expect(aborted).toBe(true)
+  })
+
+  test("returns worker health payload including version", async () => {
+    const payload = await getMemoryWorkerHealth({
+      baseUrl: "http://127.0.0.1:50123",
+      fetchImpl: (async () =>
+        new Response(JSON.stringify({ ok: true, version: "0.1.0" }), {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+          },
+        })) as typeof fetch,
+    })
+
+    expect(payload).toMatchObject({
+      ok: true,
+      version: "0.1.0",
+    })
   })
 })

@@ -142,6 +142,7 @@ docs/
   - 恢复前会先扫描整个 worker 注册表，把死 PID 对应的旧记录清掉
   - worker 运行时会周期性刷新注册记录时间戳，优雅关闭时会主动删除自己的注册记录
   - 多个 plugin 进程几乎同时启动时，会先通过 spawn lock 协调，避免重复拉起同一个 worker
+  - recover 旧 worker 时会先做版本握手；如果 worker 版本和当前 plugin 不一致，会先关旧 worker 再起新 worker
   - 旧 worker 不健康时自动替换
   - 已发出的 handle 会通过代理对象自动切到新 worker
   - 关闭时会优先走 worker 自己的 `/shutdown`，失败后才回退到 PID kill

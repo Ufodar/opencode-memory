@@ -3,6 +3,7 @@ import { generateModelSummary } from "../services/ai/model-summary.js"
 import { log } from "../services/logger.js"
 import { createMemoryWorkerService } from "../services/memory-worker-service.js"
 import { SQLiteMemoryStore } from "../storage/sqlite/memory-store.js"
+import { getOpencodeMemoryVersion } from "../version.js"
 import {
   removeWorkerRegistryRecord,
   writeWorkerRegistryRecord,
@@ -82,7 +83,7 @@ export async function startMemoryWorkerServer(input: {
       const url = new URL(request.url)
 
       if (request.method === "GET" && url.pathname === "/health") {
-        return json({ ok: true })
+        return json({ ok: true, version: getOpencodeMemoryVersion() })
       }
 
       if (request.method === "POST" && url.pathname === "/shutdown") {

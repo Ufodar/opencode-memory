@@ -108,4 +108,5 @@ export type MemoryDetailsResponse = MemoryDetailRecord[]
 
 export interface WorkerHealthResponse {
   ok: true
+  version: string
 }

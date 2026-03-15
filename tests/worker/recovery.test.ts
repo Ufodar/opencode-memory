@@ -36,10 +36,16 @@ describe("managed memory worker recovery", () => {
         },
         {
           registryPath,
+          expectedVersion: "0.1.0",
           now: () => now,
-          async checkHealth() {
+          async getHealth() {
             checks += 1
             return checks >= 3
+              ? {
+                  ok: true,
+                  version: "0.1.0",
+                }
+              : undefined
           },
           async shutdown() {
             throw new Error("shutdown should not be called for recoverable worker")
@@ -83,9 +89,10 @@ describe("managed memory worker recovery", () => {
         },
         {
           registryPath,
+          expectedVersion: "0.1.0",
           now: () => 10_000,
-          async checkHealth() {
-            return false
+          async getHealth() {
+            return undefined
           },
           async shutdown() {},
           isPidAlive() {
@@ -96,6 +103,63 @@ describe("managed memory worker recovery", () => {
       )
 
       expect(worker).toBeUndefined()
+      expect(
+        readWorkerRegistryRecord({
+          registryPath,
+          projectPath,
+          databasePath,
+        }),
+      ).toBeUndefined()
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  test("removes recovered worker when version does not match current plugin version", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-recovery-"))
+
+    try {
+      const registryPath = path.join(root, "worker-registry.json")
+      const projectPath = "/workspace/demo"
+      const databasePath = "/tmp/demo.sqlite"
+
+      writeWorkerRegistryRecord({
+        registryPath,
+        projectPath,
+        databasePath,
+        port: 50123,
+        pid: 42,
+      })
+
+      let shutdowns = 0
+
+      const worker = await recoverManagedMemoryWorkerProcess(
+        {
+          projectPath,
+          databasePath,
+        },
+        {
+          registryPath,
+          expectedVersion: "0.2.0",
+          now: () => 10_000,
+          async getHealth() {
+            return {
+              ok: true,
+              version: "0.1.0",
+            }
+          },
+          async shutdown() {
+            shutdowns += 1
+          },
+          isPidAlive() {
+            return true
+          },
+          async sleep() {},
+        },
+      )
+
+      expect(worker).toBeUndefined()
+      expect(shutdowns).toBe(1)
       expect(
         readWorkerRegistryRecord({
           registryPath,

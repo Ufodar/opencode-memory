@@ -6,9 +6,11 @@ import { fileURLToPath } from "node:url"
 import { getDefaultWorkerRegistryPath } from "../config/paths.js"
 import { log } from "../services/logger.js"
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
+import { getOpencodeMemoryVersion } from "../version.js"
 import {
   checkMemoryWorkerHealth,
   createMemoryWorkerHttpClient,
+  getMemoryWorkerHealth,
   shutdownMemoryWorker,
 } from "./client.js"
 import {
@@ -169,8 +171,9 @@ async function startManagedMemoryWorkerProcess(input: {
       recover: () =>
         recoverManagedMemoryWorkerProcess(input, {
           registryPath,
-          checkHealth(baseUrl) {
-            return checkMemoryWorkerHealth({ baseUrl })
+          expectedVersion: getOpencodeMemoryVersion(),
+          getHealth(baseUrl) {
+            return getMemoryWorkerHealth({ baseUrl })
           },
           shutdown(baseUrl) {
             return shutdownMemoryWorker({ baseUrl, requestTimeoutMs: 1_000 })
@@ -335,7 +338,8 @@ async function spawnManagedMemoryWorkerProcess(
 
 interface RecoverManagedMemoryWorkerProcessDependencies {
   registryPath: string
-  checkHealth(baseUrl: string): Promise<boolean>
+  expectedVersion: string
+  getHealth(baseUrl: string): Promise<{ ok: true; version: string } | undefined>
   shutdown(baseUrl: string): Promise<void>
   isPidAlive(pid: number): boolean
   sleep(ms: number): Promise<void>
@@ -351,8 +355,9 @@ export async function recoverManagedMemoryWorkerProcess(input: {
   databasePath: string
 }, dependencies: RecoverManagedMemoryWorkerProcessDependencies = {
   registryPath: getDefaultWorkerRegistryPath(),
-  checkHealth(baseUrl) {
-    return checkMemoryWorkerHealth({ baseUrl })
+  expectedVersion: getOpencodeMemoryVersion(),
+  getHealth(baseUrl) {
+    return getMemoryWorkerHealth({ baseUrl })
   },
   shutdown(baseUrl) {
     return shutdownMemoryWorker({ baseUrl, requestTimeoutMs: 1_000 })
@@ -393,7 +398,20 @@ export async function recoverManagedMemoryWorkerProcess(input: {
   }
 
   const baseUrl = `http://127.0.0.1:${record.port}`
-  let healthy = await dependencies.checkHealth(baseUrl)
+  const initialHealth = await dependencies.getHealth(baseUrl)
+  const initialVersionMismatch =
+    initialHealth?.ok === true && initialHealth.version !== dependencies.expectedVersion
+  let healthy = initialHealth?.ok === true && !initialVersionMismatch
+
+  if (initialVersionMismatch) {
+    await dependencies.shutdown(baseUrl).catch(() => undefined)
+    removeWorkerRegistryRecord({
+      registryPath,
+      projectPath: input.projectPath,
+      databasePath: input.databasePath,
+    })
+    return undefined
+  }
 
   if (!healthy && dependencies.now() - record.updatedAt < RECOVERY_COORDINATION_WINDOW_MS) {
     const deadline = dependencies.now() + RECOVERY_COORDINATION_WINDOW_MS
@@ -404,7 +422,21 @@ export async function recoverManagedMemoryWorkerProcess(input: {
       }
 
       await dependencies.sleep(RECOVERY_POLL_INTERVAL_MS)
-      healthy = await dependencies.checkHealth(baseUrl)
+      const polledHealth = await dependencies.getHealth(baseUrl)
+      const polledVersionMismatch =
+        polledHealth?.ok === true && polledHealth.version !== dependencies.expectedVersion
+
+      if (polledVersionMismatch) {
+        await dependencies.shutdown(baseUrl).catch(() => undefined)
+        removeWorkerRegistryRecord({
+          registryPath,
+          projectPath: input.projectPath,
+          databasePath: input.databasePath,
+        })
+        return undefined
+      }
+
+      healthy = polledHealth?.ok === true
       if (healthy) {
         break
       }
