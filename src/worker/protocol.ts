@@ -4,6 +4,7 @@ import type {
   MemoryQueueProcessingJob,
   MemorySearchRecord,
   MemoryTimelineResult,
+  MemoryWorkerStatusSnapshot,
 } from "../memory/contracts.js"
 import type { ObservationRecord } from "../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../memory/request/types.js"
@@ -130,6 +131,7 @@ export interface QueueStatusResponse {
     processing: number
     failed: number
   }
+  workerStatus: MemoryWorkerStatusSnapshot | null
   processingJobs: MemoryQueueProcessingJob[]
   failedJobs: MemoryQueueFailedJob[]
 }
