@@ -170,6 +170,11 @@ docs/
   - 达到上限后会标成 `failed`
   - 不再继续堵住同一 session 后面的正常 job
   - 这一层继续向 `claude-mem` 的“poison message 不无限自旋”队列形态靠拢
+- pending queue 现在也已可见、可手动恢复：
+  - 新增 `memory_queue_status`
+  - 新增 `memory_queue_retry`
+  - 失败 job 不再只能静默留在 SQLite 里
+  - 这一层继续向 `claude-mem` 的“失败队列可见、可重试”恢复路径靠拢
 - plugin 到 worker 的 HTTP 请求已加入 timeout + abort：
   - 普通 worker 请求超时会主动中止
   - health check 超时会直接视为不健康

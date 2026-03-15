@@ -169,6 +169,32 @@ export class SQLiteMemoryStore
     return this.pendingJobs.resetProcessingToPending()
   }
 
+  getQueueStats() {
+    const pending = this.database.handle
+      .prepare(`SELECT COUNT(*) as count FROM pending_jobs WHERE status = 'pending'`)
+      .get() as { count: number }
+    const processing = this.database.handle
+      .prepare(`SELECT COUNT(*) as count FROM pending_jobs WHERE status = 'processing'`)
+      .get() as { count: number }
+    const failed = this.database.handle
+      .prepare(`SELECT COUNT(*) as count FROM pending_jobs WHERE status = 'failed'`)
+      .get() as { count: number }
+
+    return {
+      pending: pending.count,
+      processing: processing.count,
+      failed: failed.count,
+    }
+  }
+
+  listFailedJobs(limit: number) {
+    return this.pendingJobs.listFailedJobs(limit)
+  }
+
+  retryJob(id: number) {
+    return this.pendingJobs.retryJob(id)
+  }
+
   close() {
     this.database.close()
   }

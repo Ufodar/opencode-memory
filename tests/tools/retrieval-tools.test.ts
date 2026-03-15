@@ -5,7 +5,9 @@ import type {
   MemoryTimelineItem,
 } from "../../src/memory/contracts.js"
 import type { MemoryWorkerService } from "../../src/services/memory-worker-service.js"
+import { createMemoryQueueRetryTool } from "../../src/tools/memory-queue-retry.js"
 import { createMemorySearchTool } from "../../src/tools/memory-search.js"
+import { createMemoryQueueStatusTool } from "../../src/tools/memory-queue-status.js"
 import { createMemoryTimelineTool } from "../../src/tools/memory-timeline.js"
 
 describe("retrieval tools", () => {
@@ -113,6 +115,57 @@ describe("memory_details", () => {
 
     expect(calls).toEqual([["sum_1"]])
     expect(result.results[0].id).toBe("sum_1")
+  })
+})
+
+describe("memory queue tools", () => {
+  test("memory_queue_status delegates queue inspection to the memory worker", async () => {
+    const calls: number[] = []
+
+    const statusTool = createMemoryQueueStatusTool(
+      {
+        getQueueStatus(input) {
+          calls.push(input.limit)
+          return {
+            counts: { pending: 1, processing: 0, failed: 1 },
+            failedJobs: [
+              {
+                id: 7,
+                sessionID: "ses_demo",
+                kind: "request-anchor",
+                attemptCount: 3,
+                lastError: "persistent failure",
+                updatedAt: 123,
+              },
+            ],
+          }
+        },
+      } as Pick<MemoryWorkerService, "getQueueStatus">,
+    )
+
+    const result = JSON.parse(await statusTool.execute({ limit: 5 }, buildToolContext()))
+
+    expect(calls).toEqual([5])
+    expect(result.counts.failed).toBe(1)
+    expect(result.failedJobs[0].id).toBe(7)
+  })
+
+  test("memory_queue_retry delegates failed-job retry to the memory worker", async () => {
+    const calls: number[] = []
+
+    const retryTool = createMemoryQueueRetryTool(
+      {
+        retryQueueJob(jobID) {
+          calls.push(jobID)
+          return { retried: true, jobID }
+        },
+      } as Pick<MemoryWorkerService, "retryQueueJob">,
+    )
+
+    const result = JSON.parse(await retryTool.execute({ id: 7 }, buildToolContext()))
+
+    expect(calls).toEqual([7])
+    expect(result).toEqual({ success: true, retried: true, jobID: 7 })
   })
 })
 

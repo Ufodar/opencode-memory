@@ -79,6 +79,25 @@ export interface MemorySearchStore {
   }): MemorySearchRecord[]
 }
 
+export type MemoryQueueFailedJob = {
+  id: number
+  sessionID: string
+  kind: "request-anchor" | "observation" | "session-idle"
+  attemptCount: number
+  lastError: string | null
+  updatedAt: number
+}
+
+export interface MemoryQueueStore {
+  getQueueStats(): {
+    pending: number
+    processing: number
+    failed: number
+  }
+  listFailedJobs(limit: number): MemoryQueueFailedJob[]
+  retryJob(id: number): boolean
+}
+
 export interface MemoryDetailsStore {
   getMemoryDetails(ids: string[]): MemoryDetailRecord[]
 }

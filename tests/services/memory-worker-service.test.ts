@@ -268,6 +268,15 @@ describe("createMemoryWorkerService", () => {
         getMemoryTimeline() {
           return null
         },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
       },
       idleSummaryGuard: {
         async run(_sessionID, task) {
@@ -289,5 +298,84 @@ describe("createMemoryWorkerService", () => {
     ])
     expect(result.scope).toBe("project")
     expect(result.results[0]?.id).toBe("sum_project")
+  })
+
+  test("reads queue status and retries failed jobs through the worker service", async () => {
+    const calls: string[] = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords() {
+          return []
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline() {
+          return null
+        },
+        getQueueStats() {
+          calls.push("stats")
+          return { pending: 1, processing: 0, failed: 1 }
+        },
+        listFailedJobs(limit) {
+          calls.push(`failed:${limit}`)
+          return [
+            {
+              id: 7,
+              sessionID: "ses_demo",
+              kind: "request-anchor" as const,
+              attemptCount: 3,
+              lastError: "persistent failure",
+              updatedAt: 123,
+            },
+          ]
+        },
+        retryJob(id) {
+          calls.push(`retry:${id}`)
+          return true
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+    })
+
+    expect(worker.getQueueStatus({ limit: 5 })).toEqual({
+      counts: { pending: 1, processing: 0, failed: 1 },
+      failedJobs: [
+        {
+          id: 7,
+          sessionID: "ses_demo",
+          kind: "request-anchor",
+          attemptCount: 3,
+          lastError: "persistent failure",
+          updatedAt: 123,
+        },
+      ],
+    })
+
+    expect(worker.retryQueueJob(7)).toEqual({ retried: true, jobID: 7 })
+    expect(calls).toEqual(["stats", "failed:5", "retry:7"])
   })
 })

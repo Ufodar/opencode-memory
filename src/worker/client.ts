@@ -12,6 +12,10 @@ import type {
   IdleSummaryResponse,
   MemoryDetailsRequest,
   MemoryDetailsResponse,
+  QueueRetryRequest,
+  QueueRetryResponse,
+  QueueStatusRequest,
+  QueueStatusResponse,
   SearchMemoryRequest,
   SearchMemoryResponse,
   SelectInjectionRequest,
@@ -114,6 +118,24 @@ export function createMemoryWorkerHttpClient(input: {
         fetchImpl,
         `${baseUrl}/details`,
         { ids },
+        requestTimeoutMs,
+      )
+    },
+
+    getQueueStatus(payload) {
+      return post<QueueStatusRequest, QueueStatusResponse>(
+        fetchImpl,
+        `${baseUrl}/queue/status`,
+        payload,
+        requestTimeoutMs,
+      )
+    },
+
+    retryQueueJob(jobID) {
+      return post<QueueRetryRequest, QueueRetryResponse>(
+        fetchImpl,
+        `${baseUrl}/queue/retry`,
+        { jobID },
         requestTimeoutMs,
       )
     },

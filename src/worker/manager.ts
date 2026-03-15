@@ -537,6 +537,14 @@ function createProxyWorker(
     getMemoryDetails(ids) {
       return callWorker(entry, dependencies, (worker) => worker.getMemoryDetails(ids))
     },
+
+    getQueueStatus(payload) {
+      return callWorker(entry, dependencies, (worker) => worker.getQueueStatus(payload))
+    },
+
+    retryQueueJob(jobID) {
+      return callWorker(entry, dependencies, (worker) => worker.retryQueueJob(jobID))
+    },
   }
 }
 

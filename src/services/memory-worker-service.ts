@@ -1,6 +1,8 @@
 import type {
   MemoryDetailRecord,
   MemoryDetailsStore,
+  MemoryQueueFailedJob,
+  MemoryQueueStore,
   MemoryIdleSummaryStore,
   MemoryInjectionStore,
   MemorySearchRecord,
@@ -35,6 +37,7 @@ type MemoryCaptureStore = {
 type MemoryWorkerStore = MemoryCaptureStore &
   MemoryIdleSummaryStore &
   MemoryInjectionStore &
+  MemoryQueueStore &
   MemorySearchStore &
   MemoryDetailsStore &
   MemoryTimelineStore
@@ -110,6 +113,20 @@ export interface MemoryWorkerService {
     timeline: MemoryTimelineResult
   } | null>
   getMemoryDetails(ids: string[]): Awaitable<MemoryDetailRecord[]>
+  getQueueStatus(input: {
+    limit: number
+  }): Awaitable<{
+    counts: {
+      pending: number
+      processing: number
+      failed: number
+    }
+    failedJobs: MemoryQueueFailedJob[]
+  }>
+  retryQueueJob(jobID: number): Awaitable<{
+    retried: boolean
+    jobID: number
+  }>
 }
 
 export function createMemoryWorkerService(input: {
@@ -321,6 +338,20 @@ export function createMemoryWorkerService(input: {
 
     getMemoryDetails(ids) {
       return input.store.getMemoryDetails(ids)
+    },
+
+    getQueueStatus(queueInput) {
+      return {
+        counts: input.store.getQueueStats(),
+        failedJobs: input.store.listFailedJobs(queueInput.limit),
+      }
+    },
+
+    retryQueueJob(jobID) {
+      return {
+        retried: input.store.retryJob(jobID),
+        jobID,
+      }
     },
   }
 }

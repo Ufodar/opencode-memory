@@ -23,6 +23,10 @@ import type {
   IdleSummaryResponse,
   MemoryDetailsRequest,
   MemoryDetailsResponse,
+  QueueRetryRequest,
+  QueueRetryResponse,
+  QueueStatusRequest,
+  QueueStatusResponse,
   SearchMemoryRequest,
   SearchMemoryResponse,
   SelectInjectionRequest,
@@ -73,6 +77,12 @@ export async function startMemoryWorkerServer(input: {
       },
       resetProcessingToPending() {
         return store.resetProcessingPendingJobs()
+      },
+      listFailedJobs(limit) {
+        return store.listFailedJobs(limit)
+      },
+      retryJob(id) {
+        return store.retryJob(id)
       },
     },
     scheduler: sessionJobs,
@@ -200,6 +210,14 @@ export async function startMemoryWorkerServer(input: {
                 (await readJson<MemoryDetailsRequest>(request)).ids,
               ) satisfies MemoryDetailsResponse,
             )
+          case "/queue/status": {
+            const payload = await readJson<QueueStatusRequest>(request)
+            return json(await worker.getQueueStatus(payload) satisfies QueueStatusResponse)
+          }
+          case "/queue/retry": {
+            const payload = await readJson<QueueRetryRequest>(request)
+            return json(await worker.retryQueueJob(payload.jobID) satisfies QueueRetryResponse)
+          }
           default:
             return json({ error: "Not found" }, { status: 404 })
         }

@@ -1,4 +1,9 @@
-import type { MemoryDetailRecord, MemorySearchRecord, MemoryTimelineResult } from "../memory/contracts.js"
+import type {
+  MemoryDetailRecord,
+  MemoryQueueFailedJob,
+  MemorySearchRecord,
+  MemoryTimelineResult,
+} from "../memory/contracts.js"
 import type { ObservationRecord } from "../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../memory/request/types.js"
 import type { SummaryRecord } from "../memory/summary/types.js"
@@ -111,6 +116,28 @@ export interface MemoryDetailsRequest {
 }
 
 export type MemoryDetailsResponse = MemoryDetailRecord[]
+
+export interface QueueStatusRequest {
+  limit: number
+}
+
+export interface QueueStatusResponse {
+  counts: {
+    pending: number
+    processing: number
+    failed: number
+  }
+  failedJobs: MemoryQueueFailedJob[]
+}
+
+export interface QueueRetryRequest {
+  jobID: number
+}
+
+export interface QueueRetryResponse {
+  retried: boolean
+  jobID: number
+}
 
 export interface WorkerHealthResponse {
   ok: true

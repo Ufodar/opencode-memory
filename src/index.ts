@@ -8,6 +8,8 @@ import { createSystemTransformHandler } from "./runtime/handlers/system-transfor
 import { createToolExecuteAfterHandler } from "./runtime/handlers/tool-execute-after.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
 import { createMemoryDetailsTool } from "./tools/memory-details.js"
+import { createMemoryQueueRetryTool } from "./tools/memory-queue-retry.js"
+import { createMemoryQueueStatusTool } from "./tools/memory-queue-status.js"
 import { createMemoryTimelineTool } from "./tools/memory-timeline.js"
 import { startManagedMemoryWorker } from "./worker/manager.js"
 
@@ -54,6 +56,8 @@ export const OpenCodeMemoryPlugin: Plugin = async ({ directory }) => {
       memory_search: createMemorySearchTool(worker),
       memory_timeline: createMemoryTimelineTool(worker),
       memory_details: createMemoryDetailsTool(worker),
+      memory_queue_status: createMemoryQueueStatusTool(worker),
+      memory_queue_retry: createMemoryQueueRetryTool(worker),
     },
   }
 }

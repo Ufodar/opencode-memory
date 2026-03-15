@@ -7,6 +7,7 @@ import type {
   PendingJobStatus,
   PendingJobStore,
 } from "../../worker/pending-jobs.js"
+import type { MemoryQueueFailedJob } from "../../memory/contracts.js"
 
 type PendingJobRow = {
   id: number
@@ -140,6 +141,48 @@ export class PendingJobRepository implements PendingJobStore {
 
   private getMaxAttempts() {
     return this.options.maxAttempts ?? 3
+  }
+
+  listFailedJobs(limit: number): MemoryQueueFailedJob[] {
+    const rows = this.db
+      .prepare(`
+        SELECT id, session_id, kind, attempt_count, last_error, updated_at
+        FROM pending_jobs
+        WHERE status = 'failed'
+        ORDER BY updated_at DESC, id DESC
+        LIMIT ?
+      `)
+      .all(limit) as Array<{
+      id: number
+      session_id: string
+      kind: PendingJobKind
+      attempt_count: number
+      last_error: string | null
+      updated_at: number
+    }>
+
+    return rows.map((row) => ({
+      id: row.id,
+      sessionID: row.session_id,
+      kind: row.kind,
+      attemptCount: row.attempt_count,
+      lastError: row.last_error,
+      updatedAt: row.updated_at,
+    }))
+  }
+
+  retryJob(id: number): boolean {
+    const result = this.db
+      .prepare(`
+        UPDATE pending_jobs
+        SET status = 'pending',
+            updated_at = ?,
+            last_error = NULL
+        WHERE id = ? AND status = 'failed'
+      `)
+      .run(Date.now(), id)
+
+    return result.changes > 0
   }
 }
 

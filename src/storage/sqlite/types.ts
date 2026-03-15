@@ -43,6 +43,8 @@ export const INTERNAL_CONTINUITY_TOOLS = [
   "memory_search",
   "memory_timeline",
   "memory_details",
+  "memory_queue_status",
+  "memory_queue_retry",
 ] as const
 
 export const INTERNAL_TOOL_SQL_LIST = INTERNAL_CONTINUITY_TOOLS.map((tool) => `'${tool}'`).join(", ")

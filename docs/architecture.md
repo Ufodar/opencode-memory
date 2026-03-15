@@ -208,6 +208,10 @@ tool.execute.after
     - 同一个坏 job 不会无限次在 `pending -> processing` 之间自旋
     - 达到上限后会标成 `failed`
     - worker 会继续处理同一 session 后面的正常 job
+  - failed queue 可见与可恢复：
+    - worker 现在可返回 queue counts 与 failed job 列表
+    - failed job 可手动重试回 `pending`
+    - 不再只能靠直接查 SQLite 判断失败队列状态
   - session 级 job 串行：
     - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler
     - 避免同一会话内写入、summary、回查依赖 HTTP 到达顺序碰运气
@@ -269,6 +273,7 @@ tool.execute.after
   - 更明确的启动/关闭策略
 - 继续补 pending queue 的失败状态、重试上限与队列可观测性
 - 继续补 failed queue 的查询、人工重试和恢复入口
+- 继续补 stuck processing 的自愈，而不是只在 worker 重启时恢复
 
 ## 真实宿主验证补充
 

@@ -1,3 +1,4 @@
+import type { MemoryQueueFailedJob } from "../memory/contracts.js"
 import type {
   CaptureObservationRequest,
   CaptureRequestAnchorRequest,
@@ -50,4 +51,6 @@ export interface PendingJobStore {
   recordFailure(id: number, error: string): "pending" | "failed"
   listSessionIDsWithPendingJobs(): string[]
   resetProcessingToPending(): number
+  listFailedJobs(limit: number): MemoryQueueFailedJob[]
+  retryJob(id: number): boolean
 }

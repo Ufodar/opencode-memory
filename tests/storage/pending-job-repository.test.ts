@@ -134,4 +134,44 @@ describe("PendingJobRepository", () => {
       last_error: "second failure",
     })
   })
+
+  test("lists failed jobs and retries them back to pending", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-pending-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const database = new SQLiteMemoryDatabase(path.join(root, "memory.sqlite"))
+    cleanupTasks.push(async () => database.close())
+
+    const repository = new PendingJobRepository(database.handle, { maxAttempts: 1 })
+
+    repository.enqueue({
+      sessionID: "ses_demo",
+      kind: "request-anchor",
+      payload: { sessionID: "ses_demo", messageID: "msg_1", text: "梳理第3章资格条件" },
+    })
+
+    const claimed = repository.claimNext("ses_demo")
+    expect(claimed?.attemptCount).toBe(1)
+    expect(repository.recordFailure(claimed!.id, "persistent failure")).toBe("failed")
+
+    const failedJobs = repository.listFailedJobs(10)
+    expect(failedJobs).toHaveLength(1)
+    expect(failedJobs[0]).toEqual(
+      expect.objectContaining({
+        id: claimed!.id,
+        sessionID: "ses_demo",
+        kind: "request-anchor",
+        attemptCount: 1,
+        lastError: "persistent failure",
+      }),
+    )
+
+    expect(repository.retryJob(claimed!.id)).toBe(true)
+    expect(repository.listFailedJobs(10)).toEqual([])
+
+    const retried = repository.claimNext("ses_demo")
+    expect(retried?.id).toBe(claimed!.id)
+    expect(retried?.status).toBe("processing")
+    expect(retried?.lastError).toBeNull()
+  })
 })
