@@ -24,7 +24,7 @@ export function createToolExecuteAfterHandler(input: ToolExecuteAfterHandlerDepe
       metadata: Record<string, unknown>
     },
   ) => {
-    const observation = input.worker.captureObservationFromToolCall(toolInput, output)
+    const observation = await input.worker.captureObservationFromToolCall(toolInput, output)
 
     if (!observation) {
       return

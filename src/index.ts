@@ -1,28 +1,22 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { getDefaultDatabasePath } from "./config/paths.js"
 import { DEFAULTS } from "./config/defaults.js"
-import { createSessionReentryGuard } from "./runtime/hooks/idle-summary-guard.js"
 import { createChatMessageHandler } from "./runtime/handlers/chat-message-event.js"
 import { createSessionCompactingHandler } from "./runtime/handlers/session-compacting.js"
 import { createSessionIdleEventHandler } from "./runtime/handlers/session-idle-event.js"
 import { createSystemTransformHandler } from "./runtime/handlers/system-transform.js"
 import { createToolExecuteAfterHandler } from "./runtime/handlers/tool-execute-after.js"
-import { createMemoryWorkerService } from "./services/memory-worker-service.js"
-import { generateModelSummary } from "./services/ai/model-summary.js"
-import { SQLiteMemoryStore } from "./storage/sqlite/memory-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
 import { createMemoryDetailsTool } from "./tools/memory-details.js"
 import { createMemoryTimelineTool } from "./tools/memory-timeline.js"
+import { startManagedMemoryWorker } from "./worker/manager.js"
 
 export const OpenCodeMemoryPlugin: Plugin = async ({ directory }) => {
-  const store = new SQLiteMemoryStore(getDefaultDatabasePath())
-  const idleSummaryGuard = createSessionReentryGuard()
-  const worker = createMemoryWorkerService({
+  const runtime = await startManagedMemoryWorker({
     projectPath: directory,
-    store,
-    idleSummaryGuard,
-    generateModelSummary,
+    databasePath: getDefaultDatabasePath(),
   })
+  const worker = runtime.worker
   const handleChatMessage = createChatMessageHandler({
     worker,
   })

@@ -12,7 +12,7 @@ export function createMemorySearchTool(worker: Pick<MemoryWorkerService, "search
     },
     async execute(args, toolCtx) {
       const limit = args.limit ?? 10
-      const result = worker.searchMemoryRecords({
+      const result = await worker.searchMemoryRecords({
         sessionID: toolCtx.sessionID,
         query: args.query,
         limit,

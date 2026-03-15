@@ -17,7 +17,7 @@ export function createChatMessageHandler(input: ChatMessageHandlerDependencies) 
       .map((part) => part.text)
       .join("\n")
 
-    input.worker.captureRequestAnchorFromMessage({
+    await input.worker.captureRequestAnchorFromMessage({
       sessionID: messageInput.sessionID,
       messageID: output.message.id,
       text,

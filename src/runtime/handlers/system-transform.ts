@@ -18,7 +18,7 @@ export function createSystemTransformHandler(input: SystemTransformHandlerDepend
     transformInput: { sessionID?: string },
     output: { system: string[] },
   ) => {
-    const selected = input.worker.selectInjectionRecords({
+    const selected = await input.worker.selectInjectionRecords({
       sessionID: transformInput.sessionID,
       maxSummaries: input.maxSummaries,
       maxObservations: input.maxObservations,

@@ -26,7 +26,7 @@ export function createMemoryTimelineTool(worker: Pick<MemoryWorkerService, "getM
       const depthBefore = args.depth_before ?? DEFAULT_DEPTH_BEFORE
       const depthAfter = args.depth_after ?? DEFAULT_DEPTH_AFTER
 
-      const result = worker.getMemoryTimeline({
+      const result = await worker.getMemoryTimeline({
         sessionID: toolCtx.sessionID,
         anchorID: args.anchor,
         query: args.query,

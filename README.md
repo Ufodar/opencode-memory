@@ -23,7 +23,6 @@ OpenCode 的通用工作记忆插件底座。
 
 - 标书或其他业务特化记忆
 - 团队知识库
-- 重型外部 worker
 - 复杂 timeline / reranking
 
 ## 设计原则
@@ -117,20 +116,23 @@ docs/
   - `tool-execute-after`
   - `system-transform`
   - `session-compacting`
-- 已新增 in-process `MemoryWorkerService`
-  - 统一承接：
+- 已新增独立 `memory worker` 运行时：
+  - plugin 入口只负责启动和连接 worker
+  - worker 进程内部统一承接：
     - request anchor capture
     - observation capture
     - idle summary
     - injection selection
     - retrieval fallback
-  - 当前 plugin 入口开始以这个 service 作为记忆主控，而不是让 handler / tool 各自直接碰 store
-- plugin 入口已进一步收紧为：
-  - 创建 store
-  - 创建 reentry guard
-  - 创建 memory worker service
-  - 组装 handlers
-  - 暴露 tools
+  - 当前 plugin 主链已经变成：
+    - 启动 managed worker
+    - 组装 handlers
+    - 暴露 tools
+- worker 当前以本地 Bun 子进程启动：
+  - manager：`src/worker/manager.ts`
+  - server：`src/worker/server.ts`
+  - client：`src/worker/client.ts`
+  - entry：`src/worker/run-memory-worker.ts`
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
 - internal memory tool 已统一过滤：
   - `memory_search`
@@ -154,8 +156,8 @@ docs/
 1. 继续细化 phase-aware checkpoint，而不是停在当前启发式 phase
 2. 继续增强 ranking，而不是停在当前启发式分数
 3. 继续增强 compaction 记忆保留，而不是只影响正常对话
-4. 再评估是否需要轻量外部 worker
-5. 如进入 worker 化，优先保持当前 deterministic 主链不变，只迁移 runtime 边界
+4. 继续收紧 worker 内部编排与 context builder 边界
+5. 再评估是否需要更重的 worker 生命周期治理，而不是继续在 plugin 主链里堆逻辑
 
 ## 开发与真实测试说明
 
@@ -164,6 +166,7 @@ docs/
 当前已用本地 OpenCode 宿主完成 smoke test，验证过：
 
 - plugin 能被真实宿主加载
+- plugin 能拉起独立 memory worker 进程
 - `memory_search`
 - `memory_timeline`
 - `memory_details`

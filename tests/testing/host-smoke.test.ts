@@ -34,14 +34,13 @@ describe("host smoke helpers", () => {
       '{"type":"tool_use","sessionID":"ses_demo_write","part":{"tool":"read","state":{"status":"completed"}}}',
       '[opencode-memory] captured observation {"id":"obs_2","tool":"read"}',
       '{"type":"tool_use","sessionID":"ses_demo_write","part":{"tool":"read","state":{"status":"completed"}}}',
-      '[opencode-memory] captured summary {"id":"sum_1","sessionID":"ses_demo_write"}',
     ].join("\n")
 
     const result = evaluateWriteChain(parseRunOutput(runOutput))
 
     expect(result.readCalls).toBe(2)
     expect(result.observationCaptures).toBe(2)
-    expect(result.summaryCaptures).toBe(1)
+    expect(result.summaryLogSignals).toBe(0)
     expect(result.passed).toBe(true)
   })
 
@@ -125,7 +124,7 @@ describe("host smoke helpers", () => {
       writeChain: {
         readCalls: 2,
         observationCaptures: 2,
-        summaryCaptures: 1,
+        summaryLogSignals: 0,
         passed: true,
       },
       retrievalChain: {
@@ -154,7 +153,7 @@ describe("host smoke helpers", () => {
       writeChain: {
         readCalls: 2,
         observationCaptures: 2,
-        summaryCaptures: 1,
+        summaryLogSignals: 0,
         passed: true,
       },
       retrievalChain: {

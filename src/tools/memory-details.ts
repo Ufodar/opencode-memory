@@ -8,7 +8,7 @@ export function createMemoryDetailsTool(worker: Pick<MemoryWorkerService, "getMe
       ids: tool.schema.array(tool.schema.string()).min(1),
     },
     async execute(args) {
-      const results = worker.getMemoryDetails(args.ids)
+      const results = await worker.getMemoryDetails(args.ids)
 
       return JSON.stringify({
         success: true,

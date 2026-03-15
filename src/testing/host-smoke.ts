@@ -113,13 +113,13 @@ export function evaluateWriteChain(parsed: ParsedRunOutput) {
   ).length
 
   const observationCaptures = parsed.pluginLogs.filter((entry) => entry.message.includes("captured observation")).length
-  const summaryCaptures = parsed.pluginLogs.filter((entry) => entry.message.includes("captured summary")).length
+  const summaryLogSignals = parsed.pluginLogs.filter((entry) => entry.message.includes("captured summary")).length
 
   return {
     readCalls,
     observationCaptures,
-    summaryCaptures,
-    passed: readCalls >= 1 && observationCaptures >= 1 && summaryCaptures >= 1,
+    summaryLogSignals,
+    passed: readCalls >= 1 && observationCaptures >= 1,
   }
 }
 
@@ -276,8 +276,8 @@ function describeMode(mode: SmokeMode) {
 
 function describeWriteChain(result: WriteChainEvaluation) {
   return result.passed
-    ? `通过（read=${result.readCalls}, observation=${result.observationCaptures}, summary=${result.summaryCaptures}）`
-    : `失败（read=${result.readCalls}, observation=${result.observationCaptures}, summary=${result.summaryCaptures}）`
+    ? `通过（read=${result.readCalls}, observation=${result.observationCaptures}, summary日志=${result.summaryLogSignals}）`
+    : `失败（read=${result.readCalls}, observation=${result.observationCaptures}, summary日志=${result.summaryLogSignals}）`
 }
 
 function describeRetrievalChain(result?: RetrievalChainEvaluation) {

@@ -42,13 +42,11 @@
 
 ### 压缩器
 
-- 第一版不做外部 worker
-- 当前仍是 `plugin-internal pipeline`，不是 `thin hook -> worker`
-- 但当前已经新增了 in-process `MemoryWorkerService`
-  - 作用不是起独立进程
-  - 而是先在结构上提供一个记忆主控中心
-  - 让 handler / tool 先对齐到“薄入口 -> 中心服务 -> store/pipeline”的形态
-- 先在插件内部完成：
+- 当前已经进入独立 worker 形态：
+  - OpenCode plugin 入口只负责连接 worker
+  - 真实编排、存储与检索都在 worker 进程内完成
+  - 当前形态已经从 `plugin-internal pipeline` 变成更接近 `thin plugin -> worker`
+- worker 内部当前负责：
   - observation capture
   - request anchor
   - summary 聚合
@@ -146,8 +144,7 @@ tool.execute.after
 ## 当前刻意不做的事
 
 - 不做业务特化记忆 schema
-- 不做外部 worker
-- 不做 timeline
+- 不做更复杂的 timeline 编排或图形化视图
 - 不做复杂 reranking
 - 不做团队知识库
 - 不做 model-assisted phase classification
@@ -163,6 +160,11 @@ tool.execute.after
 - memory internal tools 不会再次被 capture / retrieval / injection 吞回去
 - store 初始化时会清洗 legacy internal-tool observation 与 raw `read` payload 噪声
 - compaction 记忆保留已独立建模，不再只依赖正常对话时的 system injection
+- worker 启动现在有独立 manager：
+  - 分配本地端口
+  - 启动 Bun 子进程
+  - 做 health check
+  - 暴露 HTTP client 给 plugin 入口
 
 ## 当前局部重写进度
 
@@ -191,29 +193,32 @@ tool.execute.after
   - `tool-execute-after`
   - `system-transform`
   - `session-compacting`
-- `index.ts` 当前已进一步收紧为 composition root：
-  - 创建 store
-  - 创建 guard
-  - 创建 `MemoryWorkerService`
+- `index.ts` 当前已进一步收紧为 plugin composition root：
+  - 启动 managed worker
   - 组装 handlers
   - 暴露 tools
 - 当前最新的对齐点：
   - handler 已不再直接碰 store / pipeline
   - retrieval tool 也不再直接碰 store
-  - 两者都先经过 `MemoryWorkerService`
-  - 这一步对齐的是 `claude-mem` 的 worker 角色，而不是它的独立进程形态
+  - 两者都先经过 worker HTTP client
+  - worker 进程内部再统一进入 `MemoryWorkerService`
+  - 这一步已经不仅是对齐 `claude-mem` 的 worker 角色，也开始对齐它的 worker 运行时边界
 
 仍未完成的下一阶段：
 
-- 再决定是否需要把 `MemoryWorkerService` 外移成轻量独立 worker
-- 再决定是否要把 context builder 进一步收进 service 内部
-- 再考虑是否把 `index.ts` 对 `SQLiteMemoryStore` 的创建继续压到更薄的 composition 边界
+- 继续把 context builder / summary orchestration 更彻底地收进 worker 内核
+- 再决定是否需要更完整的 worker 生命周期治理：
+  - 持久 worker 复用
+  - 崩溃恢复
+  - 更明确的启动/关闭策略
+- 再考虑是否需要队列化或批处理，而不是让 plugin 入口直接逐请求等待
 
 ## 真实宿主验证补充
 
 当前已经用本地 OpenCode 宿主完成 smoke test，确认：
 
 - plugin 能被真实宿主加载
+- plugin 能在真实宿主下拉起独立 memory worker 进程
 - `memory_search` / `memory_timeline` / `memory_details` 会进入真实 tool surface
 - `read` observation 会真实写入 SQLite
 - `memory_timeline` 能在真实宿主返回最小时间上下文

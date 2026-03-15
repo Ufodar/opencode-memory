@@ -40,13 +40,14 @@ type IdleSummaryGuard = {
 
 type InjectionSelection = ReturnType<typeof defaultSelectInjectionRecords>
 type IdleSummaryResult = Awaited<ReturnType<typeof defaultRunIdleSummaryPipeline>> | { status: "busy" }
+export type Awaitable<T> = T | Promise<T>
 
 export interface MemoryWorkerService {
   captureRequestAnchorFromMessage(input: {
     sessionID: string
     messageID?: string
     text: string
-  }): RequestAnchorRecord | null
+  }): Awaitable<RequestAnchorRecord | null>
   captureObservationFromToolCall(
     toolInput: {
       tool: string
@@ -59,13 +60,13 @@ export interface MemoryWorkerService {
       output: string
       metadata: Record<string, unknown>
     },
-  ): ObservationRecord | null
-  handleSessionIdle(sessionID: string): Promise<IdleSummaryResult>
+  ): Awaitable<ObservationRecord | null>
+  handleSessionIdle(sessionID: string): Awaitable<IdleSummaryResult>
   selectInjectionRecords(input: {
     sessionID?: string
     maxSummaries: number
     maxObservations: number
-  }): InjectionSelection
+  }): Awaitable<InjectionSelection>
   searchMemoryRecords(input: {
     sessionID?: string
     query: string
@@ -74,7 +75,10 @@ export interface MemoryWorkerService {
   }): {
     scope: "session" | "project"
     results: MemorySearchRecord[]
-  }
+  } | Promise<{
+    scope: "session" | "project"
+    results: MemorySearchRecord[]
+  }>
   getMemoryTimeline(input: {
     sessionID?: string
     anchorID?: string
@@ -85,8 +89,11 @@ export interface MemoryWorkerService {
   }): {
     scope: "session" | "project"
     timeline: MemoryTimelineResult
-  } | null
-  getMemoryDetails(ids: string[]): MemoryDetailRecord[]
+  } | null | Promise<{
+    scope: "session" | "project"
+    timeline: MemoryTimelineResult
+  } | null>
+  getMemoryDetails(ids: string[]): Awaitable<MemoryDetailRecord[]>
 }
 
 export function createMemoryWorkerService(input: {

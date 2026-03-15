@@ -18,7 +18,7 @@ export function createSessionCompactingHandler(input: SessionCompactingHandlerDe
     compactingInput: { sessionID?: string },
     output: { context: string[] },
   ) => {
-    const selected = input.worker.selectInjectionRecords({
+    const selected = await input.worker.selectInjectionRecords({
       sessionID: compactingInput.sessionID,
       maxSummaries: input.maxSummaries,
       maxObservations: input.maxObservations,
