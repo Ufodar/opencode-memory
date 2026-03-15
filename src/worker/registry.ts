@@ -27,6 +27,11 @@ export function readWorkerRegistryRecord(input: {
   return registry.records[buildWorkerKey(input)]
 }
 
+export function listWorkerRegistryRecords(registryPath: string): MemoryWorkerRegistryRecord[] {
+  const registry = readWorkerRegistryFile(registryPath)
+  return Object.values(registry.records)
+}
+
 export function writeWorkerRegistryRecord(input: {
   registryPath: string
   projectPath: string
@@ -62,6 +67,20 @@ export function removeWorkerRegistryRecord(input: {
   }
 
   delete registry.records[key]
+  writeWorkerRegistryFile(input.registryPath, registry)
+}
+
+export function removeWorkerRegistryRecordByKey(input: {
+  registryPath: string
+  key: string
+}) {
+  const registry = readWorkerRegistryFile(input.registryPath)
+
+  if (!(input.key in registry.records)) {
+    return
+  }
+
+  delete registry.records[input.key]
   writeWorkerRegistryFile(input.registryPath, registry)
 }
 

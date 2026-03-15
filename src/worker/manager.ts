@@ -13,8 +13,10 @@ import {
 } from "./client.js"
 import {
   buildWorkerKey,
+  listWorkerRegistryRecords,
   readWorkerRegistryRecord,
   removeWorkerRegistryRecord,
+  removeWorkerRegistryRecordByKey,
   writeWorkerRegistryRecord,
 } from "./registry.js"
 
@@ -116,6 +118,35 @@ export async function startManagedMemoryWorker(input: {
   return defaultManager.start(input)
 }
 
+export async function pruneWorkerRegistryRecords(
+  registryPath: string,
+  dependencies: PruneWorkerRegistryRecordsDependencies = {
+    isPidAlive(pid) {
+      try {
+        process.kill(pid, 0)
+        return true
+      } catch {
+        return false
+      }
+    },
+  },
+) {
+  const records = listWorkerRegistryRecords(registryPath)
+  let removed = 0
+
+  for (const record of records) {
+    if (!dependencies.isPidAlive(record.pid)) {
+      removeWorkerRegistryRecordByKey({
+        registryPath,
+        key: record.key,
+      })
+      removed += 1
+    }
+  }
+
+  return removed
+}
+
 async function startManagedMemoryWorkerProcess(input: {
   projectPath: string
   databasePath: string
@@ -191,6 +222,10 @@ interface RecoverManagedMemoryWorkerProcessDependencies {
   now(): number
 }
 
+interface PruneWorkerRegistryRecordsDependencies {
+  isPidAlive(pid: number): boolean
+}
+
 export async function recoverManagedMemoryWorkerProcess(input: {
   projectPath: string
   databasePath: string
@@ -214,6 +249,10 @@ export async function recoverManagedMemoryWorkerProcess(input: {
   now: () => Date.now(),
 }): Promise<ManagedMemoryWorkerProcess | undefined> {
   const registryPath = dependencies.registryPath
+  await pruneWorkerRegistryRecords(registryPath, {
+    isPidAlive: dependencies.isPidAlive,
+  })
+
   const record = readWorkerRegistryRecord({
     registryPath,
     projectPath: input.projectPath,

@@ -139,6 +139,7 @@ docs/
   - 跨多次 `opencode run` 会先尝试从本地注册文件恢复已有 worker
   - 对最近刚启动但暂时还没 health 的 worker，会先等待短窗口，不会立刻判死
   - PID 已死的 stale 注册记录会在恢复阶段直接清掉
+  - 恢复前会先扫描整个 worker 注册表，把死 PID 对应的旧记录清掉
   - 旧 worker 不健康时自动替换
   - 已发出的 handle 会通过代理对象自动切到新 worker
   - 关闭时会优先走 worker 自己的 `/shutdown`，失败后才回退到 PID kill
