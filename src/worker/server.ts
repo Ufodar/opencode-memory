@@ -3,6 +3,10 @@ import { generateModelSummary } from "../services/ai/model-summary.js"
 import { log } from "../services/logger.js"
 import { createMemoryWorkerService } from "../services/memory-worker-service.js"
 import { SQLiteMemoryStore } from "../storage/sqlite/memory-store.js"
+import {
+  removeWorkerRegistryRecord,
+  writeWorkerRegistryRecord,
+} from "./registry.js"
 import { createSessionJobScheduler } from "./session-job-scheduler.js"
 import type {
   BuildCompactionContextRequest,
@@ -35,6 +39,8 @@ export async function startMemoryWorkerServer(input: {
   port: number
   projectPath: string
   databasePath: string
+  registryPath?: string
+  heartbeatIntervalMs?: number
 }): Promise<MemoryWorkerServerHandle> {
   const store = new SQLiteMemoryStore(input.databasePath)
   const idleSummaryGuard = createSessionReentryGuard()
@@ -46,6 +52,7 @@ export async function startMemoryWorkerServer(input: {
     generateModelSummary,
   })
   let stopped = false
+  let heartbeatTimer: ReturnType<typeof setInterval> | undefined
 
   const stopServer = async () => {
     if (stopped) {
@@ -53,6 +60,17 @@ export async function startMemoryWorkerServer(input: {
     }
 
     stopped = true
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer)
+      heartbeatTimer = undefined
+    }
+    if (input.registryPath) {
+      removeWorkerRegistryRecord({
+        registryPath: input.registryPath,
+        projectPath: input.projectPath,
+        databasePath: input.databasePath,
+      })
+    }
     server.stop(true)
     store.close()
   }
@@ -162,6 +180,25 @@ export async function startMemoryWorkerServer(input: {
   if (typeof port !== "number") {
     await stopServer()
     throw new Error("Memory worker server did not expose a port")
+  }
+
+  if (input.registryPath) {
+    const writeHeartbeat = () => {
+      if (!process.pid) {
+        return
+      }
+
+      writeWorkerRegistryRecord({
+        registryPath: input.registryPath!,
+        projectPath: input.projectPath,
+        databasePath: input.databasePath,
+        port,
+        pid: process.pid,
+      })
+    }
+
+    writeHeartbeat()
+    heartbeatTimer = setInterval(writeHeartbeat, input.heartbeatIntervalMs ?? 5_000)
   }
 
   return {

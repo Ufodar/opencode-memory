@@ -8,6 +8,7 @@ import {
   createMemoryWorkerHttpClient,
   shutdownMemoryWorker,
 } from "../../src/worker/client.js"
+import { readWorkerRegistryRecord } from "../../src/worker/registry.js"
 import { startMemoryWorkerServer } from "../../src/worker/server.js"
 
 const cleanupTasks: Array<() => Promise<void>> = []
@@ -141,5 +142,46 @@ describe("memory worker http server", () => {
     })
 
     expect(healthy).toBe(false)
+  })
+
+  test("refreshes worker registry heartbeat and removes it on shutdown", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-worker-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const databasePath = path.join(root, "memory.sqlite")
+    const registryPath = path.join(root, "worker-registry.json")
+    const server = await startMemoryWorkerServer({
+      port: 0,
+      projectPath: "/workspace/demo",
+      databasePath,
+      registryPath,
+      heartbeatIntervalMs: 20,
+    })
+
+    const initialRecord = readWorkerRegistryRecord({
+      registryPath,
+      projectPath: "/workspace/demo",
+      databasePath,
+    })
+    expect(initialRecord).not.toBeUndefined()
+
+    await Bun.sleep(60)
+
+    const refreshedRecord = readWorkerRegistryRecord({
+      registryPath,
+      projectPath: "/workspace/demo",
+      databasePath,
+    })
+    expect(refreshedRecord).not.toBeUndefined()
+    expect(refreshedRecord!.updatedAt).toBeGreaterThan(initialRecord!.updatedAt)
+
+    await server.stop()
+
+    const removedRecord = readWorkerRegistryRecord({
+      registryPath,
+      projectPath: "/workspace/demo",
+      databasePath,
+    })
+    expect(removedRecord).toBeUndefined()
   })
 })

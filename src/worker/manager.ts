@@ -13,11 +13,10 @@ import {
 } from "./client.js"
 import {
   buildWorkerKey,
-  listWorkerRegistryRecords,
   readWorkerRegistryRecord,
   removeWorkerRegistryRecord,
   removeWorkerRegistryRecordByKey,
-  writeWorkerRegistryRecord,
+  listWorkerRegistryRecords,
 } from "./registry.js"
 
 const STARTUP_TIMEOUT_MS = 5000
@@ -169,6 +168,8 @@ async function startManagedMemoryWorkerProcess(input: {
       input.projectPath,
       "--database-path",
       input.databasePath,
+      "--registry-path",
+      getDefaultWorkerRegistryPath(),
     ],
     {
       env: process.env,
@@ -186,14 +187,6 @@ async function startManagedMemoryWorkerProcess(input: {
   if (!child.pid) {
     throw new Error("Memory worker started without a child pid")
   }
-
-  writeWorkerRegistryRecord({
-    registryPath: getDefaultWorkerRegistryPath(),
-    projectPath: input.projectPath,
-    databasePath: input.databasePath,
-    port,
-    pid: child.pid,
-  })
 
   return {
     worker: createMemoryWorkerHttpClient({ baseUrl }),
