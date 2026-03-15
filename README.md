@@ -41,6 +41,7 @@ src/
   continuity/
     contracts.ts
   config/
+  testing/
   runtime/
     handlers/
     hooks/
@@ -126,6 +127,9 @@ docs/
   - `memory_search`
   - `memory_timeline`
   - `memory_details`
+- 已加入可重复跑的真实宿主 smoke runner：
+  - `bun run smoke:host -- --workspace <workspace> --mode control`
+  - `bun run smoke:host -- --workspace <workspace> --mode robust`
 - 已完成本地 OpenCode 真实宿主 smoke test：
   - plugin 能被宿主加载
   - `memory_search` / `memory_timeline` / `memory_details` 会进入真实 tool surface
@@ -156,6 +160,34 @@ docs/
 - `memory_details`
 
 都会进入真实 tool surface。
+
+### Host smoke runner
+
+现在仓库里已经有一个可重复跑的真实宿主回归脚本：
+
+```bash
+bun run smoke:host -- \
+  --workspace /absolute/path/to/smoke-workspace \
+  --mode control
+```
+
+可选模式：
+
+- `control`
+  - 只验证 continuity 主闭环
+- `robust`
+  - 用更松的 prompt 观察宿主下的表现
+- `both`
+  - 连续跑两种模式
+
+runner 会自动：
+
+1. 在目标 workspace 写入 smoke fixture 文件
+2. 写入本地 `.opencode/opencode.json`
+3. 生成最小宿主配置
+4. 创建隔离 `HOME`
+5. 运行真实 `opencode run`
+6. 读取 SQLite 并输出 pass/fail 摘要
 
 ### 开发时要注意的宿主缓存问题
 

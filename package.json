@@ -9,6 +9,7 @@
     "build": "tsc",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
+    "smoke:host": "bun run src/testing/run-host-smoke.ts",
     "format": "prettier --write \"src/**/*.ts\" \"docs/**/*.md\" README.md",
     "format:check": "prettier --check \"src/**/*.ts\" \"docs/**/*.md\" README.md"
   },
