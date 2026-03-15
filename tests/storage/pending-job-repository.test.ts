@@ -206,4 +206,48 @@ describe("PendingJobRepository", () => {
     expect(reclaimed?.status).toBe("processing")
     expect(reclaimed?.attemptCount).toBe(2)
   })
+
+  test("lists processing jobs with stale status and can retry a stuck processing job", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-pending-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const database = new SQLiteMemoryDatabase(path.join(root, "memory.sqlite"))
+    cleanupTasks.push(async () => database.close())
+
+    const repository = new PendingJobRepository(database.handle, { staleProcessingMs: 100 })
+
+    repository.enqueue({
+      sessionID: "ses_demo",
+      kind: "session-idle",
+      payload: { sessionID: "ses_demo" },
+    })
+
+    const claimed = repository.claimNext("ses_demo")
+    expect(claimed?.status).toBe("processing")
+
+    database.handle
+      .prepare(`
+        UPDATE pending_jobs
+        SET started_processing_at = ?, updated_at = ?
+        WHERE id = ?
+      `)
+      .run(Date.now() - 5_000, Date.now() - 5_000, claimed!.id)
+
+    expect(repository.listProcessingJobs(10)).toEqual([
+      expect.objectContaining({
+        id: claimed!.id,
+        sessionID: "ses_demo",
+        kind: "session-idle",
+        attemptCount: 1,
+        isStale: true,
+      }),
+    ])
+
+    expect(repository.retryJob(claimed!.id)).toBe(true)
+
+    const reclaimed = repository.claimNext("ses_demo")
+    expect(reclaimed?.id).toBe(claimed?.id)
+    expect(reclaimed?.status).toBe("processing")
+    expect(reclaimed?.attemptCount).toBe(2)
+  })
 })

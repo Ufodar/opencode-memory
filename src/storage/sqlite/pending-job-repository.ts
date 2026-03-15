@@ -7,7 +7,10 @@ import type {
   PendingJobStatus,
   PendingJobStore,
 } from "../../worker/pending-jobs.js"
-import type { MemoryQueueFailedJob } from "../../memory/contracts.js"
+import type {
+  MemoryQueueFailedJob,
+  MemoryQueueProcessingJob,
+} from "../../memory/contracts.js"
 
 type PendingJobRow = {
   id: number
@@ -198,6 +201,40 @@ export class PendingJobRepository implements PendingJobStore {
     }))
   }
 
+  listProcessingJobs(limit: number): MemoryQueueProcessingJob[] {
+    const cutoff = Date.now() - this.getStaleProcessingMs()
+    const rows = this.db
+      .prepare(`
+        SELECT id, session_id, kind, attempt_count, started_processing_at, updated_at, last_error
+        FROM pending_jobs
+        WHERE status = 'processing'
+        ORDER BY started_processing_at ASC, id ASC
+        LIMIT ?
+      `)
+      .all(limit) as Array<{
+      id: number
+      session_id: string
+      kind: PendingJobKind
+      attempt_count: number
+      started_processing_at: number | null
+      updated_at: number
+      last_error: string | null
+    }>
+
+    return rows
+      .filter((row) => row.started_processing_at !== null)
+      .map((row) => ({
+        id: row.id,
+        sessionID: row.session_id,
+        kind: row.kind,
+        attemptCount: row.attempt_count,
+        startedProcessingAt: row.started_processing_at as number,
+        updatedAt: row.updated_at,
+        lastError: row.last_error,
+        isStale: (row.started_processing_at as number) < cutoff,
+      }))
+  }
+
   retryJob(id: number): boolean {
     const result = this.db
       .prepare(`
@@ -206,7 +243,7 @@ export class PendingJobRepository implements PendingJobStore {
             started_processing_at = NULL,
             updated_at = ?,
             last_error = NULL
-        WHERE id = ? AND status = 'failed'
+        WHERE id = ? AND status IN ('failed', 'processing')
       `)
       .run(Date.now(), id)
 

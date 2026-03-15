@@ -88,12 +88,24 @@ export type MemoryQueueFailedJob = {
   updatedAt: number
 }
 
+export type MemoryQueueProcessingJob = {
+  id: number
+  sessionID: string
+  kind: "request-anchor" | "observation" | "session-idle"
+  attemptCount: number
+  startedProcessingAt: number
+  updatedAt: number
+  lastError: string | null
+  isStale: boolean
+}
+
 export interface MemoryQueueStore {
   getQueueStats(): {
     pending: number
     processing: number
     failed: number
   }
+  listProcessingJobs(limit: number): MemoryQueueProcessingJob[]
   listFailedJobs(limit: number): MemoryQueueFailedJob[]
   retryJob(id: number): boolean
 }

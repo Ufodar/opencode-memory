@@ -2,6 +2,7 @@ import type {
   MemoryDetailRecord,
   MemoryDetailsStore,
   MemoryQueueFailedJob,
+  MemoryQueueProcessingJob,
   MemoryQueueStore,
   MemoryIdleSummaryStore,
   MemoryInjectionStore,
@@ -116,11 +117,14 @@ export interface MemoryWorkerService {
   getQueueStatus(input: {
     limit: number
   }): Awaitable<{
+    isProcessing: boolean
+    queueDepth: number
     counts: {
       pending: number
       processing: number
       failed: number
     }
+    processingJobs: MemoryQueueProcessingJob[]
     failedJobs: MemoryQueueFailedJob[]
   }>
   retryQueueJob(jobID: number): Awaitable<{
@@ -341,8 +345,12 @@ export function createMemoryWorkerService(input: {
     },
 
     getQueueStatus(queueInput) {
+      const counts = input.store.getQueueStats()
       return {
-        counts: input.store.getQueueStats(),
+        isProcessing: counts.pending > 0 || counts.processing > 0,
+        queueDepth: counts.pending + counts.processing,
+        counts,
+        processingJobs: input.store.listProcessingJobs(queueInput.limit),
         failedJobs: input.store.listFailedJobs(queueInput.limit),
       }
     },

@@ -81,6 +81,9 @@ export async function startMemoryWorkerServer(input: {
       listFailedJobs(limit) {
         return store.listFailedJobs(limit)
       },
+      listProcessingJobs(limit) {
+        return store.listProcessingJobs(limit)
+      },
       retryJob(id) {
         return store.retryJob(id)
       },

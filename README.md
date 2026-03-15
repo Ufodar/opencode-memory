@@ -173,6 +173,9 @@ docs/
 - pending queue 现在也已可见、可手动恢复：
   - 新增 `memory_queue_status`
   - 新增 `memory_queue_retry`
+  - queue depth / isProcessing 现在也会直接暴露出来
+  - processing job 现在也能看见，并会标出是否 stale
+  - stuck processing job 现在也能手动放回 `pending`
   - 失败 job 不再只能静默留在 SQLite 里
   - 这一层继续向 `claude-mem` 的“失败队列可见、可重试”恢复路径靠拢
 - pending queue 已加入 stale processing 自愈：

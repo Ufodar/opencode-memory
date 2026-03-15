@@ -4,7 +4,7 @@ import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 export function createMemoryQueueStatusTool(worker: Pick<MemoryWorkerService, "getQueueStatus">) {
   return tool({
     description:
-      "Show current memory worker queue counts and the most recent failed jobs. Use this when memory capture or summary seems stuck or silently failing.",
+      "Show current memory worker queue depth, active processing jobs, and the most recent failed jobs. Use this when memory capture or summary seems stuck or silently failing.",
     args: {
       limit: tool.schema.number().optional(),
     },
@@ -15,7 +15,10 @@ export function createMemoryQueueStatusTool(worker: Pick<MemoryWorkerService, "g
 
       return JSON.stringify({
         success: true,
+        isProcessing: result.isProcessing,
+        queueDepth: result.queueDepth,
         counts: result.counts,
+        processingJobs: result.processingJobs,
         failedJobs: result.failedJobs,
       })
     },

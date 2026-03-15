@@ -1,6 +1,7 @@
 import type {
   MemoryDetailRecord,
   MemoryQueueFailedJob,
+  MemoryQueueProcessingJob,
   MemorySearchRecord,
   MemoryTimelineResult,
 } from "../memory/contracts.js"
@@ -122,11 +123,14 @@ export interface QueueStatusRequest {
 }
 
 export interface QueueStatusResponse {
+  isProcessing: boolean
+  queueDepth: number
   counts: {
     pending: number
     processing: number
     failed: number
   }
+  processingJobs: MemoryQueueProcessingJob[]
   failedJobs: MemoryQueueFailedJob[]
 }
 

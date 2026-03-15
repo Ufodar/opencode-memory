@@ -191,6 +191,10 @@ export class SQLiteMemoryStore
     return this.pendingJobs.listFailedJobs(limit)
   }
 
+  listProcessingJobs(limit: number) {
+    return this.pendingJobs.listProcessingJobs(limit)
+  }
+
   retryJob(id: number) {
     return this.pendingJobs.retryJob(id)
   }

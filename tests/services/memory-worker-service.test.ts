@@ -335,6 +335,10 @@ describe("createMemoryWorkerService", () => {
           calls.push("stats")
           return { pending: 1, processing: 0, failed: 1 }
         },
+        listProcessingJobs(limit) {
+          calls.push(`processing:${limit}`)
+          return []
+        },
         listFailedJobs(limit) {
           calls.push(`failed:${limit}`)
           return [
@@ -362,7 +366,10 @@ describe("createMemoryWorkerService", () => {
     })
 
     expect(worker.getQueueStatus({ limit: 5 })).toEqual({
+      isProcessing: true,
+      queueDepth: 1,
       counts: { pending: 1, processing: 0, failed: 1 },
+      processingJobs: [],
       failedJobs: [
         {
           id: 7,
@@ -376,6 +383,6 @@ describe("createMemoryWorkerService", () => {
     })
 
     expect(worker.retryQueueJob(7)).toEqual({ retried: true, jobID: 7 })
-    expect(calls).toEqual(["stats", "failed:5", "retry:7"])
+    expect(calls).toEqual(["stats", "processing:5", "failed:5", "retry:7"])
   })
 })
