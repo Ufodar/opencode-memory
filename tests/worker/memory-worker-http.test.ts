@@ -10,6 +10,8 @@ import {
   getMemoryWorkerHealth,
   shutdownMemoryWorker,
 } from "../../src/worker/client.js"
+import { PendingJobRepository } from "../../src/storage/sqlite/pending-job-repository.js"
+import { SQLiteMemoryDatabase } from "../../src/storage/sqlite/sqlite-memory-database.js"
 import { readWorkerRegistryRecord } from "../../src/worker/registry.js"
 import { startMemoryWorkerServer } from "../../src/worker/server.js"
 
@@ -205,6 +207,85 @@ describe("memory worker http server", () => {
       databasePath,
     })
     expect(removedRecord).toBeUndefined()
+  })
+
+  test("replays persisted pending jobs on worker startup", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-worker-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const databasePath = path.join(root, "memory.sqlite")
+    const database = new SQLiteMemoryDatabase(databasePath)
+    const pendingJobs = new PendingJobRepository(database.handle)
+
+    pendingJobs.enqueue({
+      sessionID: "ses_demo",
+      kind: "request-anchor",
+      payload: {
+        sessionID: "ses_demo",
+        messageID: "msg_1",
+        text: "梳理第3章资格条件",
+      },
+    })
+    pendingJobs.enqueue({
+      sessionID: "ses_demo",
+      kind: "observation",
+      payload: {
+        toolInput: {
+          tool: "read",
+          sessionID: "ses_demo",
+          callID: "call_1",
+          args: { filePath: "/workspace/demo/招标文件.docx" },
+        },
+        output: {
+          title: "读取第3章资格条件",
+          output: "资格条件包括近三年类似业绩、项目经理资质和安全生产许可。",
+          metadata: {},
+        },
+      },
+    })
+    pendingJobs.enqueue({
+      sessionID: "ses_demo",
+      kind: "observation",
+      payload: {
+        toolInput: {
+          tool: "write",
+          sessionID: "ses_demo",
+          callID: "call_2",
+          args: { filePath: "/workspace/demo/questions.md" },
+        },
+        output: {
+          title: "写出缺口清单",
+          output: "形成决策：先输出缺口清单，不进入正式写作。",
+          metadata: {},
+        },
+      },
+    })
+    pendingJobs.enqueue({
+      sessionID: "ses_demo",
+      kind: "session-idle",
+      payload: { sessionID: "ses_demo" },
+    })
+    database.close()
+
+    const server = await startMemoryWorkerServer({
+      port: 0,
+      projectPath: "/workspace/demo",
+      databasePath,
+    })
+    cleanupTasks.push(() => server.stop())
+
+    await waitForSummary(databasePath, 1)
+
+    const worker = createMemoryWorkerHttpClient({
+      baseUrl: server.baseUrl,
+    })
+    const search = await worker.searchMemoryRecords({
+      sessionID: "ses_demo",
+      query: "资格条件",
+      limit: 5,
+    })
+
+    expect(search.results.length).toBeGreaterThan(0)
   })
 })
 

@@ -159,6 +159,12 @@ docs/
   - worker HTTP 层先接收 `session.idle` / flush 请求并入 session 队列
   - 真正的 summary 聚合与落盘在 worker 内部异步完成
   - 这一层继续向 `claude-mem` 的 `Stop -> summarize queued` 形态靠拢
+- worker ingestion 已加入持久化 pending queue：
+  - request anchor / observation / session-idle job 会先写入 SQLite `pending_jobs`
+  - 不再只依赖 worker 进程内存队列
+  - worker 重启时会先把 `processing` job 重置回 `pending`
+  - 再自动恢复未完成 session 的 job
+  - 这一层继续向 `claude-mem` 的“先持久化，再处理”队列形态靠拢
 - plugin 到 worker 的 HTTP 请求已加入 timeout + abort：
   - 普通 worker 请求超时会主动中止
   - health check 超时会直接视为不健康
@@ -197,6 +203,7 @@ docs/
 4. 继续收紧 worker 内部编排与 context builder 边界
 5. 继续补 stale worker 清理和更明确的关闭策略，而不是只停在“能跨 run 复用”
 6. 继续补 worker 级调度与失败恢复，而不是只停在“有子进程”
+7. 继续补 pending queue 的失败状态、重试上限与可观测性，而不是只停在“worker 重启后能恢复”
 
 ## 开发与真实测试说明
 

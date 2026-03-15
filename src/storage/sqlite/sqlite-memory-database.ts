@@ -71,6 +71,24 @@ export class SQLiteMemoryDatabase {
 
       CREATE INDEX IF NOT EXISTS idx_summaries_project_created
       ON summaries(project_path, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS pending_jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        attempt_count INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        last_error TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_pending_jobs_session_status_id
+      ON pending_jobs(session_id, status, id ASC);
+
+      CREATE INDEX IF NOT EXISTS idx_pending_jobs_status_updated
+      ON pending_jobs(status, updated_at DESC);
     `)
 
     this.ensureColumn("observations", "phase", "TEXT")

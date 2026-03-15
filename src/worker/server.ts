@@ -8,6 +8,7 @@ import {
   removeWorkerRegistryRecord,
   writeWorkerRegistryRecord,
 } from "./registry.js"
+import { createPendingJobProcessor } from "./pending-job-processor.js"
 import { createSessionJobScheduler } from "./session-job-scheduler.js"
 import type {
   BuildCompactionContextRequest,
@@ -52,6 +53,30 @@ export async function startMemoryWorkerServer(input: {
     store,
     idleSummaryGuard,
     generateModelSummary,
+  })
+  const pendingJobs = createPendingJobProcessor({
+    store: {
+      enqueue(input) {
+        return store.enqueuePendingJob(input)
+      },
+      claimNext(sessionID) {
+        return store.claimNextPendingJob(sessionID)
+      },
+      complete(id) {
+        store.completePendingJob(id)
+      },
+      releaseForRetry(id, error) {
+        store.releasePendingJobForRetry(id, error)
+      },
+      listSessionIDsWithPendingJobs() {
+        return store.listSessionIDsWithPendingJobs()
+      },
+      resetProcessingToPending() {
+        return store.resetProcessingPendingJobs()
+      },
+    },
+    scheduler: sessionJobs,
+    worker,
   })
   let stopped = false
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined
@@ -102,23 +127,17 @@ export async function startMemoryWorkerServer(input: {
         switch (url.pathname) {
           case "/enqueue/request-anchor": {
             const payload = await readJson<CaptureRequestAnchorRequest>(request)
-            sessionJobs.enqueue(payload.sessionID, async () => {
-              await worker.captureRequestAnchorFromMessage(payload)
-            })
+            pendingJobs.enqueueRequestAnchor(payload)
             return json({ accepted: true } satisfies WorkerAcceptedResponse)
           }
           case "/enqueue/observation": {
             const payload = await readJson<CaptureObservationRequest>(request)
-            sessionJobs.enqueue(payload.toolInput.sessionID, async () => {
-              await worker.captureObservationFromToolCall(payload.toolInput, payload.output)
-            })
+            pendingJobs.enqueueObservation(payload.toolInput, payload.output)
             return json({ accepted: true } satisfies WorkerAcceptedResponse)
           }
           case "/enqueue/session-idle": {
             const payload = await readJson<IdleSummaryRequest>(request)
-            sessionJobs.enqueue(payload.sessionID, async () => {
-              await worker.handleSessionIdle(payload.sessionID)
-            })
+            pendingJobs.enqueueIdleSummary(payload.sessionID)
             return json({ accepted: true } satisfies WorkerAcceptedResponse)
           }
           case "/capture/request-anchor": {
@@ -223,6 +242,8 @@ export async function startMemoryWorkerServer(input: {
     writeHeartbeat()
     heartbeatTimer = setInterval(writeHeartbeat, input.heartbeatIntervalMs ?? 5_000)
   }
+
+  pendingJobs.resumePendingJobs()
 
   return {
     port,

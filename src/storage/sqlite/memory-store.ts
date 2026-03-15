@@ -13,10 +13,15 @@ import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
 import { ObservationRepository } from "./observation-repository.js"
+import { PendingJobRepository } from "./pending-job-repository.js"
 import { RequestAnchorRepository } from "./request-anchor-repository.js"
 import { MemoryRetrievalService } from "./retrieval-query-service.js"
 import { SQLiteMemoryDatabase } from "./sqlite-memory-database.js"
 import { SummaryRepository } from "./summary-repository.js"
+import type {
+  PendingJobEnqueueInput,
+  PendingJobRecord,
+} from "../../worker/pending-jobs.js"
 
 export type {
   MemorySearchRecord,
@@ -35,13 +40,18 @@ export class SQLiteMemoryStore
 {
   private readonly database: SQLiteMemoryDatabase
   private readonly observations: ObservationRepository
+  private readonly pendingJobs: PendingJobRepository
   private readonly requestAnchors: RequestAnchorRepository
   private readonly summaries: SummaryRepository
   private readonly retrieval: MemoryRetrievalService
 
-  constructor(dbPath: string) {
-    this.database = new SQLiteMemoryDatabase(dbPath)
+  constructor(dbPathOrDatabase: string | SQLiteMemoryDatabase) {
+    this.database =
+      typeof dbPathOrDatabase === "string"
+        ? new SQLiteMemoryDatabase(dbPathOrDatabase)
+        : dbPathOrDatabase
     this.observations = new ObservationRepository(this.database.handle)
+    this.pendingJobs = new PendingJobRepository(this.database.handle)
     this.requestAnchors = new RequestAnchorRepository(this.database.handle)
     this.summaries = new SummaryRepository(this.database.handle)
     this.retrieval = new MemoryRetrievalService(this.database.handle)
@@ -133,6 +143,30 @@ export class SQLiteMemoryStore
     depthAfter: number
   }): MemoryTimelineResult | null {
     return this.retrieval.getTimeline(input)
+  }
+
+  enqueuePendingJob(input: PendingJobEnqueueInput) {
+    return this.pendingJobs.enqueue(input)
+  }
+
+  claimNextPendingJob(sessionID: string): PendingJobRecord | null {
+    return this.pendingJobs.claimNext(sessionID)
+  }
+
+  completePendingJob(id: number) {
+    this.pendingJobs.complete(id)
+  }
+
+  releasePendingJobForRetry(id: number, error: string) {
+    this.pendingJobs.releaseForRetry(id, error)
+  }
+
+  listSessionIDsWithPendingJobs(): string[] {
+    return this.pendingJobs.listSessionIDsWithPendingJobs()
+  }
+
+  resetProcessingPendingJobs(): number {
+    return this.pendingJobs.resetProcessingToPending()
   }
 
   close() {

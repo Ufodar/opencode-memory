@@ -107,16 +107,19 @@
 tool.execute.after
   -> candidate rule
   -> enqueue observation job
+  -> SQLite pending_jobs
   -> worker session queue
   -> observation record
   -> SQLite persistence
 chat.message
   -> run-mode summary flush fallback
   -> enqueue request anchor job
+  -> SQLite pending_jobs
   -> worker session queue
   -> request anchor
 session.idle
   -> enqueue summary job
+  -> SQLite pending_jobs
   -> worker session queue
   -> request checkpoint observations
   -> summary aggregation
@@ -196,6 +199,11 @@ tool.execute.after
     - plugin -> worker 的 `session.idle` / flush summary 请求已改成“先接收，再排队”
     - plugin 不再同步等待 summary 真正聚合与写库
     - 更接近 `claude-mem` 的 summarize queued 形态
+  - pending queue 持久化：
+    - request anchor / observation / session-idle 先写入 SQLite `pending_jobs`
+    - 不再只依赖进程内存队列
+    - worker 重启时会先把 `processing` 重置回 `pending`
+    - 再按 session 自动恢复未完成 job
   - session 级 job 串行：
     - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler
     - 避免同一会话内写入、summary、回查依赖 HTTP 到达顺序碰运气
@@ -255,7 +263,7 @@ tool.execute.after
   - 崩溃恢复
   - stale worker 清理
   - 更明确的启动/关闭策略
-- 再考虑是否需要队列化或批处理，而不是让 plugin 入口直接逐请求等待
+- 继续补 pending queue 的失败状态、重试上限与队列可观测性
 
 ## 真实宿主验证补充
 
