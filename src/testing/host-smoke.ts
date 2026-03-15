@@ -40,6 +40,34 @@ type SqliteCounts = {
   summaries: number
 }
 
+type SmokeMode = "control" | "robust"
+
+type SmokeOutputFiles = {
+  run1: string
+  run2?: string
+  run3?: string
+  run4?: string
+  sqlite: string
+  tempConfig: string
+}
+
+type SmokeResult = {
+  mode: SmokeMode
+  sessionId?: string
+  passed: boolean
+  failures: string[]
+  writeChain: WriteChainEvaluation
+  retrievalChain?: RetrievalChainEvaluation
+  sqliteCounts: SqliteCounts
+  outputFiles: SmokeOutputFiles
+}
+
+type SmokeRunReport = {
+  workspace: string
+  localPluginConfigPath: string
+  results: SmokeResult[]
+}
+
 export function parseRunOutput(text: string): ParsedRunOutput {
   const rawLines = text
     .split(/\r?\n/)
@@ -144,7 +172,7 @@ export function buildMinimalHostConfig(config: MinimalHostConfigInput, options: 
 }
 
 export function buildSmokeReport(input: {
-  mode: "control" | "robust"
+  mode: SmokeMode
   sessionId?: string
   writeChain: WriteChainEvaluation
   retrievalChain?: RetrievalChainEvaluation
@@ -185,10 +213,93 @@ export function buildSmokeReport(input: {
   }
 }
 
+export function renderSmokeSummary(report: SmokeRunReport) {
+  const lines: string[] = []
+
+  lines.push("# Host Smoke 测试摘要")
+  lines.push("")
+  lines.push(`- 工作区：${report.workspace}`)
+  lines.push(`- 本地插件配置：${report.localPluginConfigPath}`)
+  lines.push("")
+
+  for (const result of report.results) {
+    lines.push(`## ${describeMode(result.mode)}`)
+    lines.push("")
+    lines.push(`- 总结论：${result.passed ? "通过" : "失败"}`)
+    lines.push(`- Session ID：${result.sessionId ?? "未拿到"}`)
+    lines.push(`- 写入链：${describeWriteChain(result.writeChain)}`)
+    lines.push(
+      `- 数据库计数：request=${result.sqliteCounts.requestAnchors}, observation=${result.sqliteCounts.observations}, summary=${result.sqliteCounts.summaries}`,
+    )
+
+    if (result.mode === "control") {
+      lines.push(`- 回查链：${describeRetrievalChain(result.retrievalChain)}`)
+    } else {
+      lines.push("- 回查链：本模式不做回查链强校验，只观察写入链是否成立")
+    }
+
+    if (result.failures.length > 0) {
+      lines.push("- 失败原因：")
+      for (const failure of result.failures) {
+        lines.push(`  - ${describeFailure(failure)}`)
+      }
+    } else {
+      lines.push("- 失败原因：无")
+    }
+
+    lines.push("- 证据文件：")
+    lines.push(`  - run1: ${result.outputFiles.run1}`)
+    if (result.outputFiles.run2) lines.push(`  - run2: ${result.outputFiles.run2}`)
+    if (result.outputFiles.run3) lines.push(`  - run3: ${result.outputFiles.run3}`)
+    if (result.outputFiles.run4) lines.push(`  - run4: ${result.outputFiles.run4}`)
+    lines.push(`  - sqlite: ${result.outputFiles.sqlite}`)
+    lines.push(`  - tempConfig: ${result.outputFiles.tempConfig}`)
+    lines.push("")
+  }
+
+  return lines.join("\n").trim() + "\n"
+}
+
 function countCompletedToolUses(parsed: ParsedRunOutput, tool: string) {
   return parsed.jsonEvents.filter(
     (event) => event.type === "tool_use" && event.part?.tool === tool && event.part?.state?.status === "completed",
   ).length
 }
 
-export type { ParsedRunOutput, SqliteCounts }
+function describeMode(mode: SmokeMode) {
+  if (mode === "control") {
+    return "控制变量测试"
+  }
+
+  return "更松的参考测试"
+}
+
+function describeWriteChain(result: WriteChainEvaluation) {
+  return result.passed
+    ? `通过（read=${result.readCalls}, observation=${result.observationCaptures}, summary=${result.summaryCaptures}）`
+    : `失败（read=${result.readCalls}, observation=${result.observationCaptures}, summary=${result.summaryCaptures}）`
+}
+
+function describeRetrievalChain(result?: RetrievalChainEvaluation) {
+  if (!result) {
+    return "未执行"
+  }
+
+  return result.passed
+    ? `通过（search=${result.searchCalls}, timeline=${result.timelineCalls}, details=${result.detailsCalls}）`
+    : `失败（search=${result.searchCalls}, timeline=${result.timelineCalls}, details=${result.detailsCalls}）`
+}
+
+function describeFailure(failure: string) {
+  const knownFailures: Record<string, string> = {
+    "missing session id": "没有拿到 session id",
+    "write chain failed": "写入链没有成立",
+    "missing observations in sqlite": "SQLite 里没有 observation",
+    "missing summaries in sqlite": "SQLite 里没有 summary",
+    "retrieval chain failed": "回查链没有成立",
+  }
+
+  return knownFailures[failure] ?? failure
+}
+
+export type { ParsedRunOutput, SmokeRunReport, SmokeResult, SqliteCounts }

@@ -187,7 +187,17 @@ runner 会自动：
 3. 生成最小宿主配置
 4. 创建隔离 `HOME`
 5. 运行真实 `opencode run`
-6. 读取 SQLite 并输出 pass/fail 摘要
+6. 读取 SQLite 并输出两层结果：
+   - 机器可读的 `report.json`
+   - 人类可读的 `report.md`
+
+当前 `report.md` 会直接告诉你：
+
+- 哪个测试通过、哪个失败
+- 写入链是否成立
+- 回查链是否成立
+- SQLite 里最后有多少 request / observation / summary
+- 原始证据文件在哪里
 
 ### 开发时要注意的宿主缓存问题
 

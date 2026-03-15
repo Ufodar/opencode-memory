@@ -4,7 +4,12 @@
 
 **Goal:** 给 `opencode-continuity` 增加一个可重复跑的真实 OpenCode 宿主回归脚本，验证 continuity 主闭环。
 
-**Architecture:** 先把“解析 run 结果并判断 pass/fail”的逻辑抽成纯函数并补测试，再做一个真实 runner 去生成最小宿主配置、调用 `opencode run`、读取 SQLite，并输出回归摘要。
+**Architecture:** 先把“解析 run 结果并判断 pass/fail”的逻辑抽成纯函数并补测试，再做一个真实 runner 去生成最小宿主配置、调用 `opencode run`、读取 SQLite，并同时输出两层报告：
+
+- `report.json`
+  - 给脚本和自动化消费
+- `report.md`
+  - 给人直接阅读和判断
 
 **Tech Stack:** TypeScript, Bun, OpenCode CLI, SQLite
 
@@ -109,3 +114,6 @@ git commit -m "feat: add host smoke regression runner"
   - `bun run typecheck`
   - `bun run build`
   - `bun run smoke:host -- --workspace /Users/storm/Documents/code/study_in_happy/downloads/opencode-continuity-host-smoke --mode both`
+- 当前 runner 已会在 workspace 下生成：
+  - `host-smoke-<timestamp>-report.json`
+  - `host-smoke-<timestamp>-report.md`

@@ -80,6 +80,8 @@
    - SQLite counts
    - write-chain 是否成立
    - retrieval-chain 是否成立
+   - `report.json`
+   - `report.md`
 3. robust 模式也能单独跑
 4. 分析逻辑有单元测试
 
@@ -96,5 +98,11 @@
 - 这样做的原因是：
   - control smoke 要测的是 continuity 工具链是否成立
   - 不是测模型是否愿意一次完成长流程指令
+- runner 现在会同时产出两层报告：
+  - `report.json`
+    - 给脚本和后续自动化使用
+  - `report.md`
+    - 给人快速判断使用
+    - 直接告诉你写入链、回查链、SQLite 计数和证据文件
 - 最新真实验证结果：
-  - `--mode both` 已通过
+  - `--mode both` 已通过主闭环测试

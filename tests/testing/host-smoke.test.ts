@@ -8,6 +8,7 @@ import {
   extractFirstSearchResultId,
   extractSessionId,
   parseRunOutput,
+  renderSmokeSummary,
 } from "../../src/testing/host-smoke.js"
 
 describe("host smoke helpers", () => {
@@ -144,5 +145,55 @@ describe("host smoke helpers", () => {
     expect(report.passed).toBe(true)
     expect(report.failures).toEqual([])
     expect(report.sqliteCounts.summaries).toBe(1)
+  })
+
+  test("renders a human-readable markdown summary from smoke results", () => {
+    const controlReport = buildSmokeReport({
+      mode: "control",
+      sessionId: "ses_report_1",
+      writeChain: {
+        readCalls: 2,
+        observationCaptures: 2,
+        summaryCaptures: 1,
+        passed: true,
+      },
+      retrievalChain: {
+        searchCalls: 1,
+        timelineCalls: 1,
+        detailsCalls: 1,
+        passed: true,
+      },
+      sqliteCounts: {
+        requestAnchors: 1,
+        observations: 2,
+        summaries: 1,
+      },
+    })
+
+    const markdown = renderSmokeSummary({
+      workspace: "/tmp/workspace",
+      localPluginConfigPath: "/tmp/workspace/.opencode/opencode.json",
+      results: [
+        {
+          ...controlReport,
+          outputFiles: {
+            run1: "/tmp/workspace/control-run1.jsonl",
+            run2: "/tmp/workspace/control-run2.jsonl",
+            run3: "/tmp/workspace/control-run3.jsonl",
+            run4: "/tmp/workspace/control-run4.jsonl",
+            sqlite: "/tmp/workspace/continuity.sqlite",
+            tempConfig: "/tmp/workspace/.tmp-opencode.json",
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain("# Host Smoke 测试摘要")
+    expect(markdown).toContain("## 控制变量测试")
+    expect(markdown).toContain("总结论：")
+    expect(markdown).toContain("写入链：通过")
+    expect(markdown).toContain("数据库计数：request=1, observation=2, summary=1")
+    expect(markdown).toContain("回查链：通过")
+    expect(markdown).toContain("sqlite: /tmp/workspace/continuity.sqlite")
   })
 })

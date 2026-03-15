@@ -218,3 +218,41 @@
 - 这并不等于“模型永远不会选错路径”
 - 它只说明：
   - 当前我们还没有把“路径选错”稳定复现成一个值得优先处理的问题
+
+## 追加结果：runner 报告层验证
+
+### 这一步新增了什么
+
+- runner 现在不只输出 console JSON
+- 还会在 workspace 下额外写出两份报告：
+  - `host-smoke-<timestamp>-report.json`
+  - `host-smoke-<timestamp>-report.md`
+
+### 这次真实结果
+
+- 控制变量测试通过：
+  - 写入链成立
+  - 回查链成立
+  - SQLite 里有：
+    - `request_anchors = 1`
+    - `observations = 2`
+    - `summaries = 1`
+- 更松的参考测试失败：
+  - `read` 没成功
+  - 因此没有 observation / summary 落库
+
+### 这次变化为什么重要
+
+- 之前如果出现“主闭环通过，但参考场景失败”，需要人工读 JSONL 才知道
+- 现在直接看 `report.md`，就能第一眼知道：
+  - 主闭环是否成立
+  - 是卡在写入链还是回查链
+  - 每种模式对应的证据文件在哪
+
+### 当前判断更新
+
+- 当前 runner 已经具备：
+  - 真实宿主回归
+  - 机器可读输出
+  - 人类可读摘要
+- 这意味着后面如果继续改 continuity 主逻辑，先看 `report.md` 就足够判断“这次改动有没有把主闭环打坏”

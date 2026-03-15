@@ -12,6 +12,7 @@ import {
   extractFirstSearchResultId,
   extractSessionId,
   parseRunOutput,
+  renderSmokeSummary,
   type SqliteCounts,
 } from "./host-smoke.js"
 
@@ -74,7 +75,26 @@ async function main() {
     results,
   }
 
-  console.log(JSON.stringify(output, null, 2))
+  const reportStamp = `host-smoke-${Date.now()}`
+  const jsonReportPath = path.join(options.workspace, `${reportStamp}-report.json`)
+  const markdownReportPath = path.join(options.workspace, `${reportStamp}-report.md`)
+
+  await writeFile(jsonReportPath, JSON.stringify(output, null, 2) + "\n")
+  await writeFile(markdownReportPath, renderSmokeSummary(output))
+
+  console.log(
+    JSON.stringify(
+      {
+        ...output,
+        reportFiles: {
+          json: jsonReportPath,
+          markdown: markdownReportPath,
+        },
+      },
+      null,
+      2,
+    ),
+  )
 
   if (results.some((result) => result.mode === "control" && !result.passed)) {
     process.exitCode = 1
