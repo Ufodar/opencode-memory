@@ -175,6 +175,7 @@ tool.execute.after
   - 恢复前会先扫描整个 worker 注册表，把死 PID 对应的旧记录清掉
   - worker 进程会定时刷新自己的 registry `updatedAt`
   - worker 优雅关闭时会主动删除自己的 registry 记录
+  - 多个 plugin 进程并发启动时，会先竞争 spawn lock；未拿到锁的一方会等待 peer 恢复/启动结果，避免重复 spawn
   - 不健康 worker 自动替换
   - 已发出的 handle 通过代理层自动切到新 worker
   - 关闭时优先调用 worker 自己的 `/shutdown`，再回退到 PID kill

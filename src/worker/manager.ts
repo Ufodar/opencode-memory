@@ -18,8 +18,14 @@ import {
   removeWorkerRegistryRecordByKey,
   listWorkerRegistryRecords,
 } from "./registry.js"
+import {
+  buildWorkerSpawnLockPath,
+  type WorkerSpawnLockHandle,
+  tryAcquireWorkerSpawnLock,
+} from "./spawn-lock.js"
 
 const STARTUP_TIMEOUT_MS = 5000
+const SPAWN_COORDINATION_WINDOW_MS = 5_000
 const RECOVERY_COORDINATION_WINDOW_MS = 5_000
 const RECOVERY_POLL_INTERVAL_MS = 100
 
@@ -150,6 +156,127 @@ async function startManagedMemoryWorkerProcess(input: {
   projectPath: string
   databasePath: string
 }): Promise<ManagedMemoryWorkerProcess> {
+  const registryPath = getDefaultWorkerRegistryPath()
+  const lockPath = buildWorkerSpawnLockPath({
+    registryPath,
+    projectPath: input.projectPath,
+    databasePath: input.databasePath,
+  })
+
+  return coordinateManagedMemoryWorkerStartup(
+    input,
+    {
+      recover: () =>
+        recoverManagedMemoryWorkerProcess(input, {
+          registryPath,
+          checkHealth(baseUrl) {
+            return checkMemoryWorkerHealth({ baseUrl })
+          },
+          shutdown(baseUrl) {
+            return shutdownMemoryWorker({ baseUrl, requestTimeoutMs: 1_000 })
+          },
+          isPidAlive(pid) {
+            try {
+              process.kill(pid, 0)
+              return true
+            } catch {
+              return false
+            }
+          },
+          sleep,
+          now: () => Date.now(),
+        }),
+      spawn: () => spawnManagedMemoryWorkerProcess(input, registryPath),
+      tryAcquireLock: () =>
+        tryAcquireWorkerSpawnLock(lockPath, {
+          now: () => Date.now(),
+          pid: process.pid,
+          isPidAlive(pid) {
+            try {
+              process.kill(pid, 0)
+              return true
+            } catch {
+              return false
+            }
+          },
+        }),
+      sleep,
+      now: () => Date.now(),
+    },
+  )
+}
+
+interface CoordinateManagedMemoryWorkerStartupDependencies {
+  recover(): Promise<ManagedMemoryWorkerProcess | undefined>
+  spawn(): Promise<ManagedMemoryWorkerProcess>
+  tryAcquireLock(): WorkerSpawnLockHandle | undefined
+  sleep(ms: number): Promise<void>
+  now(): number
+}
+
+export async function coordinateManagedMemoryWorkerStartup(
+  input: {
+    projectPath: string
+    databasePath: string
+  },
+  dependencies: CoordinateManagedMemoryWorkerStartupDependencies,
+): Promise<ManagedMemoryWorkerProcess> {
+  const tryStartUnderLock = async (lock: WorkerSpawnLockHandle) => {
+    try {
+      const recovered = await dependencies.recover()
+      if (recovered) {
+        return recovered
+      }
+
+      return await dependencies.spawn()
+    } finally {
+      lock.release()
+    }
+  }
+
+  const firstLock = dependencies.tryAcquireLock()
+  if (firstLock) {
+    return tryStartUnderLock(firstLock)
+  }
+
+  const deadline = dependencies.now() + SPAWN_COORDINATION_WINDOW_MS
+
+  while (dependencies.now() < deadline) {
+    const recovered = await dependencies.recover()
+    if (recovered) {
+      return recovered
+    }
+
+    await dependencies.sleep(RECOVERY_POLL_INTERVAL_MS)
+
+    const retryLock = dependencies.tryAcquireLock()
+    if (retryLock) {
+      return tryStartUnderLock(retryLock)
+    }
+  }
+
+  const finalRecovered = await dependencies.recover()
+  if (finalRecovered) {
+    return finalRecovered
+  }
+
+  const finalLock = dependencies.tryAcquireLock()
+  if (finalLock) {
+    return tryStartUnderLock(finalLock)
+  }
+
+  throw new Error(
+    `Failed to coordinate memory worker startup for ${input.projectPath}: peer startup did not complete in time`,
+  )
+}
+
+async function spawnManagedMemoryWorkerProcess(
+  input: {
+    projectPath: string
+    databasePath: string
+  },
+  registryPath: string,
+): Promise<ManagedMemoryWorkerProcess> {
   const port = await findAvailablePort()
   const workerEntry = fileURLToPath(new URL("./run-memory-worker.js", import.meta.url))
   const bunExecutable = Bun.which("bun")
@@ -169,7 +296,7 @@ async function startManagedMemoryWorkerProcess(input: {
       "--database-path",
       input.databasePath,
       "--registry-path",
-      getDefaultWorkerRegistryPath(),
+      registryPath,
     ],
     {
       env: process.env,
