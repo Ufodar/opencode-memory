@@ -175,6 +175,10 @@ docs/
   - 新增 `memory_queue_retry`
   - 失败 job 不再只能静默留在 SQLite 里
   - 这一层继续向 `claude-mem` 的“失败队列可见、可重试”恢复路径靠拢
+- pending queue 已加入 stale processing 自愈：
+  - worker 存活期间，如果某个 job 长时间卡在 `processing`
+  - 下一次 claim 同 session 队列时会先把它重置回 `pending`
+  - 不再只靠 worker 重启来恢复
 - plugin 到 worker 的 HTTP 请求已加入 timeout + abort：
   - 普通 worker 请求超时会主动中止
   - health check 超时会直接视为不健康

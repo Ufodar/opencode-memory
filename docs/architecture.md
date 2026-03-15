@@ -212,6 +212,10 @@ tool.execute.after
     - worker 现在可返回 queue counts 与 failed job 列表
     - failed job 可手动重试回 `pending`
     - 不再只能靠直接查 SQLite 判断失败队列状态
+  - stale processing 自愈：
+    - `pending_jobs` 现在会记录 `started_processing_at`
+    - claim 下一条 job 前，会先把超过阈值的 `processing` 重置回 `pending`
+    - 不再只依赖 worker 重启来恢复卡死 job
   - session 级 job 串行：
     - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler
     - 避免同一会话内写入、summary、回查依赖 HTTP 到达顺序碰运气
@@ -274,6 +278,7 @@ tool.execute.after
 - 继续补 pending queue 的失败状态、重试上限与队列可观测性
 - 继续补 failed queue 的查询、人工重试和恢复入口
 - 继续补 stuck processing 的自愈，而不是只在 worker 重启时恢复
+- 继续补 stuck processing 的可见性与手动干预入口，而不是只停在后台自愈
 
 ## 真实宿主验证补充
 

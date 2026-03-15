@@ -174,4 +174,36 @@ describe("PendingJobRepository", () => {
     expect(retried?.status).toBe("processing")
     expect(retried?.lastError).toBeNull()
   })
+
+  test("self-heals stale processing jobs back to pending on the next claim", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-pending-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const database = new SQLiteMemoryDatabase(path.join(root, "memory.sqlite"))
+    cleanupTasks.push(async () => database.close())
+
+    const repository = new PendingJobRepository(database.handle, { staleProcessingMs: 10 })
+
+    repository.enqueue({
+      sessionID: "ses_demo",
+      kind: "session-idle",
+      payload: { sessionID: "ses_demo" },
+    })
+
+    const claimed = repository.claimNext("ses_demo")
+    expect(claimed?.status).toBe("processing")
+
+    database.handle
+      .prepare(`
+        UPDATE pending_jobs
+        SET started_processing_at = ?, updated_at = ?
+        WHERE id = ?
+      `)
+      .run(Date.now() - 1000, Date.now() - 1000, claimed!.id)
+
+    const reclaimed = repository.claimNext("ses_demo")
+    expect(reclaimed?.id).toBe(claimed?.id)
+    expect(reclaimed?.status).toBe("processing")
+    expect(reclaimed?.attemptCount).toBe(2)
+  })
 })

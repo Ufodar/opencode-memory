@@ -17,6 +17,7 @@ type PendingJobRow = {
   status: PendingJobStatus
   attempt_count: number
   created_at: number
+  started_processing_at: number | null
   updated_at: number
   last_error: string | null
 }
@@ -26,6 +27,7 @@ export class PendingJobRepository implements PendingJobStore {
     private readonly db: Database,
     private readonly options: {
       maxAttempts?: number
+      staleProcessingMs?: number
     } = {},
   ) {}
 
@@ -34,8 +36,8 @@ export class PendingJobRepository implements PendingJobStore {
     const result = this.db
       .prepare(`
         INSERT INTO pending_jobs (
-          session_id, kind, payload_json, status, attempt_count, created_at, updated_at, last_error
-        ) VALUES (?, ?, ?, 'pending', 0, ?, ?, NULL)
+          session_id, kind, payload_json, status, attempt_count, created_at, started_processing_at, updated_at, last_error
+        ) VALUES (?, ?, ?, 'pending', 0, ?, NULL, ?, NULL)
       `)
       .run(input.sessionID, input.kind, JSON.stringify(input.payload), now, now)
 
@@ -43,6 +45,8 @@ export class PendingJobRepository implements PendingJobStore {
   }
 
   claimNext(sessionID: string): PendingJobRecord | null {
+    this.resetStaleProcessingJobs(sessionID)
+
     const row = this.db
       .prepare(`
         SELECT *
@@ -63,10 +67,11 @@ export class PendingJobRepository implements PendingJobStore {
         UPDATE pending_jobs
         SET status = 'processing',
             attempt_count = attempt_count + 1,
+            started_processing_at = ?,
             updated_at = ?
         WHERE id = ? AND status = 'pending'
       `)
-      .run(updatedAt, row.id)
+      .run(updatedAt, updatedAt, row.id)
 
     if (result.changes === 0) {
       return null
@@ -103,6 +108,7 @@ export class PendingJobRepository implements PendingJobStore {
       .prepare(`
         UPDATE pending_jobs
         SET status = ?,
+            started_processing_at = NULL,
             updated_at = ?,
             last_error = ?
         WHERE id = ?
@@ -131,6 +137,7 @@ export class PendingJobRepository implements PendingJobStore {
       .prepare(`
         UPDATE pending_jobs
         SET status = 'pending',
+            started_processing_at = NULL,
             updated_at = ?
         WHERE status = 'processing'
       `)
@@ -141,6 +148,26 @@ export class PendingJobRepository implements PendingJobStore {
 
   private getMaxAttempts() {
     return this.options.maxAttempts ?? 3
+  }
+
+  private getStaleProcessingMs() {
+    return this.options.staleProcessingMs ?? 60_000
+  }
+
+  private resetStaleProcessingJobs(sessionID: string) {
+    const cutoff = Date.now() - this.getStaleProcessingMs()
+    this.db
+      .prepare(`
+        UPDATE pending_jobs
+        SET status = 'pending',
+            started_processing_at = NULL,
+            updated_at = ?
+        WHERE session_id = ?
+          AND status = 'processing'
+          AND started_processing_at IS NOT NULL
+          AND started_processing_at < ?
+      `)
+      .run(Date.now(), sessionID, cutoff)
   }
 
   listFailedJobs(limit: number): MemoryQueueFailedJob[] {
@@ -176,6 +203,7 @@ export class PendingJobRepository implements PendingJobStore {
       .prepare(`
         UPDATE pending_jobs
         SET status = 'pending',
+            started_processing_at = NULL,
             updated_at = ?,
             last_error = NULL
         WHERE id = ? AND status = 'failed'

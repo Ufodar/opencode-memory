@@ -80,6 +80,7 @@ export class SQLiteMemoryDatabase {
         status TEXT NOT NULL,
         attempt_count INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
+        started_processing_at INTEGER,
         updated_at INTEGER NOT NULL,
         last_error TEXT
       );
@@ -93,6 +94,7 @@ export class SQLiteMemoryDatabase {
 
     this.ensureColumn("observations", "phase", "TEXT")
     this.ensureColumn("request_anchors", "last_checkpoint_observation_at", "INTEGER")
+    this.ensureColumn("pending_jobs", "started_processing_at", "INTEGER")
     this.cleanupLegacyObservationNoise()
   }
 
