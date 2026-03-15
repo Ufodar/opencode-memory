@@ -1,5 +1,9 @@
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 import type {
+  BuildCompactionContextRequest,
+  BuildCompactionContextResponse,
+  BuildSystemContextRequest,
+  BuildSystemContextResponse,
   CaptureObservationRequest,
   CaptureObservationResponse,
   CaptureRequestAnchorRequest,
@@ -55,6 +59,22 @@ export function createMemoryWorkerHttpClient(input: {
       return post<SelectInjectionRequest, SelectInjectionResponse>(
         fetchImpl,
         `${baseUrl}/injection/select`,
+        payload,
+      )
+    },
+
+    buildSystemContext(payload) {
+      return post<BuildSystemContextRequest, BuildSystemContextResponse>(
+        fetchImpl,
+        `${baseUrl}/injection/system-context`,
+        payload,
+      )
+    },
+
+    buildCompactionContext(payload) {
+      return post<BuildCompactionContextRequest, BuildCompactionContextResponse>(
+        fetchImpl,
+        `${baseUrl}/injection/compaction-context`,
         payload,
       )
     },

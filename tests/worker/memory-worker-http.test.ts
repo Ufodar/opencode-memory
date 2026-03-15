@@ -83,6 +83,22 @@ describe("memory worker http server", () => {
     const summaryResult = await worker.handleSessionIdle("ses_demo")
     expect(summaryResult.status).toBe("summarized")
 
+    const systemContext = await worker.buildSystemContext({
+      sessionID: "ses_demo",
+      maxSummaries: 2,
+      maxObservations: 3,
+      maxChars: 1000,
+    })
+    expect(systemContext[0]).toBe("[CONTINUITY]")
+
+    const compactionContext = await worker.buildCompactionContext({
+      sessionID: "ses_demo",
+      maxSummaries: 2,
+      maxObservations: 3,
+      maxChars: 1000,
+    })
+    expect(compactionContext[0]).toBe("[CONTINUITY CHECKPOINTS]")
+
     const search = await worker.searchMemoryRecords({
       sessionID: "ses_demo",
       query: "资格条件",

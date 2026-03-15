@@ -4,6 +4,10 @@ import { log } from "../services/logger.js"
 import { createMemoryWorkerService } from "../services/memory-worker-service.js"
 import { SQLiteMemoryStore } from "../storage/sqlite/memory-store.js"
 import type {
+  BuildCompactionContextRequest,
+  BuildCompactionContextResponse,
+  BuildSystemContextRequest,
+  BuildSystemContextResponse,
   CaptureObservationRequest,
   CaptureObservationResponse,
   CaptureRequestAnchorRequest,
@@ -82,6 +86,18 @@ export async function startMemoryWorkerServer(input: {
               await worker.selectInjectionRecords(
                 await readJson<SelectInjectionRequest>(request),
               ) satisfies SelectInjectionResponse,
+            )
+          case "/injection/system-context":
+            return json(
+              await worker.buildSystemContext(
+                await readJson<BuildSystemContextRequest>(request),
+              ) satisfies BuildSystemContextResponse,
+            )
+          case "/injection/compaction-context":
+            return json(
+              await worker.buildCompactionContext(
+                await readJson<BuildCompactionContextRequest>(request),
+              ) satisfies BuildCompactionContextResponse,
             )
           case "/search":
             return json(

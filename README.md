@@ -123,6 +123,7 @@ docs/
     - observation capture
     - idle summary
     - injection selection
+    - system / compaction context building
     - retrieval fallback
   - 当前 plugin 主链已经变成：
     - 启动 managed worker

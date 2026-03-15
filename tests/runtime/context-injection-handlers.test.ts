@@ -5,66 +5,50 @@ import { createSystemTransformHandler } from "../../src/runtime/handlers/system-
 import type { MemoryWorkerService } from "../../src/services/memory-worker-service.js"
 
 describe("context injection handlers", () => {
-  test("system transform prepends built memory lines", async () => {
+  test("system transform prepends worker-built memory lines", async () => {
     const calls: string[] = []
     const output = { system: ["existing"], context: [] as string[] }
 
     const handler = createSystemTransformHandler({
       worker: {
-        selectInjectionRecords() {
-          calls.push("select")
-          return {
-            scope: "session",
-            summaries: [],
-            observations: [],
-          }
+        buildSystemContext() {
+          calls.push("build")
+          return ["[MEMORY]", "Recent summaries:"]
         },
-      } as Pick<MemoryWorkerService, "selectInjectionRecords">,
+      } as Pick<MemoryWorkerService, "buildSystemContext">,
       maxSummaries: 2,
       maxObservations: 3,
       maxChars: 1000,
-      buildSystemMemoryContext() {
-        calls.push("build")
-        return ["[CONTINUITY]", "Recent summaries:"]
-      },
     })
 
     await handler({ sessionID: "ses_demo" }, output)
 
-    expect(calls).toEqual(["select", "build"])
-    expect(output.system).toEqual(["[CONTINUITY]", "Recent summaries:", "existing"])
+    expect(calls).toEqual(["build"])
+    expect(output.system).toEqual(["[MEMORY]", "Recent summaries:", "existing"])
   })
 
-  test("session compacting appends joined memory context", async () => {
+  test("session compacting appends worker-built memory context", async () => {
     const calls: string[] = []
     const output = { system: [] as string[], context: ["existing"] }
 
     const handler = createSessionCompactingHandler({
       worker: {
-        selectInjectionRecords() {
-          calls.push("select")
-          return {
-            scope: "project",
-            summaries: [],
-            observations: [],
-          }
+        buildCompactionContext() {
+          calls.push("build")
+          return ["[MEMORY CHECKPOINTS]", "Recent memory summaries:"]
         },
-      } as Pick<MemoryWorkerService, "selectInjectionRecords">,
+      } as Pick<MemoryWorkerService, "buildCompactionContext">,
       maxSummaries: 2,
       maxObservations: 3,
       maxChars: 1000,
-      buildCompactionMemoryContext() {
-        calls.push("build")
-        return ["[CONTINUITY CHECKPOINTS]", "Recent memory summaries:"]
-      },
     })
 
     await handler({ sessionID: "ses_demo" }, output)
 
-    expect(calls).toEqual(["select", "build"])
+    expect(calls).toEqual(["build"])
     expect(output.context).toEqual([
       "existing",
-      "[CONTINUITY CHECKPOINTS]\nRecent memory summaries:",
+      "[MEMORY CHECKPOINTS]\nRecent memory summaries:",
     ])
   })
 })

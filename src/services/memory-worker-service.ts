@@ -13,6 +13,8 @@ import type { RequestAnchorRecord } from "../memory/request/types.js"
 import type { SummaryRecord } from "../memory/summary/types.js"
 import { captureRequestAnchor as defaultCaptureRequestAnchor } from "../runtime/hooks/chat-message.js"
 import { captureToolObservation as defaultCaptureToolObservation } from "../runtime/hooks/tool-after.js"
+import { buildCompactionMemoryContext as defaultBuildCompactionMemoryContext } from "../runtime/injection/compaction-context.js"
+import { buildSystemMemoryContext as defaultBuildSystemMemoryContext } from "../runtime/injection/system-context.js"
 import { selectInjectionRecords as defaultSelectInjectionRecords } from "../runtime/injection/select-context.js"
 import { runIdleSummaryPipeline as defaultRunIdleSummaryPipeline } from "../runtime/pipelines/idle-summary-pipeline.js"
 import type { ModelSummaryResult } from "./ai/model-summary.js"
@@ -21,6 +23,8 @@ type CaptureRequestAnchor = typeof defaultCaptureRequestAnchor
 type CaptureToolObservation = typeof defaultCaptureToolObservation
 type SelectInjectionRecords = typeof defaultSelectInjectionRecords
 type IdleSummaryPipeline = typeof defaultRunIdleSummaryPipeline
+type BuildSystemMemoryContext = typeof defaultBuildSystemMemoryContext
+type BuildCompactionMemoryContext = typeof defaultBuildCompactionMemoryContext
 
 type MemoryCaptureStore = {
   saveRequestAnchor(record: RequestAnchorRecord): void
@@ -67,6 +71,18 @@ export interface MemoryWorkerService {
     maxSummaries: number
     maxObservations: number
   }): Awaitable<InjectionSelection>
+  buildSystemContext(input: {
+    sessionID?: string
+    maxSummaries: number
+    maxObservations: number
+    maxChars: number
+  }): Awaitable<string[]>
+  buildCompactionContext(input: {
+    sessionID?: string
+    maxSummaries: number
+    maxObservations: number
+    maxChars: number
+  }): Awaitable<string[]>
   searchMemoryRecords(input: {
     sessionID?: string
     query: string
@@ -110,11 +126,16 @@ export function createMemoryWorkerService(input: {
   captureToolObservation?: CaptureToolObservation
   runIdleSummaryPipeline?: IdleSummaryPipeline
   selectInjectionRecords?: SelectInjectionRecords
+  buildSystemMemoryContext?: BuildSystemMemoryContext
+  buildCompactionMemoryContext?: BuildCompactionMemoryContext
 }): MemoryWorkerService {
   const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
   const captureToolObservation = input.captureToolObservation ?? defaultCaptureToolObservation
   const runIdleSummaryPipeline = input.runIdleSummaryPipeline ?? defaultRunIdleSummaryPipeline
   const selectInjectionRecords = input.selectInjectionRecords ?? defaultSelectInjectionRecords
+  const buildSystemMemoryContext = input.buildSystemMemoryContext ?? defaultBuildSystemMemoryContext
+  const buildCompactionMemoryContext =
+    input.buildCompactionMemoryContext ?? defaultBuildCompactionMemoryContext
   const saveRequestAnchor = input.saveRequestAnchor ?? ((record: RequestAnchorRecord) => input.store.saveRequestAnchor(record))
   const saveObservation = input.saveObservation ?? ((record: ObservationRecord) => input.store.saveObservation(record))
 
@@ -176,6 +197,43 @@ export function createMemoryWorkerService(input: {
         sessionID: selectionInput.sessionID,
         maxSummaries: selectionInput.maxSummaries,
         maxObservations: selectionInput.maxObservations,
+      })
+    },
+
+    buildSystemContext(contextInput) {
+      const selected = selectInjectionRecords({
+        store: input.store,
+        projectPath: input.projectPath,
+        sessionID: contextInput.sessionID,
+        maxSummaries: contextInput.maxSummaries,
+        maxObservations: contextInput.maxObservations,
+      })
+
+      return buildSystemMemoryContext({
+        scope: selected.scope,
+        summaries: selected.summaries,
+        observations: selected.observations,
+        maxSummaries: contextInput.maxSummaries,
+        maxObservations: contextInput.maxObservations,
+        maxChars: contextInput.maxChars,
+      })
+    },
+
+    buildCompactionContext(contextInput) {
+      const selected = selectInjectionRecords({
+        store: input.store,
+        projectPath: input.projectPath,
+        sessionID: contextInput.sessionID,
+        maxSummaries: contextInput.maxSummaries,
+        maxObservations: contextInput.maxObservations,
+      })
+
+      return buildCompactionMemoryContext({
+        summaries: selected.summaries,
+        observations: selected.observations,
+        maxSummaries: contextInput.maxSummaries,
+        maxObservations: contextInput.maxObservations,
+        maxChars: contextInput.maxChars,
       })
     },
 

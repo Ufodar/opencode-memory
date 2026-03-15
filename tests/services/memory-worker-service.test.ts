@@ -154,6 +154,80 @@ describe("createMemoryWorkerService", () => {
     expect(calls).toEqual(["select"])
   })
 
+  test("builds system context inside the worker service", () => {
+    const calls: string[] = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      selectInjectionRecords() {
+        calls.push("select")
+        return {
+          scope: "session",
+          summaries: [],
+          observations: [],
+        }
+      },
+      buildSystemMemoryContext() {
+        calls.push("build")
+        return ["[MEMORY]", "Recent summaries:"]
+      },
+    })
+
+    const result = worker.buildSystemContext({
+      sessionID: "ses_demo",
+      maxSummaries: 2,
+      maxObservations: 3,
+      maxChars: 1000,
+    })
+
+    expect(result).toEqual(["[MEMORY]", "Recent summaries:"])
+    expect(calls).toEqual(["select", "build"])
+  })
+
+  test("builds compaction context inside the worker service", () => {
+    const calls: string[] = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      selectInjectionRecords() {
+        calls.push("select")
+        return {
+          scope: "project",
+          summaries: [],
+          observations: [],
+        }
+      },
+      buildCompactionMemoryContext() {
+        calls.push("build")
+        return ["[MEMORY CHECKPOINTS]", "Recent memory summaries:"]
+      },
+    })
+
+    const result = worker.buildCompactionContext({
+      sessionID: "ses_demo",
+      maxSummaries: 2,
+      maxObservations: 3,
+      maxChars: 1000,
+    })
+
+    expect(result).toEqual(["[MEMORY CHECKPOINTS]", "Recent memory summaries:"])
+    expect(calls).toEqual(["select", "build"])
+  })
+
   test("falls back from session search to project search inside the worker", () => {
     const calls: Array<{ sessionID?: string; scope?: "session" | "project" }> = []
 

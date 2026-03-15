@@ -54,6 +54,24 @@ export interface SelectInjectionResponse {
   observations: ObservationRecord[]
 }
 
+export interface BuildSystemContextRequest {
+  sessionID?: string
+  maxSummaries: number
+  maxObservations: number
+  maxChars: number
+}
+
+export type BuildSystemContextResponse = string[]
+
+export interface BuildCompactionContextRequest {
+  sessionID?: string
+  maxSummaries: number
+  maxObservations: number
+  maxChars: number
+}
+
+export type BuildCompactionContextResponse = string[]
+
 export interface SearchMemoryRequest {
   sessionID?: string
   query: string
