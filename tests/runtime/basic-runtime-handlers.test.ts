@@ -4,25 +4,25 @@ import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../src/memory/request/types.js"
 import { createChatMessageHandler } from "../../src/runtime/handlers/chat-message-event.js"
 import { createToolExecuteAfterHandler } from "../../src/runtime/handlers/tool-execute-after.js"
+import type { ContinuityWorkerService } from "../../src/services/continuity-worker-service.js"
 
 describe("basic runtime handlers", () => {
-  test("chat.message captures and saves a request anchor", async () => {
-    const saved: RequestAnchorRecord[] = []
+  test("chat.message delegates request-anchor capture to the continuity worker", async () => {
+    const calls: string[] = []
 
     const handler = createChatMessageHandler({
-      projectPath: "/workspace/demo",
-      saveRequestAnchor(record) {
-        saved.push(record)
-      },
-      captureRequestAnchor(input) {
-        return {
-          id: input.messageID ?? "req_1",
-          sessionID: input.sessionID,
-          projectPath: input.projectPath,
-          content: input.text,
-          createdAt: 1,
-        }
-      },
+      worker: {
+        captureRequestAnchorFromMessage(input) {
+          calls.push(`request:${input.sessionID}:${input.messageID}`)
+          return {
+            id: input.messageID ?? "req_1",
+            sessionID: input.sessionID,
+            projectPath: "/workspace/demo",
+            content: input.text,
+            createdAt: 1,
+          } satisfies RequestAnchorRecord
+        },
+      } as Pick<ContinuityWorkerService, "captureRequestAnchorFromMessage">,
     })
 
     await handler(
@@ -36,39 +36,34 @@ describe("basic runtime handlers", () => {
       },
     )
 
-    expect(saved).toHaveLength(1)
-    expect(saved[0]?.id).toBe("msg_1")
-    expect(saved[0]?.content).toBe("梳理第3章资格条件")
+    expect(calls).toEqual(["request:ses_demo:msg_1"])
   })
 
-  test("tool.execute.after captures and saves an observation", async () => {
-    const saved: ObservationRecord[] = []
+  test("tool.execute.after delegates observation capture to the continuity worker", async () => {
     const calls: string[] = []
 
     const handler = createToolExecuteAfterHandler({
-      projectPath: "/workspace/demo",
-      saveObservation(record) {
-        saved.push(record)
-      },
-      captureToolObservation(input) {
-        calls.push(`capture:${input.tool}`)
-        return {
-          id: "obs_1",
-          content: "确认存在3条资格条件约束",
-          sessionID: input.sessionID,
-          projectPath: input.projectPath,
-          createdAt: 1,
-          tool: {
-            name: input.tool,
-            callID: input.callID,
-            status: "success",
-          },
-          input: { summary: "读取第3章" },
-          output: { summary: "发现3条约束" },
-          retrieval: { importance: 0.9, tags: ["read", "observation"] },
-          trace: {},
-        }
-      },
+      worker: {
+        captureObservationFromToolCall(input) {
+          calls.push(`capture:${input.tool}`)
+          return {
+            id: "obs_1",
+            content: "确认存在3条资格条件约束",
+            sessionID: input.sessionID,
+            projectPath: "/workspace/demo",
+            createdAt: 1,
+            tool: {
+              name: input.tool,
+              callID: input.callID,
+              status: "success",
+            },
+            input: { summary: "读取第3章" },
+            output: { summary: "发现3条约束" },
+            retrieval: { importance: 0.9, tags: ["read", "observation"] },
+            trace: {},
+          } satisfies ObservationRecord
+        },
+      } as Pick<ContinuityWorkerService, "captureObservationFromToolCall">,
       log(message) {
         calls.push(`log:${message}`)
       },
@@ -88,8 +83,6 @@ describe("basic runtime handlers", () => {
       },
     )
 
-    expect(saved).toHaveLength(1)
-    expect(saved[0]?.id).toBe("obs_1")
     expect(calls).toEqual(["capture:read", "log:captured observation"])
   })
 })

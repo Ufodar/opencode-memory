@@ -1,10 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
-import type { ContinuityTimelineStore } from "../continuity/contracts.js"
+import type { ContinuityWorkerService } from "../services/continuity-worker-service.js"
 
 const DEFAULT_DEPTH_BEFORE = 3
 const DEFAULT_DEPTH_AFTER = 3
 
-export function createMemoryTimelineTool(store: ContinuityTimelineStore, projectPath: string) {
+export function createMemoryTimelineTool(worker: Pick<ContinuityWorkerService, "getContinuityTimeline">) {
   return tool({
     description:
       "Show chronological continuity context around a summary or observation anchor. Prefer this after memory_search and before memory_details. If scope is omitted, resolve the timeline from current session first and then fall back to project history.",
@@ -26,41 +26,16 @@ export function createMemoryTimelineTool(store: ContinuityTimelineStore, project
       const depthBefore = args.depth_before ?? DEFAULT_DEPTH_BEFORE
       const depthAfter = args.depth_after ?? DEFAULT_DEPTH_AFTER
 
-      let scopeUsed: "session" | "project" = "project"
-      let timeline =
-        args.scope === "project"
-          ? store.getContinuityTimeline({
-              projectPath,
-              anchorID: args.anchor,
-              query: args.query,
-              depthBefore,
-              depthAfter,
-            })
-          : store.getContinuityTimeline({
-              projectPath,
-              sessionID: toolCtx.sessionID,
-              anchorID: args.anchor,
-              query: args.query,
-              depthBefore,
-              depthAfter,
-            })
+      const result = worker.getContinuityTimeline({
+        sessionID: toolCtx.sessionID,
+        anchorID: args.anchor,
+        query: args.query,
+        depthBefore,
+        depthAfter,
+        scope: args.scope,
+      })
 
-      if (args.scope === "project") {
-        scopeUsed = "project"
-      } else if (timeline || args.scope === "session") {
-        scopeUsed = "session"
-      } else {
-        timeline = store.getContinuityTimeline({
-          projectPath,
-          anchorID: args.anchor,
-          query: args.query,
-          depthBefore,
-          depthAfter,
-        })
-        scopeUsed = "project"
-      }
-
-      if (!timeline) {
+      if (!result) {
         return JSON.stringify({
           success: false,
           error: "No continuity timeline found for the provided anchor or query",
@@ -69,10 +44,10 @@ export function createMemoryTimelineTool(store: ContinuityTimelineStore, project
 
       return JSON.stringify({
         success: true,
-        scope: scopeUsed,
-        anchor: timeline.anchor,
-        count: timeline.items.length,
-        items: timeline.items,
+        scope: result.scope,
+        anchor: result.timeline.anchor,
+        count: result.timeline.items.length,
+        items: result.timeline.items,
       })
     },
   })

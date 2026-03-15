@@ -2,32 +2,32 @@ import { describe, expect, test } from "bun:test"
 
 import type {
   ContinuitySearchRecord,
-  ContinuitySearchStore,
   ContinuityTimelineItem,
-  ContinuityTimelineStore,
 } from "../../src/continuity/contracts.js"
+import type { ContinuityWorkerService } from "../../src/services/continuity-worker-service.js"
 import { createMemorySearchTool } from "../../src/tools/memory-search.js"
 import { createMemoryTimelineTool } from "../../src/tools/memory-timeline.js"
 
 describe("retrieval tools", () => {
-  test("memory_search defaults to session-first and falls back to project", async () => {
-    const calls: Array<{ kind: "search"; sessionID?: string }> = []
+  test("memory_search delegates query execution to the continuity worker", async () => {
+    const calls: Array<{ kind: "search"; sessionID?: string; scope?: "session" | "project" }> = []
     const searchTool = createMemorySearchTool(
       {
         searchContinuityRecords(input) {
-          calls.push({ kind: "search", sessionID: input.sessionID })
-          if (input.sessionID) return []
-          return [
-            {
-              kind: "summary",
-              id: "sum_project",
-              content: "project result",
-              createdAt: 1,
-            },
-          ] satisfies ContinuitySearchRecord[]
+          calls.push({ kind: "search", sessionID: input.sessionID, scope: input.scope })
+          return {
+            scope: "session",
+            results: [
+              {
+                kind: "summary",
+                id: "sum_project",
+                content: "project result",
+                createdAt: 1,
+              },
+            ] satisfies ContinuitySearchRecord[],
+          }
         },
-      } as ContinuitySearchStore,
-      "/workspace/demo",
+      } as Pick<ContinuityWorkerService, "searchContinuityRecords">,
     )
 
     const result = JSON.parse(
@@ -38,31 +38,22 @@ describe("retrieval tools", () => {
     )
 
     expect(calls).toEqual([
-      { kind: "search", sessionID: "ses_current" },
-      { kind: "search", sessionID: undefined },
+      { kind: "search", sessionID: "ses_current", scope: undefined },
     ])
-    expect(result.scope).toBe("project")
+    expect(result.scope).toBe("session")
     expect(result.results[0].id).toBe("sum_project")
   })
 
-  test("memory_timeline defaults to session-first and falls back to project", async () => {
-    const calls: Array<{ kind: "timeline"; sessionID?: string }> = []
+  test("memory_timeline delegates timeline resolution to the continuity worker", async () => {
+    const calls: Array<{ kind: "timeline"; sessionID?: string; scope?: "session" | "project" }> = []
     const timelineTool = createMemoryTimelineTool(
       {
         getContinuityTimeline(input) {
-          calls.push({ kind: "timeline", sessionID: input.sessionID })
-          if (input.sessionID) return null
+          calls.push({ kind: "timeline", sessionID: input.sessionID, scope: input.scope })
           return {
-            anchor: {
-              kind: "summary",
-              id: "sum_project",
-              content: "project anchor",
-              createdAt: 1,
-              requestSummary: "request",
-              isAnchor: true,
-            } satisfies ContinuityTimelineItem,
-            items: [
-              {
+            scope: "session",
+            timeline: {
+              anchor: {
                 kind: "summary",
                 id: "sum_project",
                 content: "project anchor",
@@ -70,26 +61,58 @@ describe("retrieval tools", () => {
                 requestSummary: "request",
                 isAnchor: true,
               } satisfies ContinuityTimelineItem,
-            ],
+              items: [
+                {
+                  kind: "summary",
+                  id: "sum_project",
+                  content: "project anchor",
+                  createdAt: 1,
+                  requestSummary: "request",
+                  isAnchor: true,
+                } satisfies ContinuityTimelineItem,
+              ],
+            },
           }
         },
-      } as ContinuityTimelineStore,
-      "/workspace/demo",
+      } as Pick<ContinuityWorkerService, "getContinuityTimeline">,
     )
 
-    const result = JSON.parse(
-      await timelineTool.execute(
-        { query: "requirements" },
-        buildToolContext(),
-      ),
-    )
+    const result = JSON.parse(await timelineTool.execute({ query: "requirements" }, buildToolContext()))
 
-    expect(calls).toEqual([
-      { kind: "timeline", sessionID: "ses_current" },
-      { kind: "timeline", sessionID: undefined },
-    ])
-    expect(result.scope).toBe("project")
+    expect(calls).toEqual([{ kind: "timeline", sessionID: "ses_current", scope: undefined }])
+    expect(result.scope).toBe("session")
     expect(result.anchor.id).toBe("sum_project")
+  })
+})
+
+describe("memory_details", () => {
+  test("delegates detail lookup to the continuity worker", async () => {
+    const calls: string[][] = []
+    const { createMemoryDetailsTool } = await import("../../src/tools/memory-details.js")
+
+    const detailsTool = createMemoryDetailsTool(
+      {
+        getContinuityDetails(ids) {
+          calls.push(ids)
+          return [
+            {
+              kind: "summary",
+              id: "sum_1",
+              content: "summary",
+              createdAt: 1,
+              requestSummary: "request",
+              observationIDs: [],
+              coveredObservations: [],
+            },
+          ]
+        },
+      } as Pick<ContinuityWorkerService, "getContinuityDetails">,
+    )
+
+    const result = JSON.parse(await detailsTool.execute({ ids: ["sum_1"] }, buildToolContext()))
+
+    expect(calls).toEqual([["sum_1"]])
+    expect(result.results[0].id).toBe("sum_1")
   })
 })
 

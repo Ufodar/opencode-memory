@@ -1,22 +1,17 @@
-import type { ContinuityInjectionStore } from "../../continuity/contracts.js"
 import { buildCompactionContinuityContext as defaultBuildCompactionContinuityContext } from "../injection/compaction-context.js"
-import { selectInjectionRecords as defaultSelectInjectionRecords } from "../injection/select-context.js"
+import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
 
-type SelectInjectionRecords = typeof defaultSelectInjectionRecords
 type BuildCompactionContinuityContext = typeof defaultBuildCompactionContinuityContext
 
 export interface SessionCompactingHandlerDependencies {
-  store: ContinuityInjectionStore
-  projectPath: string
+  worker: Pick<ContinuityWorkerService, "selectInjectionRecords">
   maxSummaries: number
   maxObservations: number
   maxChars: number
-  selectInjectionRecords?: SelectInjectionRecords
   buildCompactionContinuityContext?: BuildCompactionContinuityContext
 }
 
 export function createSessionCompactingHandler(input: SessionCompactingHandlerDependencies) {
-  const selectInjectionRecords = input.selectInjectionRecords ?? defaultSelectInjectionRecords
   const buildCompactionContinuityContext =
     input.buildCompactionContinuityContext ?? defaultBuildCompactionContinuityContext
 
@@ -24,9 +19,7 @@ export function createSessionCompactingHandler(input: SessionCompactingHandlerDe
     compactingInput: { sessionID?: string },
     output: { context: string[] },
   ) => {
-    const selected = selectInjectionRecords({
-      store: input.store,
-      projectPath: input.projectPath,
+    const selected = input.worker.selectInjectionRecords({
       sessionID: compactingInput.sessionID,
       maxSummaries: input.maxSummaries,
       maxObservations: input.maxObservations,

@@ -1,17 +1,10 @@
-import type { RequestAnchorRecord } from "../../memory/request/types.js"
-import { captureRequestAnchor as defaultCaptureRequestAnchor } from "../hooks/chat-message.js"
-
-type CaptureRequestAnchor = typeof defaultCaptureRequestAnchor
+import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
 
 export interface ChatMessageHandlerDependencies {
-  projectPath: string
-  saveRequestAnchor(record: RequestAnchorRecord): void
-  captureRequestAnchor?: CaptureRequestAnchor
+  worker: Pick<ContinuityWorkerService, "captureRequestAnchorFromMessage">
 }
 
 export function createChatMessageHandler(input: ChatMessageHandlerDependencies) {
-  const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
-
   return async (
     messageInput: { sessionID: string },
     output: {
@@ -24,17 +17,10 @@ export function createChatMessageHandler(input: ChatMessageHandlerDependencies) 
       .map((part) => part.text)
       .join("\n")
 
-    const requestAnchor = captureRequestAnchor({
+    input.worker.captureRequestAnchorFromMessage({
       sessionID: messageInput.sessionID,
       messageID: output.message.id,
-      projectPath: input.projectPath,
       text,
     })
-
-    if (!requestAnchor) {
-      return
-    }
-
-    input.saveRequestAnchor(requestAnchor)
   }
 }

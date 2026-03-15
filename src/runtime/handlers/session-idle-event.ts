@@ -1,31 +1,16 @@
-import type { ContinuityIdleSummaryStore } from "../../continuity/contracts.js"
-import type { ObservationRecord } from "../../memory/observation/types.js"
-import type { RequestAnchorRecord } from "../../memory/request/types.js"
-import type { ModelSummaryResult } from "../../services/ai/model-summary.js"
 import { log as defaultLog } from "../../services/logger.js"
-import { runIdleSummaryPipeline as defaultRunIdleSummaryPipeline } from "../pipelines/idle-summary-pipeline.js"
+import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
 
-type IdleSummaryPipeline = typeof defaultRunIdleSummaryPipeline
 type IdleEventLogger = typeof defaultLog
 
 export interface SessionIdleEventHandlerDependencies {
-  projectPath: string
-  store: ContinuityIdleSummaryStore
-  idleSummaryGuard: {
-    run<T>(sessionID: string, task: () => Promise<T>): Promise<{ ran: boolean; result?: T }>
-  }
-  generateModelSummary?: (input: {
-    request: RequestAnchorRecord
-    observations: ObservationRecord[]
-  }) => Promise<ModelSummaryResult | null>
-  runIdleSummaryPipeline?: IdleSummaryPipeline
+  worker: Pick<ContinuityWorkerService, "handleSessionIdle">
   log?: IdleEventLogger
 }
 
 export function createSessionIdleEventHandler(
   input: SessionIdleEventHandlerDependencies,
 ) {
-  const runIdleSummaryPipeline = input.runIdleSummaryPipeline ?? defaultRunIdleSummaryPipeline
   const log = input.log ?? defaultLog
 
   return async ({ event }: { event: { type: string; properties: Record<string, unknown> } }) => {
@@ -38,32 +23,26 @@ export function createSessionIdleEventHandler(
       return
     }
 
-    const guardResult = await input.idleSummaryGuard.run(sessionID, async () => {
-      const result = await runIdleSummaryPipeline({
-        projectPath: input.projectPath,
-        sessionID,
-        store: input.store,
-        generateModelSummary: input.generateModelSummary,
-      })
+    const result = await input.worker.handleSessionIdle(sessionID)
 
-      if (result.status === "missing-request") {
-        log("session.idle without pending request anchor", { sessionID })
-        return
-      }
-
-      if (result.status === "no-op") {
-        log("session.idle without aggregatable observations", {
-          sessionID,
-          requestAnchorID: result.requestAnchorID,
-        })
-        return
-      }
-
-      log("captured summary", { id: result.summaryID, sessionID })
-    })
-
-    if (!guardResult.ran) {
+    if (result.status === "busy") {
       log("session.idle skipped because summary is already in flight", { sessionID })
+      return
     }
+
+    if (result.status === "missing-request") {
+      log("session.idle without pending request anchor", { sessionID })
+      return
+    }
+
+    if (result.status === "no-op") {
+      log("session.idle without aggregatable observations", {
+        sessionID,
+        requestAnchorID: result.requestAnchorID,
+      })
+      return
+    }
+
+    log("captured summary", { id: result.summaryID, sessionID })
   }
 }

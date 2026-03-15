@@ -1,22 +1,17 @@
-import type { ContinuityInjectionStore } from "../../continuity/contracts.js"
 import { buildSystemContinuityContext as defaultBuildSystemContinuityContext } from "../injection/system-context.js"
-import { selectInjectionRecords as defaultSelectInjectionRecords } from "../injection/select-context.js"
+import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
 
-type SelectInjectionRecords = typeof defaultSelectInjectionRecords
 type BuildSystemContinuityContext = typeof defaultBuildSystemContinuityContext
 
 export interface SystemTransformHandlerDependencies {
-  store: ContinuityInjectionStore
-  projectPath: string
+  worker: Pick<ContinuityWorkerService, "selectInjectionRecords">
   maxSummaries: number
   maxObservations: number
   maxChars: number
-  selectInjectionRecords?: SelectInjectionRecords
   buildSystemContinuityContext?: BuildSystemContinuityContext
 }
 
 export function createSystemTransformHandler(input: SystemTransformHandlerDependencies) {
-  const selectInjectionRecords = input.selectInjectionRecords ?? defaultSelectInjectionRecords
   const buildSystemContinuityContext =
     input.buildSystemContinuityContext ?? defaultBuildSystemContinuityContext
 
@@ -24,9 +19,7 @@ export function createSystemTransformHandler(input: SystemTransformHandlerDepend
     transformInput: { sessionID?: string },
     output: { system: string[] },
   ) => {
-    const selected = selectInjectionRecords({
-      store: input.store,
-      projectPath: input.projectPath,
+    const selected = input.worker.selectInjectionRecords({
       sessionID: transformInput.sessionID,
       maxSummaries: input.maxSummaries,
       maxObservations: input.maxObservations,

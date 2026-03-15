@@ -1,27 +1,19 @@
 import { describe, expect, test } from "bun:test"
 
-import type { ContinuityIdleSummaryStore } from "../../src/continuity/contracts.js"
 import { createSessionIdleEventHandler } from "../../src/runtime/handlers/session-idle-event.js"
+import type { ContinuityWorkerService } from "../../src/services/continuity-worker-service.js"
 
 describe("createSessionIdleEventHandler", () => {
-  test("runs the idle summary pipeline through the session guard", async () => {
+  test("delegates session.idle handling to the continuity worker", async () => {
     const calls: string[] = []
 
     const handler = createSessionIdleEventHandler({
-      projectPath: "/workspace/demo",
-      store: {} as ContinuityIdleSummaryStore,
-      generateModelSummary: async () => null,
-      idleSummaryGuard: {
-        async run(sessionID, task) {
-          calls.push(`guard:${sessionID}`)
-          await task()
-          return { ran: true }
+      worker: {
+        async handleSessionIdle(sessionID) {
+          calls.push(`idle:${sessionID}`)
+          return { status: "missing-request" }
         },
-      },
-      runIdleSummaryPipeline: async (input) => {
-        calls.push(`pipeline:${input.sessionID}`)
-        return { status: "missing-request" }
-      },
+      } as Pick<ContinuityWorkerService, "handleSessionIdle">,
       log: (message) => {
         calls.push(`log:${message}`)
       },
@@ -35,28 +27,21 @@ describe("createSessionIdleEventHandler", () => {
     })
 
     expect(calls).toEqual([
-      "guard:ses_demo",
-      "pipeline:ses_demo",
+      "idle:ses_demo",
       "log:session.idle without pending request anchor",
     ])
   })
 
-  test("skips pipeline execution when the guard rejects a reentry", async () => {
+  test("logs busy when the continuity worker rejects a reentry", async () => {
     const calls: string[] = []
 
     const handler = createSessionIdleEventHandler({
-      projectPath: "/workspace/demo",
-      store: {} as ContinuityIdleSummaryStore,
-      idleSummaryGuard: {
-        async run(sessionID) {
-          calls.push(`guard:${sessionID}`)
-          return { ran: false }
+      worker: {
+        async handleSessionIdle(sessionID) {
+          calls.push(`idle:${sessionID}`)
+          return { status: "busy" }
         },
-      },
-      runIdleSummaryPipeline: async () => {
-        calls.push("pipeline")
-        return { status: "missing-request" }
-      },
+      } as Pick<ContinuityWorkerService, "handleSessionIdle">,
       log: (message) => {
         calls.push(`log:${message}`)
       },
@@ -70,7 +55,7 @@ describe("createSessionIdleEventHandler", () => {
     })
 
     expect(calls).toEqual([
-      "guard:ses_demo",
+      "idle:ses_demo",
       "log:session.idle skipped because summary is already in flight",
     ])
   })

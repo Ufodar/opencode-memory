@@ -7,6 +7,7 @@ import { createSessionCompactingHandler } from "./runtime/handlers/session-compa
 import { createSessionIdleEventHandler } from "./runtime/handlers/session-idle-event.js"
 import { createSystemTransformHandler } from "./runtime/handlers/system-transform.js"
 import { createToolExecuteAfterHandler } from "./runtime/handlers/tool-execute-after.js"
+import { createContinuityWorkerService } from "./services/continuity-worker-service.js"
 import { generateModelSummary } from "./services/ai/model-summary.js"
 import { SQLiteContinuityStore } from "./storage/sqlite/continuity-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
@@ -16,30 +17,29 @@ import { createMemoryTimelineTool } from "./tools/memory-timeline.js"
 export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
   const store = new SQLiteContinuityStore(getDefaultDatabasePath())
   const idleSummaryGuard = createSessionReentryGuard()
-  const handleChatMessage = createChatMessageHandler({
-    projectPath: directory,
-    saveRequestAnchor: (record) => store.saveRequestAnchor(record),
-  })
-  const handleSessionIdleEvent = createSessionIdleEventHandler({
+  const worker = createContinuityWorkerService({
     projectPath: directory,
     store,
     idleSummaryGuard,
     generateModelSummary,
   })
+  const handleChatMessage = createChatMessageHandler({
+    worker,
+  })
+  const handleSessionIdleEvent = createSessionIdleEventHandler({
+    worker,
+  })
   const handleToolExecuteAfter = createToolExecuteAfterHandler({
-    projectPath: directory,
-    saveObservation: (record) => store.saveObservation(record),
+    worker,
   })
   const handleSystemTransform = createSystemTransformHandler({
-    store,
-    projectPath: directory,
+    worker,
     maxSummaries: DEFAULTS.maxInjectedSummaries,
     maxObservations: DEFAULTS.maxInjectedObservations,
     maxChars: DEFAULTS.maxInjectedChars,
   })
   const handleSessionCompacting = createSessionCompactingHandler({
-    store,
-    projectPath: directory,
+    worker,
     maxSummaries: DEFAULTS.maxCompactionSummaries,
     maxObservations: DEFAULTS.maxCompactionObservations,
     maxChars: DEFAULTS.maxCompactionChars,
@@ -57,9 +57,9 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
     "experimental.session.compacting": handleSessionCompacting,
 
     tool: {
-      memory_search: createMemorySearchTool(store, directory),
-      memory_timeline: createMemoryTimelineTool(store, directory),
-      memory_details: createMemoryDetailsTool(store),
+      memory_search: createMemorySearchTool(worker),
+      memory_timeline: createMemoryTimelineTool(worker),
+      memory_details: createMemoryDetailsTool(worker),
     },
   }
 }

@@ -117,9 +117,18 @@ docs/
   - `tool-execute-after`
   - `system-transform`
   - `session-compacting`
+- 已新增 in-process `ContinuityWorkerService`
+  - 统一承接：
+    - request anchor capture
+    - observation capture
+    - idle summary
+    - injection selection
+    - retrieval fallback
+  - 当前 plugin 入口开始以这个 service 作为 continuity 主控，而不是让 handler / tool 各自直接碰 store
 - plugin 入口已进一步收紧为：
   - 创建 store
   - 创建 reentry guard
+  - 创建 continuity worker service
   - 组装 handlers
   - 暴露 tools
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号

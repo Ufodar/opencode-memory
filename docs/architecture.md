@@ -44,6 +44,10 @@
 
 - 第一版不做外部 worker
 - 当前仍是 `plugin-internal pipeline`，不是 `thin hook -> worker`
+- 但当前已经新增了 in-process `ContinuityWorkerService`
+  - 作用不是起独立进程
+  - 而是先在结构上提供一个 continuity 主控中心
+  - 让 handler / tool 先对齐到“薄入口 -> 中心服务 -> store/pipeline”的形态
 - 先在插件内部完成：
   - observation capture
   - request anchor
@@ -190,13 +194,19 @@ tool.execute.after
 - `index.ts` 当前已进一步收紧为 composition root：
   - 创建 store
   - 创建 guard
+  - 创建 `ContinuityWorkerService`
   - 组装 handlers
   - 暴露 tools
+- 当前最新的对齐点：
+  - handler 已不再直接碰 store / pipeline
+  - retrieval tool 也不再直接碰 store
+  - 两者都先经过 `ContinuityWorkerService`
+  - 这一步对齐的是 `claude-mem` 的 worker 角色，而不是它的独立进程形态
 
 仍未完成的下一阶段：
 
-- 如有必要，再把 tool 组装层单独抽出
-- 再决定是否需要 provider abstraction
+- 再决定是否需要把 `ContinuityWorkerService` 外移成轻量独立 worker
+- 再决定是否要把 context builder 进一步收进 service 内部
 - 再考虑是否把 `index.ts` 对 `SQLiteContinuityStore` 的创建继续压到更薄的 composition 边界
 
 ## 真实宿主验证补充

@@ -1,19 +1,14 @@
-import type { ObservationRecord } from "../../memory/observation/types.js"
-import { captureToolObservation as defaultCaptureToolObservation } from "../hooks/tool-after.js"
 import { log as defaultLog } from "../../services/logger.js"
+import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
 
-type CaptureToolObservation = typeof defaultCaptureToolObservation
 type ToolAfterLogger = typeof defaultLog
 
 export interface ToolExecuteAfterHandlerDependencies {
-  projectPath: string
-  saveObservation(record: ObservationRecord): void
-  captureToolObservation?: CaptureToolObservation
+  worker: Pick<ContinuityWorkerService, "captureObservationFromToolCall">
   log?: ToolAfterLogger
 }
 
 export function createToolExecuteAfterHandler(input: ToolExecuteAfterHandlerDependencies) {
-  const captureToolObservation = input.captureToolObservation ?? defaultCaptureToolObservation
   const log = input.log ?? defaultLog
 
   return async (
@@ -29,19 +24,12 @@ export function createToolExecuteAfterHandler(input: ToolExecuteAfterHandlerDepe
       metadata: Record<string, unknown>
     },
   ) => {
-    const observation = captureToolObservation(
-      {
-        ...toolInput,
-        projectPath: input.projectPath,
-      },
-      output,
-    )
+    const observation = input.worker.captureObservationFromToolCall(toolInput, output)
 
     if (!observation) {
       return
     }
 
-    input.saveObservation(observation)
     log("captured observation", { id: observation.id, tool: observation.tool.name })
   }
 }

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 
-import type { ContinuityInjectionStore } from "../../src/continuity/contracts.js"
 import { createSessionCompactingHandler } from "../../src/runtime/handlers/session-compacting.js"
 import { createSystemTransformHandler } from "../../src/runtime/handlers/system-transform.js"
+import type { ContinuityWorkerService } from "../../src/services/continuity-worker-service.js"
 
 describe("context injection handlers", () => {
   test("system transform prepends built continuity lines", async () => {
@@ -10,19 +10,19 @@ describe("context injection handlers", () => {
     const output = { system: ["existing"], context: [] as string[] }
 
     const handler = createSystemTransformHandler({
-      store: {} as ContinuityInjectionStore,
-      projectPath: "/workspace/demo",
+      worker: {
+        selectInjectionRecords() {
+          calls.push("select")
+          return {
+            scope: "session",
+            summaries: [],
+            observations: [],
+          }
+        },
+      } as Pick<ContinuityWorkerService, "selectInjectionRecords">,
       maxSummaries: 2,
       maxObservations: 3,
       maxChars: 1000,
-      selectInjectionRecords() {
-        calls.push("select")
-        return {
-          scope: "session",
-          summaries: [],
-          observations: [],
-        }
-      },
       buildSystemContinuityContext() {
         calls.push("build")
         return ["[CONTINUITY]", "Recent summaries:"]
@@ -40,19 +40,19 @@ describe("context injection handlers", () => {
     const output = { system: [] as string[], context: ["existing"] }
 
     const handler = createSessionCompactingHandler({
-      store: {} as ContinuityInjectionStore,
-      projectPath: "/workspace/demo",
+      worker: {
+        selectInjectionRecords() {
+          calls.push("select")
+          return {
+            scope: "project",
+            summaries: [],
+            observations: [],
+          }
+        },
+      } as Pick<ContinuityWorkerService, "selectInjectionRecords">,
       maxSummaries: 2,
       maxObservations: 3,
       maxChars: 1000,
-      selectInjectionRecords() {
-        calls.push("select")
-        return {
-          scope: "project",
-          summaries: [],
-          observations: [],
-        }
-      },
       buildCompactionContinuityContext() {
         calls.push("build")
         return ["[CONTINUITY CHECKPOINTS]", "Recent continuity summaries:"]
