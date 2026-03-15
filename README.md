@@ -139,6 +139,7 @@ docs/
   - 跨多次 `opencode run` 会先尝试从本地注册文件恢复已有 worker
   - 旧 worker 不健康时自动替换
   - 已发出的 handle 会通过代理对象自动切到新 worker
+  - 关闭时会优先走 worker 自己的 `/shutdown`，失败后才回退到 PID kill
 - worker 内部已加入按 `sessionID` 串行的 job 调度：
   - 同一 session 的 capture / summary / session-scoped retrieval 不再并发直进
   - 不同 session 仍可并发

@@ -6,7 +6,11 @@ import { fileURLToPath } from "node:url"
 import { getDefaultWorkerRegistryPath } from "../config/paths.js"
 import { log } from "../services/logger.js"
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
-import { checkMemoryWorkerHealth, createMemoryWorkerHttpClient } from "./client.js"
+import {
+  checkMemoryWorkerHealth,
+  createMemoryWorkerHttpClient,
+  shutdownMemoryWorker,
+} from "./client.js"
 import {
   buildWorkerKey,
   readWorkerRegistryRecord,
@@ -169,6 +173,7 @@ async function startManagedMemoryWorkerProcess(input: {
     },
     stop: createStopHandle({
       pid: child.pid,
+      port,
       projectPath: input.projectPath,
       databasePath: input.databasePath,
     }),
@@ -209,6 +214,7 @@ async function recoverManagedMemoryWorkerProcess(input: {
     },
     stop: createStopHandle({
       pid: record.pid,
+      port: record.port,
       projectPath: input.projectPath,
       databasePath: input.databasePath,
     }),
@@ -403,6 +409,7 @@ async function waitForWorkerHealth(
 
 function createStopHandle(input: {
   pid: number | undefined
+  port: number
   projectPath: string
   databasePath: string
 }) {
@@ -414,6 +421,24 @@ function createStopHandle(input: {
 
     if (!input.pid) {
       return
+    }
+
+    const baseUrl = `http://127.0.0.1:${input.port}`
+
+    try {
+      await shutdownMemoryWorker({
+        baseUrl,
+        requestTimeoutMs: 1_000,
+      })
+      await waitForPidExit(input.pid).catch(() => undefined)
+      removeWorkerRegistryRecord({
+        registryPath: getDefaultWorkerRegistryPath(),
+        projectPath: input.projectPath,
+        databasePath: input.databasePath,
+      })
+      return
+    } catch {
+      // Fallback to PID-based termination below.
     }
 
     try {

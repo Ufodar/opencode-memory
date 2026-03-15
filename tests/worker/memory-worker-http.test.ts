@@ -3,7 +3,11 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
-import { createMemoryWorkerHttpClient } from "../../src/worker/client.js"
+import {
+  checkMemoryWorkerHealth,
+  createMemoryWorkerHttpClient,
+  shutdownMemoryWorker,
+} from "../../src/worker/client.js"
 import { startMemoryWorkerServer } from "../../src/worker/server.js"
 
 const cleanupTasks: Array<() => Promise<void>> = []
@@ -113,5 +117,29 @@ describe("memory worker http server", () => {
 
     const details = await worker.getMemoryDetails([firstId!])
     expect(details.length).toBe(1)
+  })
+
+  test("supports graceful shutdown over http", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-worker-"))
+    cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
+
+    const databasePath = path.join(root, "memory.sqlite")
+    const server = await startMemoryWorkerServer({
+      port: 0,
+      projectPath: "/workspace/demo",
+      databasePath,
+    })
+
+    await shutdownMemoryWorker({
+      baseUrl: server.baseUrl,
+      requestTimeoutMs: 250,
+    })
+
+    const healthy = await checkMemoryWorkerHealth({
+      baseUrl: server.baseUrl,
+      requestTimeoutMs: 50,
+    })
+
+    expect(healthy).toBe(false)
   })
 })

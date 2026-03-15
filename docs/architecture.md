@@ -172,6 +172,7 @@ tool.execute.after
   - plugin 启动时会先读取本地 worker 注册信息，优先恢复健康的已有 worker
   - 不健康 worker 自动替换
   - 已发出的 handle 通过代理层自动切到新 worker
+  - 关闭时优先调用 worker 自己的 `/shutdown`，再回退到 PID kill
 - worker 运行时当前已加入两层额外治理：
   - session 级 job 串行：
     - 同一 session 的 capture / summary / session-scoped query 先进入 worker 内部 scheduler

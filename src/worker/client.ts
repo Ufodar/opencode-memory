@@ -144,6 +144,47 @@ export async function checkMemoryWorkerHealth(input: {
   }
 }
 
+export async function shutdownMemoryWorker(input: {
+  baseUrl: string
+  fetchImpl?: FetchLike
+  requestTimeoutMs?: number
+}): Promise<void> {
+  const fetchImpl = input.fetchImpl ?? fetch
+  const requestTimeoutMs = input.requestTimeoutMs ?? DEFAULT_WORKER_REQUEST_TIMEOUT_MS
+  const normalizedBaseUrl = input.baseUrl.replace(/\/$/, "")
+
+  const response = await withRequestTimeout(
+    (signal) =>
+      fetchImpl(`${normalizedBaseUrl}/shutdown`, {
+        method: "POST",
+        signal,
+      }),
+    requestTimeoutMs,
+    "Memory worker shutdown",
+  )
+
+  if (!response.ok) {
+    const message = await safeReadError(response)
+    throw new Error(message)
+  }
+
+  const deadline = Date.now() + requestTimeoutMs
+
+  while (Date.now() < deadline) {
+    const healthy = await checkMemoryWorkerHealth({
+      baseUrl: normalizedBaseUrl,
+      fetchImpl,
+      requestTimeoutMs: Math.min(250, requestTimeoutMs),
+    })
+
+    if (!healthy) {
+      return
+    }
+
+    await sleep(25)
+  }
+}
+
 async function post<TRequest, TResponse>(
   fetchImpl: FetchLike,
   url: string,
@@ -220,4 +261,8 @@ async function safeReadError(response: Response): Promise<string> {
   }
 
   return `Worker request failed with status ${response.status}`
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }

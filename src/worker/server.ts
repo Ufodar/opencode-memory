@@ -45,6 +45,17 @@ export async function startMemoryWorkerServer(input: {
     idleSummaryGuard,
     generateModelSummary,
   })
+  let stopped = false
+
+  const stopServer = async () => {
+    if (stopped) {
+      return
+    }
+
+    stopped = true
+    server.stop(true)
+    store.close()
+  }
 
   const server = Bun.serve({
     port: input.port,
@@ -53,6 +64,13 @@ export async function startMemoryWorkerServer(input: {
       const url = new URL(request.url)
 
       if (request.method === "GET" && url.pathname === "/health") {
+        return json({ ok: true })
+      }
+
+      if (request.method === "POST" && url.pathname === "/shutdown") {
+        setTimeout(() => {
+          void stopServer()
+        }, 10)
         return json({ ok: true })
       }
 
@@ -142,8 +160,7 @@ export async function startMemoryWorkerServer(input: {
 
   const port = server.port
   if (typeof port !== "number") {
-    server.stop(true)
-    store.close()
+    await stopServer()
     throw new Error("Memory worker server did not expose a port")
   }
 
@@ -151,8 +168,7 @@ export async function startMemoryWorkerServer(input: {
     port,
     baseUrl: `http://127.0.0.1:${port}`,
     async stop() {
-      server.stop(true)
-      store.close()
+      await stopServer()
     },
   }
 }
