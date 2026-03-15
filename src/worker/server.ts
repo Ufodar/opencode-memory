@@ -78,6 +78,9 @@ export async function startMemoryWorkerServer(input: {
       resetProcessingToPending() {
         return store.resetProcessingPendingJobs()
       },
+      getQueueStats() {
+        return store.getQueueStats()
+      },
       listFailedJobs(limit) {
         return store.listFailedJobs(limit)
       },

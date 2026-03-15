@@ -178,6 +178,13 @@ docs/
   - stuck processing job 现在也能手动放回 `pending`
   - 失败 job 不再只能静默留在 SQLite 里
   - 这一层继续向 `claude-mem` 的“失败队列可见、可重试”恢复路径靠拢
+- worker 现在也会主动打印 queue 变化日志：
+  - enqueue / start / complete / fail / resume 都会自动打日志
+  - 日志里会直接带：
+    - `queueDepth`
+    - `isProcessing`
+    - `counts`
+  - 不再只能靠手动调用 `memory_queue_status` 判断 worker 是否正在忙
 - pending queue 已加入 stale processing 自愈：
   - worker 存活期间，如果某个 job 长时间卡在 `processing`
   - 下一次 claim 同 session 队列时会先把它重置回 `pending`

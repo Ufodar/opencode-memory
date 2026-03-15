@@ -7,6 +7,134 @@ import type {
 } from "../../src/worker/pending-jobs.js"
 
 describe("pending job processor", () => {
+  test("logs queue state transitions when a job is enqueued and completed", async () => {
+    const calls: string[] = []
+    const logs: Array<{ message: string; metadata?: Record<string, unknown> }> = []
+    const pending: PendingJobRecord[] = []
+
+    const store: PendingJobStore = {
+      enqueue(input) {
+        const next: PendingJobRecord = {
+          id: 1,
+          sessionID: input.sessionID,
+          kind: input.kind,
+          payload: input.payload as PendingJobRecord["payload"],
+          status: "pending",
+          attemptCount: 0,
+          createdAt: 1,
+          updatedAt: 1,
+          lastError: null,
+        } as PendingJobRecord
+        pending.push(next)
+        return next.id
+      },
+      claimNext(sessionID) {
+        const next = pending.find((job) => job.sessionID === sessionID && job.status === "pending") ?? null
+        if (!next) return null
+        next.status = "processing"
+        next.attemptCount += 1
+        return next
+      },
+      complete(id) {
+        const index = pending.findIndex((job) => job.id === id)
+        if (index >= 0) pending.splice(index, 1)
+      },
+      recordFailure() {
+        return "pending"
+      },
+      listSessionIDsWithPendingJobs() {
+        return []
+      },
+      resetProcessingToPending() {
+        return 0
+      },
+      listProcessingJobs() {
+        return []
+      },
+      listFailedJobs() {
+        return []
+      },
+      retryJob() {
+        return false
+      },
+      getQueueStats() {
+        const pendingCount = pending.filter((job) => job.status === "pending").length
+        const processingCount = pending.filter((job) => job.status === "processing").length
+        return {
+          pending: pendingCount,
+          processing: processingCount,
+          failed: 0,
+        }
+      },
+    }
+
+    const processor = createPendingJobProcessor({
+      store,
+      scheduler: {
+        run(_sessionID, task) {
+          return task()
+        },
+        enqueue(_sessionID, job) {
+          void job()
+        },
+      },
+      worker: {
+        captureRequestAnchorFromMessage(input) {
+          calls.push(`request:${input.sessionID}:${input.messageID}`)
+          return null
+        },
+        captureObservationFromToolCall() {
+          return null
+        },
+        handleSessionIdle() {
+          return { status: "missing-request" as const }
+        },
+      },
+      log(message, metadata) {
+        logs.push({ message, metadata })
+      },
+    })
+
+    processor.enqueueRequestAnchor({
+      sessionID: "ses_demo",
+      messageID: "msg_1",
+      text: "梳理第3章资格条件",
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(calls).toEqual(["request:ses_demo:msg_1"])
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        message: "memory queue enqueued job",
+        metadata: expect.objectContaining({
+          sessionID: "ses_demo",
+          kind: "request-anchor",
+          queueDepth: 1,
+        }),
+      }),
+    )
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        message: "memory queue started job",
+        metadata: expect.objectContaining({
+          sessionID: "ses_demo",
+          kind: "request-anchor",
+          queueDepth: 1,
+        }),
+      }),
+    )
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        message: "memory queue completed job",
+        metadata: expect.objectContaining({
+          sessionID: "ses_demo",
+          kind: "request-anchor",
+          queueDepth: 0,
+        }),
+      }),
+    )
+  })
+
   test("replays pending jobs in order for a session", async () => {
     const calls: string[] = []
     const pending: PendingJobRecord[] = [
@@ -68,6 +196,22 @@ describe("pending job processor", () => {
         }
         return pending.length
       },
+      listProcessingJobs() {
+        return []
+      },
+      listFailedJobs() {
+        return []
+      },
+      retryJob() {
+        return false
+      },
+      getQueueStats() {
+        return {
+          pending: pending.filter((job) => job.status === "pending").length,
+          processing: pending.filter((job) => job.status === "processing").length,
+          failed: pending.filter((job) => job.status === "failed").length,
+        }
+      },
     }
 
     const processor = createPendingJobProcessor({
@@ -125,6 +269,18 @@ describe("pending job processor", () => {
       resetProcessingToPending() {
         return 2
       },
+      listProcessingJobs() {
+        return []
+      },
+      listFailedJobs() {
+        return []
+      },
+      retryJob() {
+        return false
+      },
+      getQueueStats() {
+        return { pending: 0, processing: 0, failed: 0 }
+      },
     }
 
     const processor = createPendingJobProcessor({
@@ -159,6 +315,7 @@ describe("pending job processor", () => {
 
   test("marks permanently failing job as failed and continues later jobs in the same session", async () => {
     const calls: string[] = []
+    const logs: Array<{ message: string; metadata?: Record<string, unknown> }> = []
     const failedIds: number[] = []
     const pending: PendingJobRecord[] = [
       {
@@ -213,6 +370,22 @@ describe("pending job processor", () => {
       resetProcessingToPending() {
         return 0
       },
+      listProcessingJobs() {
+        return []
+      },
+      listFailedJobs() {
+        return []
+      },
+      retryJob() {
+        return false
+      },
+      getQueueStats() {
+        return {
+          pending: pending.filter((job) => job.status === "pending").length,
+          processing: pending.filter((job) => job.status === "processing").length,
+          failed: pending.filter((job) => job.status === "failed").length,
+        }
+      },
     }
 
     const processor = createPendingJobProcessor({
@@ -237,6 +410,9 @@ describe("pending job processor", () => {
           return { status: "summarized" as const, requestAnchorID: "msg_1", summaryID: "sum_1", checkpointObservationAt: 2 }
         },
       },
+      log(message, metadata) {
+        logs.push({ message, metadata })
+      },
     })
 
     await processor.processSessionJobs("ses_demo")
@@ -250,5 +426,15 @@ describe("pending job processor", () => {
         lastError: "persistent failure",
       }),
     ])
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        message: "memory queue failed job",
+        metadata: expect.objectContaining({
+          sessionID: "ses_demo",
+          kind: "request-anchor",
+          failureStatus: "failed",
+        }),
+      }),
+    )
   })
 })

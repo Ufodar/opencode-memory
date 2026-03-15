@@ -214,6 +214,10 @@ tool.execute.after
     - processing job 会标出是否 stale
     - failed job 与 stuck processing job 都可手动重试回 `pending`
     - 不再只能靠直接查 SQLite 判断失败或卡死队列状态
+  - queue 状态现在也会主动打日志：
+    - enqueue / start / complete / fail / resume 都会自动记录
+    - 日志里会直接带 `counts`、`queueDepth`、`isProcessing`
+    - 不再只能靠手动查询 tool 才知道 worker 是否正在忙
   - stale processing 自愈：
     - `pending_jobs` 现在会记录 `started_processing_at`
     - claim 下一条 job 前，会先把超过阈值的 `processing` 重置回 `pending`
@@ -282,6 +286,7 @@ tool.execute.after
 - 继续补 stuck processing 的自愈，而不是只在 worker 重启时恢复
 - 继续补 queue 状态的更强可观测性，而不是只停在 tool 返回值
 - 继续补 stuck processing / failed queue 的更细粒度人工干预入口
+- 继续评估是否需要比日志更主动的状态暴露形态
 
 ## 真实宿主验证补充
 

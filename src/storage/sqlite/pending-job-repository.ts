@@ -235,6 +235,24 @@ export class PendingJobRepository implements PendingJobStore {
       }))
   }
 
+  getQueueStats() {
+    const pending = this.db
+      .prepare(`SELECT COUNT(*) as count FROM pending_jobs WHERE status = 'pending'`)
+      .get() as { count: number }
+    const processing = this.db
+      .prepare(`SELECT COUNT(*) as count FROM pending_jobs WHERE status = 'processing'`)
+      .get() as { count: number }
+    const failed = this.db
+      .prepare(`SELECT COUNT(*) as count FROM pending_jobs WHERE status = 'failed'`)
+      .get() as { count: number }
+
+    return {
+      pending: pending.count,
+      processing: processing.count,
+      failed: failed.count,
+    }
+  }
+
   retryJob(id: number): boolean {
     const result = this.db
       .prepare(`

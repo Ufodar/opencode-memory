@@ -51,6 +51,11 @@ export interface PendingJobStore {
   recordFailure(id: number, error: string): "pending" | "failed"
   listSessionIDsWithPendingJobs(): string[]
   resetProcessingToPending(): number
+  getQueueStats(): {
+    pending: number
+    processing: number
+    failed: number
+  }
   listProcessingJobs(limit: number): MemoryQueueProcessingJob[]
   listFailedJobs(limit: number): MemoryQueueFailedJob[]
   retryJob(id: number): boolean
