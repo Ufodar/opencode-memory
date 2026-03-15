@@ -1,19 +1,19 @@
 import { describe, expect, test } from "bun:test"
 
 import type {
-  ContinuitySearchRecord,
-  ContinuityTimelineItem,
-} from "../../src/continuity/contracts.js"
-import type { ContinuityWorkerService } from "../../src/services/continuity-worker-service.js"
+  MemorySearchRecord,
+  MemoryTimelineItem,
+} from "../../src/memory/contracts.js"
+import type { MemoryWorkerService } from "../../src/services/memory-worker-service.js"
 import { createMemorySearchTool } from "../../src/tools/memory-search.js"
 import { createMemoryTimelineTool } from "../../src/tools/memory-timeline.js"
 
 describe("retrieval tools", () => {
-  test("memory_search delegates query execution to the continuity worker", async () => {
+  test("memory_search delegates query execution to the memory worker", async () => {
     const calls: Array<{ kind: "search"; sessionID?: string; scope?: "session" | "project" }> = []
     const searchTool = createMemorySearchTool(
       {
-        searchContinuityRecords(input) {
+        searchMemoryRecords(input) {
           calls.push({ kind: "search", sessionID: input.sessionID, scope: input.scope })
           return {
             scope: "session",
@@ -24,10 +24,10 @@ describe("retrieval tools", () => {
                 content: "project result",
                 createdAt: 1,
               },
-            ] satisfies ContinuitySearchRecord[],
+            ] satisfies MemorySearchRecord[],
           }
         },
-      } as Pick<ContinuityWorkerService, "searchContinuityRecords">,
+      } as Pick<MemoryWorkerService, "searchMemoryRecords">,
     )
 
     const result = JSON.parse(
@@ -44,11 +44,11 @@ describe("retrieval tools", () => {
     expect(result.results[0].id).toBe("sum_project")
   })
 
-  test("memory_timeline delegates timeline resolution to the continuity worker", async () => {
+  test("memory_timeline delegates timeline resolution to the memory worker", async () => {
     const calls: Array<{ kind: "timeline"; sessionID?: string; scope?: "session" | "project" }> = []
     const timelineTool = createMemoryTimelineTool(
       {
-        getContinuityTimeline(input) {
+        getMemoryTimeline(input) {
           calls.push({ kind: "timeline", sessionID: input.sessionID, scope: input.scope })
           return {
             scope: "session",
@@ -60,7 +60,7 @@ describe("retrieval tools", () => {
                 createdAt: 1,
                 requestSummary: "request",
                 isAnchor: true,
-              } satisfies ContinuityTimelineItem,
+              } satisfies MemoryTimelineItem,
               items: [
                 {
                   kind: "summary",
@@ -69,12 +69,12 @@ describe("retrieval tools", () => {
                   createdAt: 1,
                   requestSummary: "request",
                   isAnchor: true,
-                } satisfies ContinuityTimelineItem,
+                } satisfies MemoryTimelineItem,
               ],
             },
           }
         },
-      } as Pick<ContinuityWorkerService, "getContinuityTimeline">,
+      } as Pick<MemoryWorkerService, "getMemoryTimeline">,
     )
 
     const result = JSON.parse(await timelineTool.execute({ query: "requirements" }, buildToolContext()))
@@ -86,13 +86,13 @@ describe("retrieval tools", () => {
 })
 
 describe("memory_details", () => {
-  test("delegates detail lookup to the continuity worker", async () => {
+  test("delegates detail lookup to the memory worker", async () => {
     const calls: string[][] = []
     const { createMemoryDetailsTool } = await import("../../src/tools/memory-details.js")
 
     const detailsTool = createMemoryDetailsTool(
       {
-        getContinuityDetails(ids) {
+        getMemoryDetails(ids) {
           calls.push(ids)
           return [
             {
@@ -106,7 +106,7 @@ describe("memory_details", () => {
             },
           ]
         },
-      } as Pick<ContinuityWorkerService, "getContinuityDetails">,
+      } as Pick<MemoryWorkerService, "getMemoryDetails">,
     )
 
     const result = JSON.parse(await detailsTool.execute({ ids: ["sum_1"] }, buildToolContext()))

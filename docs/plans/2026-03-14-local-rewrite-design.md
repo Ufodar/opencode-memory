@@ -1,4 +1,4 @@
-# opencode-continuity 局部重写设计
+# opencode-memory 局部重写设计
 
 ## 目标
 
@@ -6,7 +6,7 @@
 
 目标是：
 
-1. 保留已经验证过的 continuity 主闭环
+1. 保留已经验证过的 memory 主闭环
 2. 把最集中的复杂度热点拆开
 3. 让后续继续增强时，不再把复杂度继续堆进单个文件
 
@@ -15,7 +15,7 @@
 - `request / observation / summary` 三对象模型
 - `summary-first retrieval`
 - `summary-first injection`
-- `compaction continuity`
+- `compaction 记忆保留`
 - `memory_search -> memory_timeline -> memory_details`
 - 现有测试资产
 
@@ -27,7 +27,7 @@
 
 当前问题集中在：
 
-- [src/storage/sqlite/continuity-store.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-continuity/src/storage/sqlite/continuity-store.ts)
+- [src/storage/sqlite/memory-store.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-memory/src/storage/sqlite/memory-store.ts)
 
 它现在同时承担：
 
@@ -44,7 +44,7 @@
 
 #### 重写目标
 
-把 `ContinuityStore` 拆成四层：
+把 `MemoryStore` 拆成四层：
 
 1. `ObservationRepository`
    - observation 读写
@@ -66,7 +66,7 @@
 
 当前问题集中在：
 
-- [src/index.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-continuity/src/index.ts)
+- [src/index.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-memory/src/index.ts)
 
 它现在把这条链直接写在 plugin 入口里：
 
@@ -119,20 +119,20 @@ session.idle
 
 ### observation capture
 
-- [src/runtime/hooks/tool-after.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-continuity/src/runtime/hooks/tool-after.ts)
+- [src/runtime/hooks/tool-after.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-memory/src/runtime/hooks/tool-after.ts)
 
 这块还有继续优化空间，但它现在不是复杂度黑洞。
 
 ### injection
 
-- [src/runtime/injection/system-context.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-continuity/src/runtime/injection/system-context.ts)
-- [src/runtime/injection/compaction-context.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-continuity/src/runtime/injection/compaction-context.ts)
+- [src/runtime/injection/system-context.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-memory/src/runtime/injection/system-context.ts)
+- [src/runtime/injection/compaction-context.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-memory/src/runtime/injection/compaction-context.ts)
 
 这两块现在职责清楚，先不动。
 
 ### model-assisted summary
 
-- [src/services/ai/model-summary.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-continuity/src/services/ai/model-summary.ts)
+- [src/services/ai/model-summary.ts](/Users/storm/Documents/code/study_in_happy/projects/opencode-memory/src/services/ai/model-summary.ts)
 
 这里现在还不是最大复杂度源。
 更好的顺序是等 pipeline 抽出来后，再决定要不要继续做 provider abstraction。

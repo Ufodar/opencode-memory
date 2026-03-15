@@ -1,4 +1,4 @@
-import type { ContinuityIdleSummaryStore } from "../../continuity/contracts.js"
+import type { MemoryIdleSummaryStore } from "../../memory/contracts.js"
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import { buildSummaryRecord, selectCheckpointObservations } from "../../memory/summary/aggregate.js"
@@ -7,7 +7,7 @@ import type { ModelSummaryResult } from "../../services/ai/model-summary.js"
 export async function runIdleSummaryPipeline(input: {
   projectPath: string
   sessionID: string
-  store: ContinuityIdleSummaryStore
+  store: MemoryIdleSummaryStore
   generateModelSummary?: (input: {
     request: RequestAnchorRecord
     observations: ObservationRecord[]

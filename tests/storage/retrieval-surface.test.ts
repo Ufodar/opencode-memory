@@ -5,15 +5,15 @@ import { tmpdir } from "node:os"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
-import { SQLiteContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
+import { SQLiteMemoryStore } from "../../src/storage/sqlite/memory-store.js"
 
-describe("SQLiteContinuityStore retrieval surface", () => {
+describe("SQLiteMemoryStore retrieval surface", () => {
   let tempDir: string
-  let store: SQLiteContinuityStore
+  let store: SQLiteMemoryStore
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "opencode-continuity-"))
-    store = new SQLiteContinuityStore(join(tempDir, "continuity.sqlite"))
+    tempDir = mkdtempSync(join(tmpdir(), "opencode-memory-"))
+    store = new SQLiteMemoryStore(join(tempDir, "memory.sqlite"))
   })
 
   afterEach(() => {
@@ -21,7 +21,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
     rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test("returns summary-first results for continuity search", () => {
+  test("returns summary-first results for memory search", () => {
     store.saveSummary(
       buildSummary({
         id: "sum_1",
@@ -36,7 +36,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const results = store.searchContinuityRecords({
+    const results = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       query: "资格条件",
       limit: 10,
@@ -65,7 +65,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const results = store.getContinuityDetails(["sum_1", "obs_1"])
+    const results = store.getMemoryDetails(["sum_1", "obs_1"])
 
     expect(results).toHaveLength(2)
     expect(results.map((item) => item.kind)).toEqual(["summary", "observation"])
@@ -105,13 +105,13 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const sessionResults = store.searchContinuityRecords({
+    const sessionResults = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       sessionID: "ses_current",
       query: "资格条件",
       limit: 10,
     })
-    const projectResults = store.searchContinuityRecords({
+    const projectResults = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       query: "资格条件",
       limit: 10,
@@ -142,7 +142,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const results = store.searchContinuityRecords({
+    const results = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       query: "资格条件",
       limit: 10,
@@ -169,7 +169,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const results = store.searchContinuityRecords({
+    const results = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       query: "资格条件",
       limit: 10,
@@ -199,7 +199,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const results = store.searchContinuityRecords({
+    const results = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       query: "资格条件",
       limit: 10,
@@ -215,11 +215,11 @@ describe("SQLiteContinuityStore retrieval surface", () => {
     })
   })
 
-  test("excludes internal continuity tool observations from search results", () => {
+  test("excludes internal memory tool observations from search results", () => {
     store.saveObservation(
       buildObservation({
         id: "obs_internal",
-        content: "memory_search returned README continuity rows",
+        content: "memory_search returned README memory rows",
         createdAt: 30,
         toolName: "memory_search",
       }),
@@ -227,13 +227,13 @@ describe("SQLiteContinuityStore retrieval surface", () => {
     store.saveObservation(
       buildObservation({
         id: "obs_real",
-        content: "读取 README.md 并确认 continuity 插件已加载",
+        content: "读取 README.md 并确认 memory 插件已加载",
         createdAt: 20,
         toolName: "read",
       }),
     )
 
-    const results = store.searchContinuityRecords({
+    const results = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       query: "README",
       limit: 10,
@@ -246,7 +246,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
     store.saveObservation(
       buildObservation({
         id: "obs_internal_timeline",
-        content: "memory_timeline returned README continuity rows",
+        content: "memory_timeline returned README memory rows",
         createdAt: 30,
         toolName: "memory_timeline",
       }),
@@ -260,7 +260,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const results = store.searchContinuityRecords({
+    const results = store.searchMemoryRecords({
       projectPath: "/workspace/demo",
       query: "timeline",
       limit: 10,
@@ -293,7 +293,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const timeline = store.getContinuityTimeline({
+    const timeline = store.getMemoryTimeline({
       projectPath: "/workspace/demo",
       anchorID: "sum_anchor",
       depthBefore: 1,
@@ -330,7 +330,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const timeline = store.getContinuityTimeline({
+    const timeline = store.getMemoryTimeline({
       projectPath: "/workspace/demo",
       anchorID: "obs_anchor",
       depthBefore: 0,
@@ -342,7 +342,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
     expect(timeline?.items[0]?.isAnchor).toBe(true)
   })
 
-  test("resolves query timeline from top continuity hit within session scope", () => {
+  test("resolves query timeline from top memory hit within session scope", () => {
     store.saveSummary(
       buildSummary({
         id: "sum_other_session",
@@ -368,7 +368,7 @@ describe("SQLiteContinuityStore retrieval surface", () => {
       }),
     )
 
-    const timeline = store.getContinuityTimeline({
+    const timeline = store.getMemoryTimeline({
       projectPath: "/workspace/demo",
       sessionID: "ses_current",
       query: "资格条件",

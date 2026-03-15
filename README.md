@@ -1,13 +1,13 @@
-# opencode-continuity
+# opencode-memory
 
-OpenCode 的通用 memory continuity 插件底座。
+OpenCode 的通用工作记忆插件底座。
 
 ## 定位
 
 这个项目是一个独立的 MIT 开源仓库，方向是：
 
 - 面向 OpenCode
-- 专注 memory continuity
+- 专注工作记忆
 - 逼近 `claude-mem` 的核心机制角色
 - 不直接夹带业务领域逻辑
 
@@ -17,11 +17,11 @@ OpenCode 的通用 memory continuity 插件底座。
 - summary 聚合
 - system/background 注入
 - 分层检索
-- compaction continuity
+- compaction 记忆保留
 
 第一阶段不做：
 
-- 标书或其他业务特化 memory
+- 标书或其他业务特化记忆
 - 团队知识库
 - 重型外部 worker
 - 复杂 timeline / reranking
@@ -30,7 +30,7 @@ OpenCode 的通用 memory continuity 插件底座。
 
 1. 角色等价，不做平台照搬
 2. 先 observation，再 summary
-3. 先通用 continuity substrate，再叠业务层
+3. 先通用记忆底座，再叠业务层
 4. 保持 MIT 独立仓，避免混入 AGPL 代码
 
 ## 仓库结构
@@ -38,7 +38,7 @@ OpenCode 的通用 memory continuity 插件底座。
 ```text
 src/
   index.ts
-  continuity/
+  memory/
     contracts.ts
   config/
   testing/
@@ -81,12 +81,12 @@ docs/
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_timeline` 已支持围绕 summary / observation anchor 查看时间上下文
 - SQLite 存储层已开始按长期架构目标拆分：
-  - `SQLiteContinuityStore`
-  - `SQLiteContinuityDatabase`
+  - `SQLiteMemoryStore`
+  - `SQLiteMemoryDatabase`
   - `ObservationRepository`
   - `RequestAnchorRepository`
   - `SummaryRepository`
-  - `ContinuityRetrievalService`
+  - `MemoryRetrievalService`
 - `memory_search` / `memory_timeline` 在未显式指定 `scope` 时已默认：
   - 先查当前 session
   - 再回退 project
@@ -96,10 +96,10 @@ docs/
 - model-assisted summary 已加入输出归一化、长度约束与弱 nextStep 过滤
 - model-assisted summary 已加入 timeout，provider 卡住时会自动回退
 - system injection 已升级为 summary-first，并自动过滤已被 summary 覆盖的 observation
-- compaction 已支持 continuity context 注入：
+- compaction 已支持记忆上下文注入：
   - 优先注入 recent summaries
   - 再补 recent unsummarized observations
-  - 帮助 OpenCode compaction 保留 continuity checkpoint
+  - 帮助 OpenCode compaction 保留记忆 checkpoint
 - retrieval 已支持 `session / project` scope
 - retrieval tools 已开始内建 `session-first / project-fallback` 默认行为，减少 agent 端判断负担
 - system injection 已支持 session-first / project-fallback 选择
@@ -107,8 +107,8 @@ docs/
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
 - `session.idle` summary 主链已加入 session 级重入保护
 - `session.idle -> summary` 主链已从 plugin 入口抽成独立 `pipeline`
-- continuity 领域 contracts 已开始独立：
-  - `src/continuity/contracts.ts`
+- memory 领域 contracts 已开始独立：
+  - `src/memory/contracts.ts`
   - retrieval / injection / idle summary pipeline 已依赖最小接口
   - 上层不再直接绑定 SQLite 目录内的结果类型
 - runtime handlers 已开始独立：
@@ -117,22 +117,22 @@ docs/
   - `tool-execute-after`
   - `system-transform`
   - `session-compacting`
-- 已新增 in-process `ContinuityWorkerService`
+- 已新增 in-process `MemoryWorkerService`
   - 统一承接：
     - request anchor capture
     - observation capture
     - idle summary
     - injection selection
     - retrieval fallback
-  - 当前 plugin 入口开始以这个 service 作为 continuity 主控，而不是让 handler / tool 各自直接碰 store
+  - 当前 plugin 入口开始以这个 service 作为记忆主控，而不是让 handler / tool 各自直接碰 store
 - plugin 入口已进一步收紧为：
   - 创建 store
   - 创建 reentry guard
-  - 创建 continuity worker service
+  - 创建 memory worker service
   - 组装 handlers
   - 暴露 tools
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
-- internal continuity tool 已统一过滤：
+- internal memory tool 已统一过滤：
   - `memory_search`
   - `memory_timeline`
   - `memory_details`
@@ -153,7 +153,7 @@ docs/
 
 1. 继续细化 phase-aware checkpoint，而不是停在当前启发式 phase
 2. 继续增强 ranking，而不是停在当前启发式分数
-3. 继续增强 compaction continuity，而不是只影响正常对话
+3. 继续增强 compaction 记忆保留，而不是只影响正常对话
 4. 再评估是否需要轻量外部 worker
 5. 如进入 worker 化，优先保持当前 deterministic 主链不变，只迁移 runtime 边界
 
@@ -183,7 +183,7 @@ bun run smoke:host -- \
 可选模式：
 
 - `control`
-  - 只验证 continuity 主闭环
+  - 只验证记忆主闭环
 - `robust`
   - 用更松的 prompt 观察宿主下的表现
 - `both`
@@ -227,9 +227,9 @@ OpenCode 本地插件在开发时存在模块缓存特征：
 
 如果你希望 summary 走 model-assisted 路径，而不是只用 deterministic 聚合，需要提供：
 
-- `OPENCODE_CONTINUITY_SUMMARY_API_URL`
-- `OPENCODE_CONTINUITY_SUMMARY_API_KEY`
-- `OPENCODE_CONTINUITY_SUMMARY_MODEL`
+- `OPENCODE_MEMORY_SUMMARY_API_URL`
+- `OPENCODE_MEMORY_SUMMARY_API_KEY`
+- `OPENCODE_MEMORY_SUMMARY_MODEL`
 
 当前实现假设这是一个 OpenAI-compatible `chat/completions` 接口。  
 如果未配置或返回异常，插件会自动回退到 deterministic summary，不会中断主链。
@@ -246,8 +246,8 @@ OpenCode 本地插件在开发时存在模块缓存特征：
   - 负责 runtime 时序编排
 - `*Handler`
   - 负责单类 OpenCode hook 的胶水编排
-- `continuity/contracts.ts`
-  - continuity 领域的 backend-agnostic 类型与最小接口
+- `memory/contracts.ts`
+  - memory 领域的 backend-agnostic 类型与最小接口
   - runtime / tools / injection 依赖这里，不直接依赖 SQLite 目录类型
 
 ## 致谢

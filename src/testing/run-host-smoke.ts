@@ -40,11 +40,11 @@ const CONTROL_PROMPT = (workspace: string) =>
 
 const ROBUST_PROMPT = "读取 brief.txt 和 checklist.md，然后用一句话说明这两个文件各自是什么。不要调用任何 memory 工具。"
 
-const SEARCH_PROMPT = "只做 continuity 回查，不要读取任何文件。只调用 memory_search 查询 brief。"
+const SEARCH_PROMPT = "只做 memory 回查，不要读取任何文件。只调用 memory_search 查询 brief。"
 const TIMELINE_PROMPT = (id: string) =>
-  `只做 continuity 回查，不要读取任何文件。只调用 memory_timeline，anchor 使用这个 id：${id}。`
+  `只做 memory 回查，不要读取任何文件。只调用 memory_timeline，anchor 使用这个 id：${id}。`
 const DETAILS_PROMPT = (id: string) =>
-  `只做 continuity 回查，不要读取任何文件。只调用 memory_details，ids 只包含这个 id：${id}。`
+  `只做 memory 回查，不要读取任何文件。只调用 memory_details，ids 只包含这个 id：${id}。`
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
@@ -109,7 +109,7 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
   const retrievalSearchPath = path.join(options.workspace, `${stamp}-run2-search.jsonl`)
   const retrievalTimelinePath = path.join(options.workspace, `${stamp}-run3-timeline.jsonl`)
   const retrievalDetailsPath = path.join(options.workspace, `${stamp}-run4-details.jsonl`)
-  const dbPath = path.join(tempHome, ".opencode-continuity", "data", "continuity.sqlite")
+  const dbPath = path.join(tempHome, ".opencode-memory", "data", "memory.sqlite")
 
   await mkdir(tempHome, { recursive: true })
   await writeFile(tempConfigPath, JSON.stringify(minimalHostConfig, null, 2) + "\n")
@@ -281,7 +281,7 @@ async function ensureFixtureWorkspace(workspace: string) {
       "",
       "目标：",
       "1. 让 agent 使用 read 工具读取这个文件。",
-      "2. 让 opencode-continuity 通过 tool.execute.after 写入 observation。",
+      "2. 让 opencode-memory 通过 tool.execute.after 写入 observation。",
       "3. 在后续请求中通过 memory_search / memory_timeline / memory_details 找回这段连续性数据。",
     ].join("\n") + "\n",
   )
@@ -292,7 +292,7 @@ async function ensureFixtureWorkspace(workspace: string) {
       "",
       "- [ ] 插件在真实 OpenCode 宿主中加载",
       "- [ ] `read` 工具被调用",
-      "- [ ] continuity 数据库创建成功",
+      "- [ ] memory 数据库创建成功",
       "- [ ] observation 被写入",
       "- [ ] summary 被写入",
       "- [ ] `memory_search` 可找回该工作轨迹",

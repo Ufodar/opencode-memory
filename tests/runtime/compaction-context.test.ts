@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
-import { buildCompactionContinuityContext } from "../../src/runtime/injection/compaction-context.js"
+import { buildCompactionMemoryContext } from "../../src/runtime/injection/compaction-context.js"
 
-describe("buildCompactionContinuityContext", () => {
+describe("buildCompactionMemoryContext", () => {
   test("prefers summaries and only keeps unsummarized observations", () => {
     const summaries: SummaryRecord[] = [
       {
@@ -38,11 +38,11 @@ describe("buildCompactionContinuityContext", () => {
       }),
     ]
 
-    const context = buildCompactionContinuityContext({ summaries, observations })
+    const context = buildCompactionMemoryContext({ summaries, observations })
     const text = context.join("\n")
 
     expect(text).toContain("[CONTINUITY CHECKPOINTS]")
-    expect(text).toContain("Recent continuity summaries:")
+    expect(text).toContain("Recent memory summaries:")
     expect(text).toContain("输出缺口清单")
     expect(text).toContain("Recent unsummarized observations:")
     expect(text).toContain("[execution] 写入缺口清单初稿到 questions.md")
@@ -74,7 +74,7 @@ describe("buildCompactionContinuityContext", () => {
       },
     ]
 
-    const context = buildCompactionContinuityContext({
+    const context = buildCompactionMemoryContext({
       summaries,
       observations: [],
       maxChars: 220,

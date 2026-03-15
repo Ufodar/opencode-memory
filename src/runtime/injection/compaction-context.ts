@@ -1,7 +1,7 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
 
-export function buildCompactionContinuityContext(input: {
+export function buildCompactionMemoryContext(input: {
   summaries: SummaryRecord[]
   observations: ObservationRecord[]
   maxSummaries?: number
@@ -28,7 +28,7 @@ export function buildCompactionContinuityContext(input: {
   })
   pushLine(
     lines,
-    "Preserve these continuity checkpoints in the compaction summary so the next agent can resume work accurately.",
+    "Preserve these memory checkpoints in the compaction summary so the next agent can resume work accurately.",
     maxChars,
     () => currentLength,
     (value) => {
@@ -37,7 +37,7 @@ export function buildCompactionContinuityContext(input: {
   )
 
   if (summaries.length > 0) {
-    pushLine(lines, "Recent continuity summaries:", maxChars, () => currentLength, (value) => {
+    pushLine(lines, "Recent memory summaries:", maxChars, () => currentLength, (value) => {
       currentLength = value
     })
     for (const summary of summaries) {

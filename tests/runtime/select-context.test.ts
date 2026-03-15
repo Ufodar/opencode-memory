@@ -3,19 +3,19 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 
-import type { ContinuityInjectionStore } from "../../src/continuity/contracts.js"
+import type { MemoryInjectionStore } from "../../src/memory/contracts.js"
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
-import { SQLiteContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
+import { SQLiteMemoryStore } from "../../src/storage/sqlite/memory-store.js"
 import { selectInjectionRecords } from "../../src/runtime/injection/select-context.js"
 
 describe("selectInjectionRecords", () => {
   let tempDir: string
-  let store: SQLiteContinuityStore & ContinuityInjectionStore
+  let store: SQLiteMemoryStore & MemoryInjectionStore
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "opencode-continuity-"))
-    store = new SQLiteContinuityStore(join(tempDir, "continuity.sqlite"))
+    tempDir = mkdtempSync(join(tmpdir(), "opencode-memory-"))
+    store = new SQLiteMemoryStore(join(tempDir, "memory.sqlite"))
   })
 
   afterEach(() => {
@@ -23,7 +23,7 @@ describe("selectInjectionRecords", () => {
     rmSync(tempDir, { recursive: true, force: true })
   })
 
-  test("prefers session-scoped continuity when available", () => {
+  test("prefers session-scoped memory when available", () => {
     store.saveSummary(buildSummary({ id: "sum_session", sessionID: "ses_current", createdAt: 20 }))
     store.saveSummary(buildSummary({ id: "sum_other", sessionID: "ses_other", createdAt: 30 }))
 
@@ -39,7 +39,7 @@ describe("selectInjectionRecords", () => {
     expect(selected.summaries.map((item) => item.id)).toEqual(["sum_session"])
   })
 
-  test("falls back to project scope when session has no continuity", () => {
+  test("falls back to project scope when session has no memory", () => {
     store.saveSummary(buildSummary({ id: "sum_project", sessionID: "ses_other", createdAt: 30 }))
     store.saveObservation(buildObservation({ id: "obs_project", sessionID: "ses_other", createdAt: 40 }))
 
@@ -55,7 +55,7 @@ describe("selectInjectionRecords", () => {
     expect(selected.summaries.map((item) => item.id)).toEqual(["sum_project"])
   })
 
-  test("ignores internal continuity tool observations during injection selection", () => {
+  test("ignores internal memory tool observations during injection selection", () => {
     store.saveObservation(
       buildObservation({
         id: "obs_internal",

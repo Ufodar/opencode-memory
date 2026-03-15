@@ -1,10 +1,10 @@
 import { tool } from "@opencode-ai/plugin"
-import type { ContinuityWorkerService } from "../services/continuity-worker-service.js"
+import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 
-export function createMemorySearchTool(worker: Pick<ContinuityWorkerService, "searchContinuityRecords">) {
+export function createMemorySearchTool(worker: Pick<MemoryWorkerService, "searchMemoryRecords">) {
   return tool({
     description:
-      "Search continuity memory by keywords or technical tags. If scope is omitted, search current session first and fall back to project history.",
+      "Search work memory by keywords or technical tags. If scope is omitted, search current session first and fall back to project history.",
     args: {
       query: tool.schema.string(),
       limit: tool.schema.number().optional(),
@@ -12,7 +12,7 @@ export function createMemorySearchTool(worker: Pick<ContinuityWorkerService, "se
     },
     async execute(args, toolCtx) {
       const limit = args.limit ?? 10
-      const result = worker.searchContinuityRecords({
+      const result = worker.searchMemoryRecords({
         sessionID: toolCtx.sessionID,
         query: args.query,
         limit,

@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 给 `opencode-continuity` 增加一个可重复跑的真实 OpenCode 宿主回归脚本，验证 continuity 主闭环。
+**Goal:** 给 `opencode-memory` 增加一个可重复跑的真实 OpenCode 宿主回归脚本，验证 memory 主闭环。
 
 **Architecture:** 先把“解析 run 结果并判断 pass/fail”的逻辑抽成纯函数并补测试，再做一个真实 runner 去生成最小宿主配置、调用 `opencode run`、读取 SQLite，并同时输出两层报告：
 
@@ -113,7 +113,7 @@ git commit -m "feat: add host smoke regression runner"
   - `bun test`
   - `bun run typecheck`
   - `bun run build`
-  - `bun run smoke:host -- --workspace /Users/storm/Documents/code/study_in_happy/downloads/opencode-continuity-host-smoke --mode both`
+  - `bun run smoke:host -- --workspace /Users/storm/Documents/code/study_in_happy/downloads/opencode-memory-host-smoke --mode both`
 - 当前 runner 已会在 workspace 下生成：
   - `host-smoke-<timestamp>-report.json`
   - `host-smoke-<timestamp>-report.md`

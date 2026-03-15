@@ -2,7 +2,7 @@ import type { ObservationRecord } from "../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../memory/request/types.js"
 import type { SummaryRecord } from "../memory/summary/types.js"
 
-export type ContinuitySearchRecord =
+export type MemorySearchRecord =
   | {
       kind: "summary"
       id: string
@@ -21,7 +21,7 @@ export type ContinuitySearchRecord =
       tags: string[]
     }
 
-export type ContinuityObservationDetailRecord = {
+export type MemoryObservationDetailRecord = {
   kind: "observation"
   id: string
   content: string
@@ -35,7 +35,7 @@ export type ContinuityObservationDetailRecord = {
   trace: ObservationRecord["trace"]
 }
 
-export type ContinuityDetailRecord =
+export type MemoryDetailRecord =
   | {
       kind: "summary"
       id: string
@@ -44,11 +44,11 @@ export type ContinuityDetailRecord =
       requestSummary: string
       nextStep?: string
       observationIDs: string[]
-      coveredObservations: ContinuityObservationDetailRecord[]
+      coveredObservations: MemoryObservationDetailRecord[]
     }
-  | ContinuityObservationDetailRecord
+  | MemoryObservationDetailRecord
 
-export type ContinuityTimelineItem =
+export type MemoryTimelineItem =
   | {
       kind: "summary"
       id: string
@@ -70,31 +70,31 @@ export type ContinuityTimelineItem =
       isAnchor: boolean
     }
 
-export interface ContinuitySearchStore {
-  searchContinuityRecords(input: {
+export interface MemorySearchStore {
+  searchMemoryRecords(input: {
     projectPath: string
     sessionID?: string
     query: string
     limit: number
-  }): ContinuitySearchRecord[]
+  }): MemorySearchRecord[]
 }
 
-export interface ContinuityDetailsStore {
-  getContinuityDetails(ids: string[]): ContinuityDetailRecord[]
+export interface MemoryDetailsStore {
+  getMemoryDetails(ids: string[]): MemoryDetailRecord[]
 }
 
-export interface ContinuityTimelineStore {
-  getContinuityTimeline(input: {
+export interface MemoryTimelineStore {
+  getMemoryTimeline(input: {
     projectPath: string
     sessionID?: string
     anchorID?: string
     query?: string
     depthBefore: number
     depthAfter: number
-  }): ContinuityTimelineResult | null
+  }): MemoryTimelineResult | null
 }
 
-export interface ContinuityInjectionStore {
+export interface MemoryInjectionStore {
   listRecentSummaries(input: {
     projectPath: string
     sessionID?: string
@@ -107,7 +107,7 @@ export interface ContinuityInjectionStore {
   }): ObservationRecord[]
 }
 
-export interface ContinuityIdleSummaryStore {
+export interface MemoryIdleSummaryStore {
   getLatestRequestAnchor(input: {
     projectPath: string
     sessionID: string
@@ -126,7 +126,7 @@ export interface ContinuityIdleSummaryStore {
   }): void
 }
 
-export interface ContinuityTimelineResult {
-  anchor: ContinuityTimelineItem
-  items: ContinuityTimelineItem[]
+export interface MemoryTimelineResult {
+  anchor: MemoryTimelineItem
+  items: MemoryTimelineItem[]
 }

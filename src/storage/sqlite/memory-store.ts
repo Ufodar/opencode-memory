@@ -1,50 +1,50 @@
 import type {
-  ContinuityDetailRecord,
-  ContinuityDetailsStore,
-  ContinuityIdleSummaryStore,
-  ContinuityInjectionStore,
-  ContinuitySearchRecord,
-  ContinuitySearchStore,
-  ContinuityTimelineItem,
-  ContinuityTimelineResult,
-  ContinuityTimelineStore,
-} from "../../continuity/contracts.js"
+  MemoryDetailRecord,
+  MemoryDetailsStore,
+  MemoryIdleSummaryStore,
+  MemoryInjectionStore,
+  MemorySearchRecord,
+  MemorySearchStore,
+  MemoryTimelineItem,
+  MemoryTimelineResult,
+  MemoryTimelineStore,
+} from "../../memory/contracts.js"
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
 import { ObservationRepository } from "./observation-repository.js"
 import { RequestAnchorRepository } from "./request-anchor-repository.js"
-import { ContinuityRetrievalService } from "./retrieval-query-service.js"
-import { SQLiteContinuityDatabase } from "./sqlite-continuity-database.js"
+import { MemoryRetrievalService } from "./retrieval-query-service.js"
+import { SQLiteMemoryDatabase } from "./sqlite-memory-database.js"
 import { SummaryRepository } from "./summary-repository.js"
 
 export type {
-  ContinuitySearchRecord,
-  ContinuityDetailRecord,
-  ContinuityObservationDetailRecord,
-  ContinuityTimelineItem,
-} from "../../continuity/contracts.js"
+  MemorySearchRecord,
+  MemoryDetailRecord,
+  MemoryObservationDetailRecord,
+  MemoryTimelineItem,
+} from "../../memory/contracts.js"
 
-export class SQLiteContinuityStore
+export class SQLiteMemoryStore
   implements
-    ContinuityIdleSummaryStore,
-    ContinuityInjectionStore,
-    ContinuitySearchStore,
-    ContinuityDetailsStore,
-    ContinuityTimelineStore
+    MemoryIdleSummaryStore,
+    MemoryInjectionStore,
+    MemorySearchStore,
+    MemoryDetailsStore,
+    MemoryTimelineStore
 {
-  private readonly database: SQLiteContinuityDatabase
+  private readonly database: SQLiteMemoryDatabase
   private readonly observations: ObservationRepository
   private readonly requestAnchors: RequestAnchorRepository
   private readonly summaries: SummaryRepository
-  private readonly retrieval: ContinuityRetrievalService
+  private readonly retrieval: MemoryRetrievalService
 
   constructor(dbPath: string) {
-    this.database = new SQLiteContinuityDatabase(dbPath)
+    this.database = new SQLiteMemoryDatabase(dbPath)
     this.observations = new ObservationRepository(this.database.handle)
     this.requestAnchors = new RequestAnchorRepository(this.database.handle)
     this.summaries = new SummaryRepository(this.database.handle)
-    this.retrieval = new ContinuityRetrievalService(this.database.handle)
+    this.retrieval = new MemoryRetrievalService(this.database.handle)
   }
 
   saveObservation(record: ObservationRecord) {
@@ -111,27 +111,27 @@ export class SQLiteContinuityStore
     return this.summaries.listRecent(input)
   }
 
-  searchContinuityRecords(input: {
+  searchMemoryRecords(input: {
     projectPath: string
     sessionID?: string
     query: string
     limit: number
-  }): ContinuitySearchRecord[] {
+  }): MemorySearchRecord[] {
     return this.retrieval.searchRecords(input)
   }
 
-  getContinuityDetails(ids: string[]): ContinuityDetailRecord[] {
+  getMemoryDetails(ids: string[]): MemoryDetailRecord[] {
     return this.retrieval.getDetails(ids)
   }
 
-  getContinuityTimeline(input: {
+  getMemoryTimeline(input: {
     projectPath: string
     sessionID?: string
     anchorID?: string
     query?: string
     depthBefore: number
     depthAfter: number
-  }): ContinuityTimelineResult | null {
+  }): MemoryTimelineResult | null {
     return this.retrieval.getTimeline(input)
   }
 
@@ -140,4 +140,4 @@ export class SQLiteContinuityStore
   }
 }
 
-export { SQLiteContinuityStore as ContinuityStore }
+export { SQLiteMemoryStore as MemoryStore }

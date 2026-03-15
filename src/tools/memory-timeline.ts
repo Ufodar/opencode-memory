@@ -1,13 +1,13 @@
 import { tool } from "@opencode-ai/plugin"
-import type { ContinuityWorkerService } from "../services/continuity-worker-service.js"
+import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 
 const DEFAULT_DEPTH_BEFORE = 3
 const DEFAULT_DEPTH_AFTER = 3
 
-export function createMemoryTimelineTool(worker: Pick<ContinuityWorkerService, "getContinuityTimeline">) {
+export function createMemoryTimelineTool(worker: Pick<MemoryWorkerService, "getMemoryTimeline">) {
   return tool({
     description:
-      "Show chronological continuity context around a summary or observation anchor. Prefer this after memory_search and before memory_details. If scope is omitted, resolve the timeline from current session first and then fall back to project history.",
+      "Show chronological memory context around a summary or observation anchor. Prefer this after memory_search and before memory_details. If scope is omitted, resolve the timeline from current session first and then fall back to project history.",
     args: {
       anchor: tool.schema.string().optional(),
       query: tool.schema.string().optional(),
@@ -26,7 +26,7 @@ export function createMemoryTimelineTool(worker: Pick<ContinuityWorkerService, "
       const depthBefore = args.depth_before ?? DEFAULT_DEPTH_BEFORE
       const depthAfter = args.depth_after ?? DEFAULT_DEPTH_AFTER
 
-      const result = worker.getContinuityTimeline({
+      const result = worker.getMemoryTimeline({
         sessionID: toolCtx.sessionID,
         anchorID: args.anchor,
         query: args.query,
@@ -38,7 +38,7 @@ export function createMemoryTimelineTool(worker: Pick<ContinuityWorkerService, "
       if (!result) {
         return JSON.stringify({
           success: false,
-          error: "No continuity timeline found for the provided anchor or query",
+          error: "No memory timeline found for the provided anchor or query",
         })
       }
 

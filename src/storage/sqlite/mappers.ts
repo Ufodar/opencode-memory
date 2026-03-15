@@ -3,9 +3,9 @@ import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
 import { classifyObservationPhase } from "../../memory/observation/phase.js"
 import type {
-  ContinuityObservationDetailRecord,
-  ContinuityTimelineItem,
-} from "../../continuity/contracts.js"
+  MemoryObservationDetailRecord,
+  MemoryTimelineItem,
+} from "../../memory/contracts.js"
 import type {
   ObservationRow,
   RequestAnchorRow,
@@ -67,7 +67,7 @@ export function mapSummaryRow(row: SummaryRow): SummaryRecord {
   }
 }
 
-export function mapObservationDetailRow(row: ObservationRow): ContinuityObservationDetailRecord {
+export function mapObservationDetailRow(row: ObservationRow): MemoryObservationDetailRecord {
   const observation = mapObservationRow(row)
 
   return {
@@ -88,7 +88,7 @@ export function mapObservationDetailRow(row: ObservationRow): ContinuityObservat
 export function mapTimelineSummaryRow(
   row: SummaryRow,
   isAnchor: boolean,
-): ContinuityTimelineItem {
+): MemoryTimelineItem {
   return {
     kind: "summary",
     id: row.id,
@@ -103,7 +103,7 @@ export function mapTimelineSummaryRow(
 export function mapTimelineObservationRow(
   row: ObservationRow,
   isAnchor: boolean,
-): ContinuityTimelineItem {
+): MemoryTimelineItem {
   return {
     kind: "observation",
     id: row.id,

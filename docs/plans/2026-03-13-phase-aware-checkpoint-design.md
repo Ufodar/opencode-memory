@@ -4,7 +4,7 @@
 
 ## 目标
 
-让 `opencode-continuity` 的 request checkpoint 不再只靠：
+让 `opencode-memory` 的 request checkpoint 不再只靠：
 
 - `session.idle`
 - observation 数量

@@ -1,7 +1,7 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
 
-export function buildSystemContinuityContext(input: {
+export function buildSystemMemoryContext(input: {
   summaries: SummaryRecord[]
   observations: ObservationRecord[]
   scope?: "session" | "project"
@@ -22,7 +22,7 @@ export function buildSystemContinuityContext(input: {
 
     if (input.scope) {
       const scopeLine =
-        input.scope === "session" ? "Scope: current session continuity" : "Scope: project continuity"
+        input.scope === "session" ? "Scope: current session memory" : "Scope: project memory"
       if (canFit(currentLength, scopeLine, maxChars)) {
         pushLine(system, scopeLine)
         currentLength = nextLength(currentLength, scopeLine)
@@ -61,7 +61,7 @@ export function buildSystemContinuityContext(input: {
   if (observations.length > 0) {
     if (summaries.length === 0 && input.scope) {
       const scopeLine =
-        input.scope === "session" ? "Scope: current session continuity" : "Scope: project continuity"
+        input.scope === "session" ? "Scope: current session memory" : "Scope: project memory"
       if (canFit(currentLength, scopeLine, maxChars)) {
         pushLine(system, scopeLine)
         currentLength = nextLength(currentLength, scopeLine)

@@ -5,15 +5,15 @@ import { tmpdir } from "node:os"
 import { Database } from "bun:sqlite"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
-import { SQLiteContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
+import { SQLiteMemoryStore } from "../../src/storage/sqlite/memory-store.js"
 
-describe("SQLiteContinuityStore", () => {
+describe("SQLiteMemoryStore", () => {
   let tempDir: string
-  let store: SQLiteContinuityStore
+  let store: SQLiteMemoryStore
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "opencode-continuity-"))
-    store = new SQLiteContinuityStore(join(tempDir, "continuity.sqlite"))
+    tempDir = mkdtempSync(join(tmpdir(), "opencode-memory-"))
+    store = new SQLiteMemoryStore(join(tempDir, "memory.sqlite"))
   })
 
   afterEach(() => {
@@ -106,7 +106,7 @@ describe("SQLiteContinuityStore", () => {
   })
 
   test("cleans legacy internal-tool rows and normalizes legacy read payloads on init", () => {
-    const dbPath = join(tempDir, "continuity.sqlite")
+    const dbPath = join(tempDir, "memory.sqlite")
     store.close()
 
     const rawDb = new Database(dbPath)
@@ -165,7 +165,7 @@ describe("SQLiteContinuityStore", () => {
 
     rawDb.close()
 
-    store = new SQLiteContinuityStore(dbPath)
+    store = new SQLiteMemoryStore(dbPath)
 
     const observations = store.listRecentObservations({
       projectPath: "/workspace/demo",

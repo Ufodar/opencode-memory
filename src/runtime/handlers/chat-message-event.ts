@@ -1,7 +1,7 @@
-import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
+import type { MemoryWorkerService } from "../../services/memory-worker-service.js"
 
 export interface ChatMessageHandlerDependencies {
-  worker: Pick<ContinuityWorkerService, "captureRequestAnchorFromMessage">
+  worker: Pick<MemoryWorkerService, "captureRequestAnchorFromMessage">
 }
 
 export function createChatMessageHandler(input: ChatMessageHandlerDependencies) {

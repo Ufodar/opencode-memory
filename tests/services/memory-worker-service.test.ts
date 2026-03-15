@@ -1,17 +1,17 @@
 import { describe, expect, test } from "bun:test"
 
-import type { ContinuityIdleSummaryStore, ContinuityInjectionStore } from "../../src/continuity/contracts.js"
+import type { MemoryIdleSummaryStore, MemoryInjectionStore } from "../../src/memory/contracts.js"
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../src/memory/request/types.js"
-import { createContinuityWorkerService } from "../../src/services/continuity-worker-service.js"
+import { createMemoryWorkerService } from "../../src/services/memory-worker-service.js"
 
-describe("createContinuityWorkerService", () => {
+describe("createMemoryWorkerService", () => {
   test("captures and saves a request anchor from chat message text", () => {
     const saved: RequestAnchorRecord[] = []
 
-    const worker = createContinuityWorkerService({
+    const worker = createMemoryWorkerService({
       projectPath: "/workspace/demo",
-      store: {} as ContinuityIdleSummaryStore & ContinuityInjectionStore,
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
       idleSummaryGuard: {
         async run(_sessionID, task) {
           await task()
@@ -46,9 +46,9 @@ describe("createContinuityWorkerService", () => {
   test("captures and saves an observation from tool execution", () => {
     const saved: ObservationRecord[] = []
 
-    const worker = createContinuityWorkerService({
+    const worker = createMemoryWorkerService({
       projectPath: "/workspace/demo",
-      store: {} as ContinuityIdleSummaryStore & ContinuityInjectionStore,
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
       idleSummaryGuard: {
         async run(_sessionID, task) {
           await task()
@@ -100,9 +100,9 @@ describe("createContinuityWorkerService", () => {
   test("runs idle summary behind the session guard", async () => {
     const calls: string[] = []
 
-    const worker = createContinuityWorkerService({
+    const worker = createMemoryWorkerService({
       projectPath: "/workspace/demo",
-      store: {} as ContinuityIdleSummaryStore & ContinuityInjectionStore,
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
       idleSummaryGuard: {
         async run(sessionID, task) {
           calls.push(`guard:${sessionID}`)
@@ -125,9 +125,9 @@ describe("createContinuityWorkerService", () => {
   test("selects injection records through the worker service", () => {
     const calls: string[] = []
 
-    const worker = createContinuityWorkerService({
+    const worker = createMemoryWorkerService({
       projectPath: "/workspace/demo",
-      store: {} as ContinuityIdleSummaryStore & ContinuityInjectionStore,
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
       idleSummaryGuard: {
         async run(_sessionID, task) {
           await task()
@@ -157,7 +157,7 @@ describe("createContinuityWorkerService", () => {
   test("falls back from session search to project search inside the worker", () => {
     const calls: Array<{ sessionID?: string; scope?: "session" | "project" }> = []
 
-    const worker = createContinuityWorkerService({
+    const worker = createMemoryWorkerService({
       projectPath: "/workspace/demo",
       store: {
         saveRequestAnchor() {},
@@ -176,7 +176,7 @@ describe("createContinuityWorkerService", () => {
         listRecentObservations() {
           return []
         },
-        searchContinuityRecords(input) {
+        searchMemoryRecords(input) {
           calls.push({ sessionID: input.sessionID, scope: input.sessionID ? "session" : "project" })
           if (input.sessionID) return []
           return [
@@ -188,10 +188,10 @@ describe("createContinuityWorkerService", () => {
             },
           ]
         },
-        getContinuityDetails() {
+        getMemoryDetails() {
           return []
         },
-        getContinuityTimeline() {
+        getMemoryTimeline() {
           return null
         },
       },
@@ -203,7 +203,7 @@ describe("createContinuityWorkerService", () => {
       },
     })
 
-    const result = worker.searchContinuityRecords({
+    const result = worker.searchMemoryRecords({
       sessionID: "ses_demo",
       query: "brief",
       limit: 5,

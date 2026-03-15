@@ -1,10 +1,10 @@
 import { log as defaultLog } from "../../services/logger.js"
-import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
+import type { MemoryWorkerService } from "../../services/memory-worker-service.js"
 
 type IdleEventLogger = typeof defaultLog
 
 export interface SessionIdleEventHandlerDependencies {
-  worker: Pick<ContinuityWorkerService, "handleSessionIdle">
+  worker: Pick<MemoryWorkerService, "handleSessionIdle">
   log?: IdleEventLogger
 }
 

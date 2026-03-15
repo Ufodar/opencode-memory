@@ -1,8 +1,8 @@
-# opencode-continuity Implementation Plan
+# opencode-memory Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 初始化一个独立的 MIT 开源仓库，作为面向 OpenCode 的通用 memory continuity 插件底座。
+**Goal:** 初始化一个独立的 MIT 开源仓库，作为面向 OpenCode 的通用工作记忆插件底座。
 
 **Architecture:** 先建立独立 git 仓、OpenCode plugin 最小骨架、observation/summary 类型与核心文档；第一版以 `tool.execute.after`、`experimental.chat.system.transform` 和分层检索占位为主，不引入外部 worker。
 

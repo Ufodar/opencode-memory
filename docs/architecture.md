@@ -1,8 +1,8 @@
-# opencode-continuity 架构说明
+# opencode-memory 架构说明
 
 ## 目标
 
-`opencode-continuity` 是一个面向 OpenCode 的通用 memory continuity 插件底座。
+`opencode-memory` 是一个面向 OpenCode 的通用工作记忆插件底座。
 
 它要逼近的不是 `claude-mem` 的平台实现，而是它的四个核心机制角色：
 
@@ -10,7 +10,7 @@
 2. 压缩器
 3. 回注器
 4. 检索器
-5. compaction continuity
+5. compaction 记忆保留
 
 ## 第一版角色映射
 
@@ -31,8 +31,8 @@
   - 单类 OpenCode hook 的胶水编排边界
 - `*Context`
   - 注入文本构造边界
-- `continuity/contracts.ts`
-  - continuity 领域边界
+- `memory/contracts.ts`
+  - memory 领域边界
   - 放 backend-agnostic 结果类型和上层最小 store interfaces
 
 ### 采集器
@@ -44,9 +44,9 @@
 
 - 第一版不做外部 worker
 - 当前仍是 `plugin-internal pipeline`，不是 `thin hook -> worker`
-- 但当前已经新增了 in-process `ContinuityWorkerService`
+- 但当前已经新增了 in-process `MemoryWorkerService`
   - 作用不是起独立进程
-  - 而是先在结构上提供一个 continuity 主控中心
+  - 而是先在结构上提供一个记忆主控中心
   - 让 handler / tool 先对齐到“薄入口 -> 中心服务 -> store/pipeline”的形态
 - 先在插件内部完成：
   - observation capture
@@ -61,12 +61,12 @@
 ### 回注器
 
 - OpenCode 等价点：`experimental.chat.system.transform`
-- 作用：把 continuity 结果注入到 system/background，而不是普通消息
+- 作用：把记忆结果注入到 system/background，而不是普通消息
 - 当前策略：
   - summary-first
   - 仅补未被 summary 覆盖的 observation
-  - 优先注入当前 session continuity
-  - 若当前 session 没有 continuity，再回退到 project continuity
+  - 优先注入当前 session 记忆
+  - 若当前 session 没有记忆，再回退到 project 记忆
   - 受 count 和 character budget 双重约束
   - observation 会带 phase，便于保留阶段语义
 
@@ -85,17 +85,17 @@
   - `memory_search` 支持 `session / project` scope
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
   - `memory_search` 在组内按命中强度与重要度做 deterministic ranking
-  - internal continuity tool 不进入 continuity 自身：
+  - internal memory tool 不进入记忆自身：
     - `memory_search`
     - `memory_timeline`
     - `memory_details`
 
-### compaction continuity
+### compaction 记忆保留
 
 - OpenCode 等价点：`experimental.session.compacting`
-- 作用：在会话 compaction 时，把 continuity checkpoint 显式追加到 compaction prompt
+- 作用：在会话 compaction 时，把记忆 checkpoint 显式追加到 compaction prompt
 - 当前策略：
-  - 复用与 system injection 相同的 continuity 选择纪律
+  - 复用与 system injection 相同的记忆选择纪律
   - 优先 recent summaries
   - 再补 recent unsummarized observations
   - observation 显式带 `phase` 前缀
@@ -123,7 +123,7 @@ injection
   -> session-first / project-fallback selection
   -> count + character budget
 compaction
-  -> summary-first continuity context
+  -> summary-first memory context
   -> unsummarized observations with phase
   -> separate compaction budget
 runtime safety
@@ -145,7 +145,7 @@ tool.execute.after
 
 ## 当前刻意不做的事
 
-- 不做业务特化 memory schema
+- 不做业务特化记忆 schema
 - 不做外部 worker
 - 不做 timeline
 - 不做复杂 reranking
@@ -160,24 +160,24 @@ tool.execute.after
 - observation phase 已在 capture 时落盘，并暴露到 retrieval / timeline / details
 - decision 判定已收紧，避免普通“生成/输出”措辞造成过早 checkpoint
 - model-assisted summary 有 deterministic fallback，并新增 timeout
-- continuity internal tools 不会再次被 capture / retrieval / injection 吞回去
+- memory internal tools 不会再次被 capture / retrieval / injection 吞回去
 - store 初始化时会清洗 legacy internal-tool observation 与 raw `read` payload 噪声
-- compaction continuity 已独立建模，不再只依赖正常对话时的 system injection
+- compaction 记忆保留已独立建模，不再只依赖正常对话时的 system injection
 
 ## 当前局部重写进度
 
 已完成第一阶段：
 
-- `ContinuityStore` 已收紧为 `SQLiteContinuityStore`
+- `MemoryStore` 已收紧为 `SQLiteMemoryStore`
 - SQLite 层已拆出：
-  - `SQLiteContinuityDatabase`
+  - `SQLiteMemoryDatabase`
   - `ObservationRepository`
   - `RequestAnchorRepository`
   - `SummaryRepository`
-  - `ContinuityRetrievalService`
+  - `MemoryRetrievalService`
 - `session.idle -> summary` 已抽成 `runtime/pipelines/idle-summary-pipeline.ts`
-- continuity 领域 contracts 已抽出到：
-  - `src/continuity/contracts.ts`
+- memory 领域 contracts 已抽出到：
+  - `src/memory/contracts.ts`
 - 当前已经完成的上层解耦：
   - `select-context`
   - `memory_search`
@@ -194,20 +194,20 @@ tool.execute.after
 - `index.ts` 当前已进一步收紧为 composition root：
   - 创建 store
   - 创建 guard
-  - 创建 `ContinuityWorkerService`
+  - 创建 `MemoryWorkerService`
   - 组装 handlers
   - 暴露 tools
 - 当前最新的对齐点：
   - handler 已不再直接碰 store / pipeline
   - retrieval tool 也不再直接碰 store
-  - 两者都先经过 `ContinuityWorkerService`
+  - 两者都先经过 `MemoryWorkerService`
   - 这一步对齐的是 `claude-mem` 的 worker 角色，而不是它的独立进程形态
 
 仍未完成的下一阶段：
 
-- 再决定是否需要把 `ContinuityWorkerService` 外移成轻量独立 worker
+- 再决定是否需要把 `MemoryWorkerService` 外移成轻量独立 worker
 - 再决定是否要把 context builder 进一步收进 service 内部
-- 再考虑是否把 `index.ts` 对 `SQLiteContinuityStore` 的创建继续压到更薄的 composition 边界
+- 再考虑是否把 `index.ts` 对 `SQLiteMemoryStore` 的创建继续压到更薄的 composition 边界
 
 ## 真实宿主验证补充
 

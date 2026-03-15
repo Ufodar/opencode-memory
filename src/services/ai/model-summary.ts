@@ -14,9 +14,9 @@ export interface ModelSummaryResult {
 }
 
 export function getModelSummaryConfig(env: NodeJS.ProcessEnv = process.env): ModelSummaryConfig | null {
-  const apiUrl = env.OPENCODE_CONTINUITY_SUMMARY_API_URL?.trim()
-  const apiKey = env.OPENCODE_CONTINUITY_SUMMARY_API_KEY?.trim()
-  const model = env.OPENCODE_CONTINUITY_SUMMARY_MODEL?.trim()
+  const apiUrl = env.OPENCODE_MEMORY_SUMMARY_API_URL?.trim()
+  const apiKey = env.OPENCODE_MEMORY_SUMMARY_API_KEY?.trim()
+  const model = env.OPENCODE_MEMORY_SUMMARY_MODEL?.trim()
 
   if (!apiUrl || !apiKey || !model) return null
 
@@ -115,7 +115,7 @@ function buildMessages(input: {
   observations: ObservationRecord[]
 }) {
   const system = [
-    "你是一个 memory continuity summary 生成器。",
+    "你是一个工作记忆摘要生成器。",
     "你的任务是把一个 request checkpoint 里的 observation 压成简短、准确、可回注的阶段摘要。",
     "输出必须是 JSON，对象字段只有 outcomeSummary 和 nextStep。",
     "outcomeSummary 必须是中文，聚焦已经完成的事实结果，不要写闲聊或过程口号。",

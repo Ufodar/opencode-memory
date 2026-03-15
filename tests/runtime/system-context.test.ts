@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
-import { buildSystemContinuityContext } from "../../src/runtime/injection/system-context.js"
+import { buildSystemMemoryContext } from "../../src/runtime/injection/system-context.js"
 
-describe("buildSystemContinuityContext", () => {
+describe("buildSystemMemoryContext", () => {
   test("prefers summaries and excludes observations already covered by injected summaries", () => {
     const summaries: SummaryRecord[] = [
       {
@@ -35,7 +35,7 @@ describe("buildSystemContinuityContext", () => {
       }),
     ]
 
-    const system = buildSystemContinuityContext({ summaries, observations })
+    const system = buildSystemMemoryContext({ summaries, observations })
     const text = system.join("\n")
 
     expect(text).toContain("[CONTINUITY]")
@@ -55,14 +55,14 @@ describe("buildSystemContinuityContext", () => {
       }),
     ]
 
-    const system = buildSystemContinuityContext({
+    const system = buildSystemMemoryContext({
       scope: "project",
       summaries: [],
       observations,
     })
 
     const text = system.join("\n")
-    expect(text).toContain("Scope: project continuity")
+    expect(text).toContain("Scope: project memory")
     expect(text).not.toContain("Recent summaries:")
     expect(text).toContain("Recent observations:")
     expect(text).toContain("evidence_source")
@@ -77,14 +77,14 @@ describe("buildSystemContinuityContext", () => {
       }),
     ]
 
-    const system = buildSystemContinuityContext({
+    const system = buildSystemMemoryContext({
       scope: "session",
       summaries: [],
       observations,
     })
 
     const text = system.join("\n")
-    expect(text).toContain("Scope: current session continuity")
+    expect(text).toContain("Scope: current session memory")
     expect(text).toContain("[research] 读取 requirements.csv 并发现 evidence_source 列缺失")
   })
 
@@ -123,7 +123,7 @@ describe("buildSystemContinuityContext", () => {
       }),
     ]
 
-    const system = buildSystemContinuityContext({
+    const system = buildSystemMemoryContext({
       summaries,
       observations,
       maxSummaries: 1,

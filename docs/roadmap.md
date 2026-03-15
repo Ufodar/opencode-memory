@@ -1,4 +1,4 @@
-# opencode-continuity Roadmap
+# opencode-memory Roadmap
 
 ## v0.1.0 Bootstrap
 
@@ -22,7 +22,7 @@
 - phase tag
 - summary 触发策略
 
-## v0.4.0 Continuity Injection
+## v0.4.0 Memory Injection
 
 - `experimental.chat.system.transform`
 - summary 优先注入
@@ -53,10 +53,10 @@
 - covered observation 默认去重，但允许 anchor 保留
 - 与 `search -> timeline -> details` 渐进检索纪律对齐
 
-## v0.8.0 Phase & Compaction Continuity
+## v0.8.0 Phase & Compaction Memory
 
 - observation phase 落盘
 - bash 动作 phase 分类
 - retrieval / timeline / details 暴露 phase
-- `experimental.session.compacting` continuity context
+- `experimental.session.compacting` memory context
 - compaction summary-first + unsummarized observations

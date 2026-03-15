@@ -1,7 +1,7 @@
 {
-  "name": "opencode-continuity",
+  "name": "opencode-memory",
   "version": "0.1.0",
-  "description": "OpenCode plugin for persistent work continuity using observations, summaries, and system-context injection",
+  "description": "OpenCode plugin for persistent work memory using observations, summaries, and system-context injection",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,7 @@
     "opencode",
     "plugin",
     "memory",
-    "continuity",
+    "work-memory",
     "observation",
     "summary"
   ],

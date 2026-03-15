@@ -1,11 +1,11 @@
 import type { Database } from "bun:sqlite"
 import type {
-  ContinuityDetailRecord,
-  ContinuityObservationDetailRecord,
-  ContinuitySearchRecord,
-  ContinuityTimelineItem,
-  ContinuityTimelineResult,
-} from "../../continuity/contracts.js"
+  MemoryDetailRecord,
+  MemoryObservationDetailRecord,
+  MemorySearchRecord,
+  MemoryTimelineItem,
+  MemoryTimelineResult,
+} from "../../memory/contracts.js"
 import { classifyObservationPhase } from "../../memory/observation/phase.js"
 import {
   compareTimelineKinds,
@@ -23,7 +23,7 @@ import type {
 } from "./types.js"
 import { INTERNAL_TOOL_SQL_LIST } from "./types.js"
 
-export class ContinuityRetrievalService {
+export class MemoryRetrievalService {
   constructor(private readonly db: Database) {}
 
   searchRecords(input: {
@@ -31,7 +31,7 @@ export class ContinuityRetrievalService {
     sessionID?: string
     query: string
     limit: number
-  }): ContinuitySearchRecord[] {
+  }): MemorySearchRecord[] {
     const pattern = `%${input.query.toLowerCase()}%`
     const summaries = input.sessionID
       ? (this.db
@@ -107,7 +107,7 @@ export class ContinuityRetrievalService {
         b.created_at - a.created_at,
     )
 
-    const summaryRecords: ContinuitySearchRecord[] = rankedSummaries.map((row) => ({
+    const summaryRecords: MemorySearchRecord[] = rankedSummaries.map((row) => ({
       kind: "summary",
       id: row.id,
       content: row.outcome_summary,
@@ -126,7 +126,7 @@ export class ContinuityRetrievalService {
         b.created_at - a.created_at,
     )
 
-    const observationRecords: ContinuitySearchRecord[] = rankedObservations
+    const observationRecords: MemorySearchRecord[] = rankedObservations
       .filter((row) => !coveredObservationIDs.has(row.id))
       .map((row) => ({
         kind: "observation",
@@ -142,7 +142,7 @@ export class ContinuityRetrievalService {
     return [...summaryRecords, ...observationRecords].slice(0, input.limit)
   }
 
-  getDetails(ids: string[]): ContinuityDetailRecord[] {
+  getDetails(ids: string[]): MemoryDetailRecord[] {
     if (ids.length === 0) return []
 
     const placeholders = ids.map(() => "?").join(", ")
@@ -192,7 +192,7 @@ export class ContinuityRetrievalService {
         observationIDs: parseStringArray(row.observation_ids_json),
         coveredObservations: parseStringArray(row.observation_ids_json)
           .map((id) => coveredObservationMap.get(id))
-          .filter((value): value is ContinuityObservationDetailRecord => Boolean(value)),
+          .filter((value): value is MemoryObservationDetailRecord => Boolean(value)),
       })),
       ...observations.map((row) => mapObservationDetailRow(row)),
     ]
@@ -205,7 +205,7 @@ export class ContinuityRetrievalService {
     query?: string
     depthBefore: number
     depthAfter: number
-  }): ContinuityTimelineResult | null {
+  }): MemoryTimelineResult | null {
     const anchor = this.resolveTimelineAnchor(input)
     if (!anchor) return null
 
@@ -239,7 +239,7 @@ export class ContinuityRetrievalService {
     sessionID?: string
     anchorID?: string
     query?: string
-  }): ContinuityTimelineItem | null {
+  }): MemoryTimelineItem | null {
     if (input.anchorID) {
       const explicit = this.getDetails([input.anchorID])[0]
       if (!explicit) return null

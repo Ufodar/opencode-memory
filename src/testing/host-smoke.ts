@@ -84,7 +84,7 @@ export function parseRunOutput(text: string): ParsedRunOutput {
       continue
     }
 
-    if (line.startsWith("[opencode-continuity]")) {
+    if (line.startsWith("[opencode-memory]")) {
       pluginLogs.push({
         kind: "plugin-log",
         message: line,

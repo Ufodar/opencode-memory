@@ -1,19 +1,18 @@
-import { buildCompactionContinuityContext as defaultBuildCompactionContinuityContext } from "../injection/compaction-context.js"
-import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
+import { buildCompactionMemoryContext as defaultBuildCompactionMemoryContext } from "../injection/compaction-context.js"
+import type { MemoryWorkerService } from "../../services/memory-worker-service.js"
 
-type BuildCompactionContinuityContext = typeof defaultBuildCompactionContinuityContext
+type BuildCompactionMemoryContext = typeof defaultBuildCompactionMemoryContext
 
 export interface SessionCompactingHandlerDependencies {
-  worker: Pick<ContinuityWorkerService, "selectInjectionRecords">
+  worker: Pick<MemoryWorkerService, "selectInjectionRecords">
   maxSummaries: number
   maxObservations: number
   maxChars: number
-  buildCompactionContinuityContext?: BuildCompactionContinuityContext
+  buildCompactionMemoryContext?: BuildCompactionMemoryContext
 }
 
 export function createSessionCompactingHandler(input: SessionCompactingHandlerDependencies) {
-  const buildCompactionContinuityContext =
-    input.buildCompactionContinuityContext ?? defaultBuildCompactionContinuityContext
+  const buildCompactionMemoryContext = input.buildCompactionMemoryContext ?? defaultBuildCompactionMemoryContext
 
   return async (
     compactingInput: { sessionID?: string },
@@ -25,7 +24,7 @@ export function createSessionCompactingHandler(input: SessionCompactingHandlerDe
       maxObservations: input.maxObservations,
     })
 
-    const context = buildCompactionContinuityContext({
+    const context = buildCompactionMemoryContext({
       summaries: selected.summaries,
       observations: selected.observations,
       maxSummaries: input.maxSummaries,

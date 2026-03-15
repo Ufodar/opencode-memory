@@ -15,9 +15,9 @@ describe("host smoke helpers", () => {
   test("parses mixed jsonl output and extracts session id", () => {
     const runOutput = [
       '{"type":"step_start","sessionID":"ses_demo_1"}',
-      '[opencode-continuity] captured observation {"id":"obs_1","tool":"read"}',
+      '[opencode-memory] captured observation {"id":"obs_1","tool":"read"}',
       '{"type":"tool_use","sessionID":"ses_demo_1","part":{"tool":"read","state":{"status":"completed"}}}',
-      '[opencode-continuity] captured summary {"id":"sum_1","sessionID":"ses_demo_1"}',
+      '[opencode-memory] captured summary {"id":"sum_1","sessionID":"ses_demo_1"}',
     ].join("\n")
 
     const parsed = parseRunOutput(runOutput)
@@ -30,11 +30,11 @@ describe("host smoke helpers", () => {
   test("evaluates write chain from tool uses and plugin capture logs", () => {
     const runOutput = [
       '{"type":"step_start","sessionID":"ses_demo_write"}',
-      '[opencode-continuity] captured observation {"id":"obs_1","tool":"read"}',
+      '[opencode-memory] captured observation {"id":"obs_1","tool":"read"}',
       '{"type":"tool_use","sessionID":"ses_demo_write","part":{"tool":"read","state":{"status":"completed"}}}',
-      '[opencode-continuity] captured observation {"id":"obs_2","tool":"read"}',
+      '[opencode-memory] captured observation {"id":"obs_2","tool":"read"}',
       '{"type":"tool_use","sessionID":"ses_demo_write","part":{"tool":"read","state":{"status":"completed"}}}',
-      '[opencode-continuity] captured summary {"id":"sum_1","sessionID":"ses_demo_write"}',
+      '[opencode-memory] captured summary {"id":"sum_1","sessionID":"ses_demo_write"}',
     ].join("\n")
 
     const result = evaluateWriteChain(parseRunOutput(runOutput))
@@ -181,7 +181,7 @@ describe("host smoke helpers", () => {
             run2: "/tmp/workspace/control-run2.jsonl",
             run3: "/tmp/workspace/control-run3.jsonl",
             run4: "/tmp/workspace/control-run4.jsonl",
-            sqlite: "/tmp/workspace/continuity.sqlite",
+            sqlite: "/tmp/workspace/memory.sqlite",
             tempConfig: "/tmp/workspace/.tmp-opencode.json",
           },
         },
@@ -194,6 +194,6 @@ describe("host smoke helpers", () => {
     expect(markdown).toContain("写入链：通过")
     expect(markdown).toContain("数据库计数：request=1, observation=2, summary=1")
     expect(markdown).toContain("回查链：通过")
-    expect(markdown).toContain("sqlite: /tmp/workspace/continuity.sqlite")
+    expect(markdown).toContain("sqlite: /tmp/workspace/memory.sqlite")
   })
 })

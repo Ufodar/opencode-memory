@@ -1,10 +1,10 @@
 import { log as defaultLog } from "../../services/logger.js"
-import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
+import type { MemoryWorkerService } from "../../services/memory-worker-service.js"
 
 type ToolAfterLogger = typeof defaultLog
 
 export interface ToolExecuteAfterHandlerDependencies {
-  worker: Pick<ContinuityWorkerService, "captureObservationFromToolCall">
+  worker: Pick<MemoryWorkerService, "captureObservationFromToolCall">
   log?: ToolAfterLogger
 }
 

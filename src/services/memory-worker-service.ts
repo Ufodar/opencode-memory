@@ -1,13 +1,13 @@
 import type {
-  ContinuityDetailRecord,
-  ContinuityDetailsStore,
-  ContinuityIdleSummaryStore,
-  ContinuityInjectionStore,
-  ContinuitySearchRecord,
-  ContinuitySearchStore,
-  ContinuityTimelineResult,
-  ContinuityTimelineStore,
-} from "../continuity/contracts.js"
+  MemoryDetailRecord,
+  MemoryDetailsStore,
+  MemoryIdleSummaryStore,
+  MemoryInjectionStore,
+  MemorySearchRecord,
+  MemorySearchStore,
+  MemoryTimelineResult,
+  MemoryTimelineStore,
+} from "../memory/contracts.js"
 import type { ObservationRecord } from "../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../memory/request/types.js"
 import type { SummaryRecord } from "../memory/summary/types.js"
@@ -22,17 +22,17 @@ type CaptureToolObservation = typeof defaultCaptureToolObservation
 type SelectInjectionRecords = typeof defaultSelectInjectionRecords
 type IdleSummaryPipeline = typeof defaultRunIdleSummaryPipeline
 
-type ContinuityCaptureStore = {
+type MemoryCaptureStore = {
   saveRequestAnchor(record: RequestAnchorRecord): void
   saveObservation(record: ObservationRecord): void
 }
 
-type ContinuityWorkerStore = ContinuityCaptureStore &
-  ContinuityIdleSummaryStore &
-  ContinuityInjectionStore &
-  ContinuitySearchStore &
-  ContinuityDetailsStore &
-  ContinuityTimelineStore
+type MemoryWorkerStore = MemoryCaptureStore &
+  MemoryIdleSummaryStore &
+  MemoryInjectionStore &
+  MemorySearchStore &
+  MemoryDetailsStore &
+  MemoryTimelineStore
 
 type IdleSummaryGuard = {
   run<T>(sessionID: string, task: () => Promise<T>): Promise<{ ran: boolean; result?: T }>
@@ -41,7 +41,7 @@ type IdleSummaryGuard = {
 type InjectionSelection = ReturnType<typeof defaultSelectInjectionRecords>
 type IdleSummaryResult = Awaited<ReturnType<typeof defaultRunIdleSummaryPipeline>> | { status: "busy" }
 
-export interface ContinuityWorkerService {
+export interface MemoryWorkerService {
   captureRequestAnchorFromMessage(input: {
     sessionID: string
     messageID?: string
@@ -66,16 +66,16 @@ export interface ContinuityWorkerService {
     maxSummaries: number
     maxObservations: number
   }): InjectionSelection
-  searchContinuityRecords(input: {
+  searchMemoryRecords(input: {
     sessionID?: string
     query: string
     limit: number
     scope?: "session" | "project"
   }): {
     scope: "session" | "project"
-    results: ContinuitySearchRecord[]
+    results: MemorySearchRecord[]
   }
-  getContinuityTimeline(input: {
+  getMemoryTimeline(input: {
     sessionID?: string
     anchorID?: string
     query?: string
@@ -84,14 +84,14 @@ export interface ContinuityWorkerService {
     scope?: "session" | "project"
   }): {
     scope: "session" | "project"
-    timeline: ContinuityTimelineResult
+    timeline: MemoryTimelineResult
   } | null
-  getContinuityDetails(ids: string[]): ContinuityDetailRecord[]
+  getMemoryDetails(ids: string[]): MemoryDetailRecord[]
 }
 
-export function createContinuityWorkerService(input: {
+export function createMemoryWorkerService(input: {
   projectPath: string
-  store: ContinuityWorkerStore
+  store: MemoryWorkerStore
   idleSummaryGuard: IdleSummaryGuard
   saveRequestAnchor?: (record: RequestAnchorRecord) => void
   saveObservation?: (record: ObservationRecord) => void
@@ -103,7 +103,7 @@ export function createContinuityWorkerService(input: {
   captureToolObservation?: CaptureToolObservation
   runIdleSummaryPipeline?: IdleSummaryPipeline
   selectInjectionRecords?: SelectInjectionRecords
-}): ContinuityWorkerService {
+}): MemoryWorkerService {
   const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
   const captureToolObservation = input.captureToolObservation ?? defaultCaptureToolObservation
   const runIdleSummaryPipeline = input.runIdleSummaryPipeline ?? defaultRunIdleSummaryPipeline
@@ -172,18 +172,18 @@ export function createContinuityWorkerService(input: {
       })
     },
 
-    searchContinuityRecords(searchInput) {
+    searchMemoryRecords(searchInput) {
       const limit = searchInput.limit
 
       let scopeUsed: "session" | "project" = "project"
       let results =
         searchInput.scope === "project"
-          ? input.store.searchContinuityRecords({
+          ? input.store.searchMemoryRecords({
               projectPath: input.projectPath,
               query: searchInput.query,
               limit,
             })
-          : input.store.searchContinuityRecords({
+          : input.store.searchMemoryRecords({
               projectPath: input.projectPath,
               sessionID: searchInput.sessionID,
               query: searchInput.query,
@@ -195,7 +195,7 @@ export function createContinuityWorkerService(input: {
       } else if (results.length > 0 || searchInput.scope === "session") {
         scopeUsed = "session"
       } else {
-        results = input.store.searchContinuityRecords({
+        results = input.store.searchMemoryRecords({
           projectPath: input.projectPath,
           query: searchInput.query,
           limit,
@@ -209,18 +209,18 @@ export function createContinuityWorkerService(input: {
       }
     },
 
-    getContinuityTimeline(timelineInput) {
+    getMemoryTimeline(timelineInput) {
       let scopeUsed: "session" | "project" = "project"
       let timeline =
         timelineInput.scope === "project"
-          ? input.store.getContinuityTimeline({
+          ? input.store.getMemoryTimeline({
               projectPath: input.projectPath,
               anchorID: timelineInput.anchorID,
               query: timelineInput.query,
               depthBefore: timelineInput.depthBefore,
               depthAfter: timelineInput.depthAfter,
             })
-          : input.store.getContinuityTimeline({
+          : input.store.getMemoryTimeline({
               projectPath: input.projectPath,
               sessionID: timelineInput.sessionID,
               anchorID: timelineInput.anchorID,
@@ -234,7 +234,7 @@ export function createContinuityWorkerService(input: {
       } else if (timeline || timelineInput.scope === "session") {
         scopeUsed = "session"
       } else {
-        timeline = input.store.getContinuityTimeline({
+        timeline = input.store.getMemoryTimeline({
           projectPath: input.projectPath,
           anchorID: timelineInput.anchorID,
           query: timelineInput.query,
@@ -254,8 +254,8 @@ export function createContinuityWorkerService(input: {
       }
     },
 
-    getContinuityDetails(ids) {
-      return input.store.getContinuityDetails(ids)
+    getMemoryDetails(ids) {
+      return input.store.getMemoryDetails(ids)
     },
   }
 }

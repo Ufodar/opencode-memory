@@ -67,7 +67,7 @@ describe("captureToolObservation", () => {
     expect(observation?.output.summary).not.toContain("This is a very long file body")
   })
 
-  test("does not capture continuity self-query tools", () => {
+  test("does not capture memory self-query tools", () => {
     const observation = captureToolObservation(
       {
         tool: "memory_timeline",

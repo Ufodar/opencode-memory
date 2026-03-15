@@ -4,10 +4,10 @@ import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../src/memory/request/types.js"
 import { createChatMessageHandler } from "../../src/runtime/handlers/chat-message-event.js"
 import { createToolExecuteAfterHandler } from "../../src/runtime/handlers/tool-execute-after.js"
-import type { ContinuityWorkerService } from "../../src/services/continuity-worker-service.js"
+import type { MemoryWorkerService } from "../../src/services/memory-worker-service.js"
 
 describe("basic runtime handlers", () => {
-  test("chat.message delegates request-anchor capture to the continuity worker", async () => {
+  test("chat.message delegates request-anchor capture to the memory worker", async () => {
     const calls: string[] = []
 
     const handler = createChatMessageHandler({
@@ -22,7 +22,7 @@ describe("basic runtime handlers", () => {
             createdAt: 1,
           } satisfies RequestAnchorRecord
         },
-      } as Pick<ContinuityWorkerService, "captureRequestAnchorFromMessage">,
+      } as Pick<MemoryWorkerService, "captureRequestAnchorFromMessage">,
     })
 
     await handler(
@@ -39,7 +39,7 @@ describe("basic runtime handlers", () => {
     expect(calls).toEqual(["request:ses_demo:msg_1"])
   })
 
-  test("tool.execute.after delegates observation capture to the continuity worker", async () => {
+  test("tool.execute.after delegates observation capture to the memory worker", async () => {
     const calls: string[] = []
 
     const handler = createToolExecuteAfterHandler({
@@ -63,7 +63,7 @@ describe("basic runtime handlers", () => {
             trace: {},
           } satisfies ObservationRecord
         },
-      } as Pick<ContinuityWorkerService, "captureObservationFromToolCall">,
+      } as Pick<MemoryWorkerService, "captureObservationFromToolCall">,
       log(message) {
         calls.push(`log:${message}`)
       },

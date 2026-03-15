@@ -6,15 +6,15 @@ import { tmpdir } from "node:os"
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../src/memory/request/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
-import { SQLiteContinuityStore } from "../../src/storage/sqlite/continuity-store.js"
+import { SQLiteMemoryStore } from "../../src/storage/sqlite/memory-store.js"
 
-describe("SQLiteContinuityStore request anchors and summaries", () => {
+describe("SQLiteMemoryStore request anchors and summaries", () => {
   let tempDir: string
-  let store: SQLiteContinuityStore
+  let store: SQLiteMemoryStore
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "opencode-continuity-"))
-    store = new SQLiteContinuityStore(join(tempDir, "continuity.sqlite"))
+    tempDir = mkdtempSync(join(tmpdir(), "opencode-memory-"))
+    store = new SQLiteMemoryStore(join(tempDir, "memory.sqlite"))
   })
 
   afterEach(() => {

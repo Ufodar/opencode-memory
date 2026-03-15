@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import type { ContinuityIdleSummaryStore } from "../../src/continuity/contracts.js"
+import type { MemoryIdleSummaryStore } from "../../src/memory/contracts.js"
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../src/memory/request/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
@@ -27,7 +27,7 @@ describe("runIdleSummaryPipeline", () => {
         updateRequestAnchorCheckpoint: (update) => {
           checkpointUpdates.push(update)
         },
-      } satisfies ContinuityIdleSummaryStore,
+      } satisfies MemoryIdleSummaryStore,
     })
 
     expect(result.status).toBe("no-op")
@@ -67,7 +67,7 @@ describe("runIdleSummaryPipeline", () => {
         updateRequestAnchorCheckpoint: (update) => {
           checkpointUpdates.push(update)
         },
-      } satisfies ContinuityIdleSummaryStore,
+      } satisfies MemoryIdleSummaryStore,
     })
 
     expect(result.status).toBe("summarized")

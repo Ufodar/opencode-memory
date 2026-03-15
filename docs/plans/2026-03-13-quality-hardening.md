@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 修复 `opencode-continuity` 当前 V1 主闭环里的 4 个高优先级质量风险，使其更接近 `claude-mem` 的运行时稳健性。
+**Goal:** 修复 `opencode-memory` 当前 V1 主闭环里的 4 个高优先级质量风险，使其更接近 `claude-mem` 的运行时稳健性。
 
 **Architecture:** 这轮不扩展新能力边界，不引入独立 worker。只收紧现有 `plugin-internal pipeline`：为 model summary 增加 timeout，为 observation 提供更高信息密度主文本，为 `session.idle` summary 链增加 session 级重入保护，并收紧 phase/decision 启发式判定。所有改动都先通过测试刻画目标行为，再做最小实现。
 
@@ -57,7 +57,7 @@ git commit -m "fix: add timeout to model summary generation"
 
 **Files:**
 - Modify: `src/runtime/hooks/tool-after.ts`
-- Modify: `src/storage/sqlite/continuity-store.ts`
+- Modify: `src/storage/sqlite/memory-store.ts`
 - Modify: `src/runtime/injection/system-context.ts`
 - Test: `tests/storage/retrieval-surface.test.ts`
 - Create: `tests/runtime/tool-after.test.ts`
@@ -97,7 +97,7 @@ Expected:
 **Step 5: Commit**
 
 ```bash
-git add src/runtime/hooks/tool-after.ts src/storage/sqlite/continuity-store.ts src/runtime/injection/system-context.ts tests/runtime/tool-after.test.ts tests/storage/retrieval-surface.test.ts
+git add src/runtime/hooks/tool-after.ts src/storage/sqlite/memory-store.ts src/runtime/injection/system-context.ts tests/runtime/tool-after.test.ts tests/storage/retrieval-surface.test.ts
 git commit -m "fix: strengthen observation content for retrieval"
 ```
 
@@ -186,7 +186,7 @@ git commit -m "fix: tighten checkpoint decision heuristics"
 **Files:**
 - Modify: `README.md`
 - Modify: `docs/architecture.md`
-- Modify: `notes/opencode-continuity.md` (workspace note)
+- Modify: `notes/opencode-memory.md` (workspace note)
 - Modify: `logs/research-log.md` (workspace note)
 - Modify: `notes/user-learning-profile.md` (workspace note)
 
@@ -210,5 +210,5 @@ Expected:
 
 ```bash
 git add README.md docs/architecture.md
-git commit -m "docs: update continuity quality-hardening status"
+git commit -m "docs: update memory quality-hardening status"
 ```

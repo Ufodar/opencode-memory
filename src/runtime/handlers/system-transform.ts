@@ -1,19 +1,18 @@
-import { buildSystemContinuityContext as defaultBuildSystemContinuityContext } from "../injection/system-context.js"
-import type { ContinuityWorkerService } from "../../services/continuity-worker-service.js"
+import { buildSystemMemoryContext as defaultBuildSystemMemoryContext } from "../injection/system-context.js"
+import type { MemoryWorkerService } from "../../services/memory-worker-service.js"
 
-type BuildSystemContinuityContext = typeof defaultBuildSystemContinuityContext
+type BuildSystemMemoryContext = typeof defaultBuildSystemMemoryContext
 
 export interface SystemTransformHandlerDependencies {
-  worker: Pick<ContinuityWorkerService, "selectInjectionRecords">
+  worker: Pick<MemoryWorkerService, "selectInjectionRecords">
   maxSummaries: number
   maxObservations: number
   maxChars: number
-  buildSystemContinuityContext?: BuildSystemContinuityContext
+  buildSystemMemoryContext?: BuildSystemMemoryContext
 }
 
 export function createSystemTransformHandler(input: SystemTransformHandlerDependencies) {
-  const buildSystemContinuityContext =
-    input.buildSystemContinuityContext ?? defaultBuildSystemContinuityContext
+  const buildSystemMemoryContext = input.buildSystemMemoryContext ?? defaultBuildSystemMemoryContext
 
   return async (
     transformInput: { sessionID?: string },
@@ -25,7 +24,7 @@ export function createSystemTransformHandler(input: SystemTransformHandlerDepend
       maxObservations: input.maxObservations,
     })
 
-    const system = buildSystemContinuityContext({
+    const system = buildSystemMemoryContext({
       scope: selected.scope,
       summaries: selected.summaries,
       observations: selected.observations,

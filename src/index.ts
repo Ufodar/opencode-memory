@@ -7,17 +7,17 @@ import { createSessionCompactingHandler } from "./runtime/handlers/session-compa
 import { createSessionIdleEventHandler } from "./runtime/handlers/session-idle-event.js"
 import { createSystemTransformHandler } from "./runtime/handlers/system-transform.js"
 import { createToolExecuteAfterHandler } from "./runtime/handlers/tool-execute-after.js"
-import { createContinuityWorkerService } from "./services/continuity-worker-service.js"
+import { createMemoryWorkerService } from "./services/memory-worker-service.js"
 import { generateModelSummary } from "./services/ai/model-summary.js"
-import { SQLiteContinuityStore } from "./storage/sqlite/continuity-store.js"
+import { SQLiteMemoryStore } from "./storage/sqlite/memory-store.js"
 import { createMemorySearchTool } from "./tools/memory-search.js"
 import { createMemoryDetailsTool } from "./tools/memory-details.js"
 import { createMemoryTimelineTool } from "./tools/memory-timeline.js"
 
-export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
-  const store = new SQLiteContinuityStore(getDefaultDatabasePath())
+export const OpenCodeMemoryPlugin: Plugin = async ({ directory }) => {
+  const store = new SQLiteMemoryStore(getDefaultDatabasePath())
   const idleSummaryGuard = createSessionReentryGuard()
-  const worker = createContinuityWorkerService({
+  const worker = createMemoryWorkerService({
     projectPath: directory,
     store,
     idleSummaryGuard,
@@ -64,4 +64,4 @@ export const OpenCodeContinuityPlugin: Plugin = async ({ directory }) => {
   }
 }
 
-export default OpenCodeContinuityPlugin
+export default OpenCodeMemoryPlugin

@@ -15,9 +15,9 @@ afterEach(() => {
 
 describe("model summary", () => {
   test("returns null when model summary config is missing", async () => {
-    delete process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL
-    delete process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY
-    delete process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL
+    delete process.env.OPENCODE_MEMORY_SUMMARY_API_URL
+    delete process.env.OPENCODE_MEMORY_SUMMARY_API_KEY
+    delete process.env.OPENCODE_MEMORY_SUMMARY_MODEL
 
     expect(getModelSummaryConfig()).toBeNull()
 
@@ -30,9 +30,9 @@ describe("model summary", () => {
   })
 
   test("parses a valid OpenAI-compatible response", async () => {
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
 
     const result = await generateModelSummary(
       {
@@ -66,9 +66,9 @@ describe("model summary", () => {
   })
 
   test("returns null when model response is malformed", async () => {
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
 
     const result = await generateModelSummary(
       {
@@ -96,9 +96,9 @@ describe("model summary", () => {
   })
 
   test("normalizes multiline markdown-ish model output", async () => {
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
 
     const result = await generateModelSummary(
       {
@@ -129,9 +129,9 @@ describe("model summary", () => {
   })
 
   test("drops weak nextStep and truncates overly long outcomeSummary", async () => {
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
 
     const longSummary = "已完成资格条件抽取".repeat(30)
 
@@ -165,9 +165,9 @@ describe("model summary", () => {
   })
 
   test("returns null when model request exceeds timeout", async () => {
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
 
     const result = await generateModelSummary(
       {
@@ -187,9 +187,9 @@ describe("model summary", () => {
   })
 
   test("aborts the provider request when timeout elapses", async () => {
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_URL = "https://api.example.com/v1"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_API_KEY = "test-key"
-    process.env.OPENCODE_CONTINUITY_SUMMARY_MODEL = "gpt-test"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
 
     let aborted = false
 

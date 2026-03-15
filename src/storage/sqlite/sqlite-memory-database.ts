@@ -4,7 +4,7 @@ import { Database } from "bun:sqlite"
 import { INTERNAL_TOOL_SQL_LIST } from "./types.js"
 import { summarizeLegacyReadRow } from "./mappers.js"
 
-export class SQLiteContinuityDatabase {
+export class SQLiteMemoryDatabase {
   readonly handle: Database
 
   constructor(dbPath: string) {

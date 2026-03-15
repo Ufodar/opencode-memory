@@ -4,14 +4,14 @@
 
 ## 这一步要解决什么
 
-现在 `opencode-continuity` 已经证明：
+现在 `opencode-memory` 已经证明：
 
 - 在最小宿主配置下能加载 plugin
 - 能写 observation / summary
 - 能通过 `memory_search -> memory_timeline -> memory_details` 回查
 
 但这些验证还停留在人工命令和人工读日志阶段。  
-只要后面继续改 continuity 逻辑，就需要反复手工重跑，成本高，也容易漏。
+只要后面继续改 memory 逻辑，就需要反复手工重跑，成本高，也容易漏。
 
 ## 推荐方案
 
@@ -96,7 +96,7 @@
   2. `memory_timeline`
   3. `memory_details`
 - 这样做的原因是：
-  - control smoke 要测的是 continuity 工具链是否成立
+  - control smoke 要测的是 memory 工具链是否成立
   - 不是测模型是否愿意一次完成长流程指令
 - runner 现在会同时产出两层报告：
   - `report.json`
