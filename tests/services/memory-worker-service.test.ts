@@ -357,6 +357,21 @@ describe("createMemoryWorkerService", () => {
           return true
         },
       },
+      readWorkerStatus() {
+        calls.push("worker-status")
+        return {
+          updatedAt: 456,
+          isProcessing: true,
+          queueDepth: 1,
+          counts: { pending: 1, processing: 0, failed: 1 },
+          lastEvent: {
+            type: "enqueue",
+            sessionID: "ses_demo",
+            jobID: 7,
+            kind: "request-anchor",
+          },
+        }
+      },
       idleSummaryGuard: {
         async run(_sessionID, task) {
           await task()
@@ -369,6 +384,18 @@ describe("createMemoryWorkerService", () => {
       isProcessing: true,
       queueDepth: 1,
       counts: { pending: 1, processing: 0, failed: 1 },
+      workerStatus: {
+        updatedAt: 456,
+        isProcessing: true,
+        queueDepth: 1,
+        counts: { pending: 1, processing: 0, failed: 1 },
+        lastEvent: {
+          type: "enqueue",
+          sessionID: "ses_demo",
+          jobID: 7,
+          kind: "request-anchor",
+        },
+      },
       processingJobs: [],
       failedJobs: [
         {
@@ -383,6 +410,6 @@ describe("createMemoryWorkerService", () => {
     })
 
     expect(worker.retryQueueJob(7)).toEqual({ retried: true, jobID: 7 })
-    expect(calls).toEqual(["stats", "processing:5", "failed:5", "retry:7"])
+    expect(calls).toEqual(["stats", "worker-status", "processing:5", "failed:5", "retry:7"])
   })
 })

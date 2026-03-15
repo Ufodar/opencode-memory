@@ -130,6 +130,18 @@ describe("memory queue tools", () => {
             isProcessing: true,
             queueDepth: 2,
             counts: { pending: 1, processing: 0, failed: 1 },
+            workerStatus: {
+              updatedAt: 456,
+              isProcessing: true,
+              queueDepth: 2,
+              counts: { pending: 1, processing: 0, failed: 1 },
+              lastEvent: {
+                type: "complete",
+                sessionID: "ses_demo",
+                jobID: 3,
+                kind: "session-idle",
+              },
+            },
             processingJobs: [
               {
                 id: 3,
@@ -162,6 +174,7 @@ describe("memory queue tools", () => {
     expect(calls).toEqual([5])
     expect(result.isProcessing).toBe(true)
     expect(result.queueDepth).toBe(2)
+    expect(result.workerStatus.lastEvent.type).toBe("complete")
     expect(result.processingJobs[0].id).toBe(3)
     expect(result.counts.failed).toBe(1)
     expect(result.failedJobs[0].id).toBe(7)

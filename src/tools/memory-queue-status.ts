@@ -18,6 +18,7 @@ export function createMemoryQueueStatusTool(worker: Pick<MemoryWorkerService, "g
         isProcessing: result.isProcessing,
         queueDepth: result.queueDepth,
         counts: result.counts,
+        workerStatus: result.workerStatus,
         processingJobs: result.processingJobs,
         failedJobs: result.failedJobs,
       })

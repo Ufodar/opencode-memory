@@ -10,6 +10,7 @@ describe("pending job processor", () => {
   test("logs queue state transitions when a job is enqueued and completed", async () => {
     const calls: string[] = []
     const logs: Array<{ message: string; metadata?: Record<string, unknown> }> = []
+    const statuses: Array<Record<string, unknown>> = []
     const pending: PendingJobRecord[] = []
 
     const store: PendingJobStore = {
@@ -93,6 +94,9 @@ describe("pending job processor", () => {
       log(message, metadata) {
         logs.push({ message, metadata })
       },
+      publishWorkerStatus(snapshot) {
+        statuses.push(snapshot as Record<string, unknown>)
+      },
     })
 
     processor.enqueueRequestAnchor({
@@ -130,6 +134,18 @@ describe("pending job processor", () => {
           sessionID: "ses_demo",
           kind: "request-anchor",
           queueDepth: 0,
+        }),
+      }),
+    )
+    expect(statuses.at(-1)).toEqual(
+      expect.objectContaining({
+        isProcessing: false,
+        queueDepth: 0,
+        lastEvent: expect.objectContaining({
+          type: "complete",
+          sessionID: "ses_demo",
+          jobID: 1,
+          kind: "request-anchor",
         }),
       }),
     )

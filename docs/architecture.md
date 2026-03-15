@@ -218,6 +218,10 @@ tool.execute.after
     - enqueue / start / complete / fail / resume 都会自动记录
     - 日志里会直接带 `counts`、`queueDepth`、`isProcessing`
     - 不再只能靠手动查询 tool 才知道 worker 是否正在忙
+  - queue 状态现在也会维护结构化快照：
+    - worker 会把最新状态写到 `worker-status.json`
+    - `memory_queue_status` 现在会把这份 `workerStatus` 一起返回
+    - 后续如果要接 UI、宿主监控或更强的 smoke，不需要再解析日志
   - stale processing 自愈：
     - `pending_jobs` 现在会记录 `started_processing_at`
     - claim 下一条 job 前，会先把超过阈值的 `processing` 重置回 `pending`
@@ -287,6 +291,7 @@ tool.execute.after
 - 继续补 queue 状态的更强可观测性，而不是只停在 tool 返回值
 - 继续补 stuck processing / failed queue 的更细粒度人工干预入口
 - 继续评估是否需要比日志更主动的状态暴露形态
+- 继续评估是否需要把结构化状态从文件/手动查询进一步推进到更持续的推送形态
 
 ## 真实宿主验证补充
 

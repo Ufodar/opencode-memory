@@ -3,7 +3,10 @@ import { once } from "node:events"
 import { createServer } from "node:net"
 import { fileURLToPath } from "node:url"
 
-import { getDefaultWorkerRegistryPath } from "../config/paths.js"
+import {
+  getDefaultWorkerRegistryPath,
+  getDefaultWorkerStatusPath,
+} from "../config/paths.js"
 import { log } from "../services/logger.js"
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 import { getOpencodeMemoryVersion } from "../version.js"
@@ -283,6 +286,7 @@ async function spawnManagedMemoryWorkerProcess(
   const port = await findAvailablePort()
   const workerEntry = fileURLToPath(new URL("./run-memory-worker.js", import.meta.url))
   const bunExecutable = Bun.which("bun")
+  const statusPath = getDefaultWorkerStatusPath()
 
   if (!bunExecutable) {
     throw new Error("Failed to locate Bun executable for memory worker startup")
@@ -300,6 +304,8 @@ async function spawnManagedMemoryWorkerProcess(
       input.databasePath,
       "--registry-path",
       registryPath,
+      "--status-path",
+      statusPath,
     ],
     {
       env: process.env,

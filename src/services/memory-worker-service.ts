@@ -10,6 +10,7 @@ import type {
   MemorySearchStore,
   MemoryTimelineResult,
   MemoryTimelineStore,
+  MemoryWorkerStatusSnapshot,
 } from "../memory/contracts.js"
 import type { ObservationRecord } from "../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../memory/request/types.js"
@@ -124,6 +125,7 @@ export interface MemoryWorkerService {
       processing: number
       failed: number
     }
+    workerStatus: MemoryWorkerStatusSnapshot | null
     processingJobs: MemoryQueueProcessingJob[]
     failedJobs: MemoryQueueFailedJob[]
   }>
@@ -149,6 +151,7 @@ export function createMemoryWorkerService(input: {
   selectInjectionRecords?: SelectInjectionRecords
   buildSystemMemoryContext?: BuildSystemMemoryContext
   buildCompactionMemoryContext?: BuildCompactionMemoryContext
+  readWorkerStatus?: () => MemoryWorkerStatusSnapshot | null
 }): MemoryWorkerService {
   const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
   const captureToolObservation = input.captureToolObservation ?? defaultCaptureToolObservation
@@ -350,6 +353,7 @@ export function createMemoryWorkerService(input: {
         isProcessing: counts.pending > 0 || counts.processing > 0,
         queueDepth: counts.pending + counts.processing,
         counts,
+        workerStatus: input.readWorkerStatus?.() ?? null,
         processingJobs: input.store.listProcessingJobs(queueInput.limit),
         failedJobs: input.store.listFailedJobs(queueInput.limit),
       }

@@ -185,6 +185,10 @@ docs/
     - `isProcessing`
     - `counts`
   - 不再只能靠手动调用 `memory_queue_status` 判断 worker 是否正在忙
+- worker 现在也会维护结构化状态快照：
+  - 默认写到 `~/.opencode-memory/data/worker-status.json`
+  - `memory_queue_status` 现在会把这份 `workerStatus` 一起返回
+  - 所以后面如果要做 UI、外部监控或更稳定的宿主验证，不需要再解析日志
 - pending queue 已加入 stale processing 自愈：
   - worker 存活期间，如果某个 job 长时间卡在 `processing`
   - 下一次 claim 同 session 队列时会先把它重置回 `pending`

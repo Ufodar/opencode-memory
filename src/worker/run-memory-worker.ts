@@ -9,6 +9,7 @@ async function main() {
     projectPath: args.projectPath,
     databasePath: args.databasePath,
     registryPath: args.registryPath,
+    statusPath: args.statusPath,
   })
 
   log("memory worker listening", {
@@ -54,6 +55,7 @@ function parseArgs(args: string[]) {
   const projectPath = values.get("project-path")
   const databasePath = values.get("database-path")
   const registryPath = values.get("registry-path")
+  const statusPath = values.get("status-path")
 
   if (!Number.isFinite(port)) {
     throw new Error("Missing or invalid --port")
@@ -72,5 +74,6 @@ function parseArgs(args: string[]) {
     projectPath,
     databasePath,
     registryPath,
+    statusPath,
   }
 }

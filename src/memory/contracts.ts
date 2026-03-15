@@ -99,6 +99,26 @@ export type MemoryQueueProcessingJob = {
   isStale: boolean
 }
 
+export type MemoryWorkerStatusEvent = {
+  type: "enqueue" | "start" | "complete" | "fail" | "resume" | "worker-started" | "worker-stopped"
+  sessionID?: string
+  jobID?: number
+  kind?: "request-anchor" | "observation" | "session-idle"
+  failureStatus?: "pending" | "failed"
+}
+
+export type MemoryWorkerStatusSnapshot = {
+  updatedAt: number
+  isProcessing: boolean
+  queueDepth: number
+  counts: {
+    pending: number
+    processing: number
+    failed: number
+  }
+  lastEvent: MemoryWorkerStatusEvent
+}
+
 export interface MemoryQueueStore {
   getQueueStats(): {
     pending: number

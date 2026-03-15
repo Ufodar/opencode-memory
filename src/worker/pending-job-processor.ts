@@ -1,5 +1,6 @@
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 import { log as defaultLog } from "../services/logger.js"
+import type { MemoryWorkerStatusEvent, MemoryWorkerStatusSnapshot } from "../memory/contracts.js"
 import type { SessionJobScheduler } from "./session-job-scheduler.js"
 import type {
   PendingJobKind,
@@ -17,6 +18,7 @@ export function createPendingJobProcessor(input: {
   scheduler: SessionJobScheduler
   worker: JobWorker
   log?: typeof defaultLog
+  publishWorkerStatus?: (snapshot: MemoryWorkerStatusSnapshot) => void
 }) {
   const log = input.log ?? defaultLog
 
@@ -27,7 +29,8 @@ export function createPendingJobProcessor(input: {
         return
       }
 
-      logQueueState(log, input.store, "memory queue started job", {
+      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue started job", {
+        type: "start",
         sessionID,
         jobID: job.id,
         kind: job.kind,
@@ -37,14 +40,16 @@ export function createPendingJobProcessor(input: {
       try {
         await executeJob(job, input.worker)
         input.store.complete(job.id)
-        logQueueState(log, input.store, "memory queue completed job", {
+        publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue completed job", {
+          type: "complete",
           sessionID,
           jobID: job.id,
           kind: job.kind,
         })
       } catch (error) {
         const failureStatus = input.store.recordFailure(job.id, normalizeError(error))
-        logQueueState(log, input.store, "memory queue failed job", {
+        publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue failed job", {
+          type: "fail",
           sessionID,
           jobID: job.id,
           kind: job.kind,
@@ -71,7 +76,8 @@ export function createPendingJobProcessor(input: {
         kind: "request-anchor",
         payload,
       })
-      logQueueState(log, input.store, "memory queue enqueued job", {
+      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue enqueued job", {
+        type: "enqueue",
         sessionID: payload.sessionID,
         jobID,
         kind: "request-anchor",
@@ -88,7 +94,8 @@ export function createPendingJobProcessor(input: {
         kind: "observation",
         payload: { toolInput, output },
       })
-      logQueueState(log, input.store, "memory queue enqueued job", {
+      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue enqueued job", {
+        type: "enqueue",
         sessionID: toolInput.sessionID,
         jobID,
         kind: "observation",
@@ -102,7 +109,8 @@ export function createPendingJobProcessor(input: {
         kind: "session-idle",
         payload: { sessionID: payload },
       })
-      logQueueState(log, input.store, "memory queue enqueued job", {
+      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue enqueued job", {
+        type: "enqueue",
         sessionID: payload,
         jobID,
         kind: "session-idle",
@@ -118,11 +126,13 @@ export function createPendingJobProcessor(input: {
 
     resumePendingJobs() {
       const resetCount = input.store.resetProcessingToPending()
-      log("memory queue resumed pending jobs", {
+      const pendingSessions = input.store.listSessionIDsWithPendingJobs()
+      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue resumed pending jobs", {
+        type: "resume",
+        pendingSessions: pendingSessions.length,
         resetProcessingCount: resetCount,
-        pendingSessions: input.store.listSessionIDsWithPendingJobs().length,
       })
-      for (const sessionID of input.store.listSessionIDsWithPendingJobs()) {
+      for (const sessionID of pendingSessions) {
         scheduleSession(sessionID)
       }
       return resetCount
@@ -154,18 +164,33 @@ function normalizeError(error: unknown) {
   return String(error)
 }
 
-function logQueueState(
+function publishQueueState(
   log: typeof defaultLog,
   store: Pick<PendingJobStore, "getQueueStats">,
+  publishWorkerStatus: ((snapshot: MemoryWorkerStatusSnapshot) => void) | undefined,
   message: string,
-  metadata: Record<string, unknown>,
+  metadata: Record<string, unknown> & MemoryWorkerStatusEvent,
 ) {
   const counts = store.getQueueStats()
-  log(message, {
-    ...metadata,
+  const snapshot: MemoryWorkerStatusSnapshot = {
+    updatedAt: Date.now(),
     counts,
     queueDepth: counts.pending + counts.processing,
     isProcessing: counts.pending > 0 || counts.processing > 0,
+    lastEvent: {
+      type: metadata.type,
+      sessionID: metadata.sessionID,
+      jobID: metadata.jobID,
+      kind: metadata.kind,
+      failureStatus: metadata.failureStatus,
+    },
+  }
+  publishWorkerStatus?.(snapshot)
+  log(message, {
+    ...metadata,
+    counts: snapshot.counts,
+    queueDepth: snapshot.queueDepth,
+    isProcessing: snapshot.isProcessing,
   })
 }
 

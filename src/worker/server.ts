@@ -10,6 +10,8 @@ import {
 } from "./registry.js"
 import { createPendingJobProcessor } from "./pending-job-processor.js"
 import { createSessionJobScheduler } from "./session-job-scheduler.js"
+import { createMemoryWorkerStatusSnapshotStore } from "./worker-status-snapshot.js"
+import type { MemoryWorkerStatusSnapshot } from "../memory/contracts.js"
 import type {
   BuildCompactionContextRequest,
   BuildCompactionContextResponse,
@@ -47,9 +49,13 @@ export async function startMemoryWorkerServer(input: {
   projectPath: string
   databasePath: string
   registryPath?: string
+  statusPath?: string
   heartbeatIntervalMs?: number
 }): Promise<MemoryWorkerServerHandle> {
   const store = new SQLiteMemoryStore(input.databasePath)
+  const statusStore = input.statusPath
+    ? createMemoryWorkerStatusSnapshotStore(input.statusPath)
+    : null
   const idleSummaryGuard = createSessionReentryGuard()
   const sessionJobs = createSessionJobScheduler()
   const worker = createMemoryWorkerService({
@@ -57,6 +63,7 @@ export async function startMemoryWorkerServer(input: {
     store,
     idleSummaryGuard,
     generateModelSummary,
+    readWorkerStatus: () => statusStore?.read() ?? null,
   })
   const pendingJobs = createPendingJobProcessor({
     store: {
@@ -93,6 +100,9 @@ export async function startMemoryWorkerServer(input: {
     },
     scheduler: sessionJobs,
     worker,
+    publishWorkerStatus(snapshot) {
+      statusStore?.write(snapshot)
+    },
   })
   let stopped = false
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined
@@ -114,6 +124,9 @@ export async function startMemoryWorkerServer(input: {
         databasePath: input.databasePath,
       })
     }
+    writeWorkerStatusSnapshot(statusStore, store.getQueueStats(), {
+      type: "worker-stopped",
+    })
     server.stop(true)
     store.close()
   }
@@ -267,6 +280,9 @@ export async function startMemoryWorkerServer(input: {
     heartbeatTimer = setInterval(writeHeartbeat, input.heartbeatIntervalMs ?? 5_000)
   }
 
+  writeWorkerStatusSnapshot(statusStore, store.getQueueStats(), {
+    type: "worker-started",
+  })
   pendingJobs.resumePendingJobs()
 
   return {
@@ -276,6 +292,24 @@ export async function startMemoryWorkerServer(input: {
       await stopServer()
     },
   }
+}
+
+function writeWorkerStatusSnapshot(
+  statusStore: ReturnType<typeof createMemoryWorkerStatusSnapshotStore> | null,
+  counts: MemoryWorkerStatusSnapshot["counts"],
+  lastEvent: MemoryWorkerStatusSnapshot["lastEvent"],
+) {
+  if (!statusStore) {
+    return
+  }
+
+  statusStore.write({
+    updatedAt: Date.now(),
+    counts,
+    queueDepth: counts.pending + counts.processing,
+    isProcessing: counts.pending > 0 || counts.processing > 0,
+    lastEvent,
+  })
 }
 
 async function readJson<T>(request: Request): Promise<T> {
