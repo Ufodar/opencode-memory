@@ -148,6 +148,11 @@ docs/
   - 新用户消息进入时，先尝试 flush 上一个 request 的 summary
   - 再写入新的 request anchor
   - 用来补 OpenCode `session.idle` 在一次性 `opencode run` 场景下不稳定的问题
+- 纯 memory 回查 prompt 已不再写入 request anchor：
+  - `memory_search`
+  - `memory_timeline`
+  - `memory_details`
+  这类“只做回查”的请求不会继续污染 request 历史
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
 - internal memory tool 已统一过滤：
   - `memory_search`

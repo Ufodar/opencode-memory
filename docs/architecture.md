@@ -182,6 +182,9 @@ tool.execute.after
   - `chat.message` 进入时先尝试 flush 上一个 request 的 summary
   - 再记录新的 request anchor
   - 用来补 `session.idle` 在一次性 CLI 宿主中的不稳定性
+- request anchor capture 当前也已加入一层边界：
+  - 纯 memory 回查 prompt 不再写入 request history
+  - 避免 `memory_search / memory_timeline / memory_details` 这类自查询请求不断污染 request anchor 链
 
 ## 当前局部重写进度
 
