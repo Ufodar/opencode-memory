@@ -18,7 +18,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain(
       "This semantic index (summaries, phases, tools, files, and tokens) is usually sufficient to understand past work.",
     )
-    expect(text).toContain("Covers summaries, phases, tools, files, and tokens.")
+    expect(text).not.toContain("Covers summaries, phases, tools, files, and tokens.")
     expect(text).toContain("Usually enough to continue work;")
     expect(text).toContain("Trust this index over re-reading code for past decisions and learnings.")
     expect(text).toContain("drill down only for evidence, implementation detail, or prior rationale.")

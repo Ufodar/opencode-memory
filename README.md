@@ -122,7 +122,6 @@ docs/
     - 这份 snapshot 是 recent working index
     - `[CONTEXT INDEX]` 首句现在会直接把这份 index 写成：
       - `This semantic index (summaries, phases, tools, files, and tokens) is usually sufficient to understand past work.`
-    - 这份 index 覆盖 summaries / phases / tools / files / tokens
     - 当前 index 通常已经足够继续工作
     - 默认先信这份 index，再决定是否回读代码或历史
     - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
