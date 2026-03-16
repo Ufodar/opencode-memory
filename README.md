@@ -120,6 +120,8 @@ docs/
   - context builder 已继续升级为 curated working index：
   - 开头现在会先给一小段 memory index guide，告诉模型：
     - 这份 snapshot 是 recent working index
+    - `[CONTEXT INDEX]` 首句现在会直接把这份 index 写成：
+      - `This semantic index (summaries, phases, tools, files, and tokens) is a recent working index.`
     - 这份 index 覆盖 summaries / phases / tools / files / tokens
     - 当前 index 通常已经足够继续工作
     - 默认先信这份 index，再决定是否回读代码或历史
