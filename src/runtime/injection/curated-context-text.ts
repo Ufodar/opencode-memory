@@ -15,18 +15,24 @@ export function buildContextIndexGuideLines(input?: {
   includeTrustGuidance?: boolean
   includeDetailedSearchGuidance?: boolean
 }): string[] {
-  const searchGuidance = input?.includeDetailedSearchGuidance
-    ? "memory_search=decisions, bugs, deeper research"
-    : "memory_search=broader lookup"
   const lines = [
     "[CONTEXT INDEX] This memory snapshot is a recent working index.",
     "- Covers summaries, phases, tools, files, and tokens.",
     "- Usually enough to continue work; drill down only for evidence, implementation detail, or prior rationale.",
-    `- memory_details=visible ID -> record detail | memory_timeline=checkpoint window | ${searchGuidance}`,
   ]
 
   if (input?.includeTrustGuidance) {
     lines.splice(3, 0, "- Trust this index before re-reading code or past history.")
+  }
+
+  if (input?.includeDetailedSearchGuidance) {
+    lines.push("- memory_details=visible ID -> record detail")
+    lines.push("- memory_timeline=checkpoint window")
+    lines.push("- memory_search=decisions, bugs, deeper research")
+  } else {
+    lines.push(
+      "- memory_details=visible ID -> record detail | memory_timeline=checkpoint window | memory_search=broader lookup",
+    )
   }
 
   return lines

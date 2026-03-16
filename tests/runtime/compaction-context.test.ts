@@ -18,6 +18,7 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("Trust this index before re-reading code or past history.")
     expect(text).not.toContain("past decisions, bugs, deeper research")
     expect(text).not.toContain("memory_details")
+    expect(text).not.toContain("memory_timeline=checkpoint window")
     expect(text).not.toContain("memory_timeline")
     expect(text).not.toContain("memory_search")
   })

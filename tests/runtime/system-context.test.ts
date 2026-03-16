@@ -20,11 +20,13 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("Usually enough to continue work;")
     expect(text).toContain("Trust this index before re-reading code or past history.")
     expect(text).toContain("drill down only for evidence, implementation detail, or prior rationale.")
-    expect(text).toContain("memory_details")
-    expect(text).toContain("visible ID")
-    expect(text).toContain("memory_timeline")
-    expect(text).toContain("memory_search")
-    expect(text).toContain("decisions, bugs, deeper research")
+    expect(text).toContain(
+      [
+        "- memory_details=visible ID -> record detail",
+        "- memory_timeline=checkpoint window",
+        "- memory_search=decisions, bugs, deeper research",
+      ].join("\n"),
+    )
   })
 
   test("adds a short timeline legend for checkpoint tags", () => {
