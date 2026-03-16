@@ -25,6 +25,7 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("Trust this index before re-reading code or past history.")
     expect(text).not.toContain("Trust this index over re-reading code for past decisions and learnings.")
     expect(text).not.toContain("past decisions, bugs, deeper research")
+    expect(text).not.toContain("Usually enough to continue work;")
     expect(text).not.toContain("When you need implementation details, rationale, or debugging context:")
     expect(text).not.toContain("Fetch by ID:")
     expect(text).not.toContain("Expand a checkpoint window:")

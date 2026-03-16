@@ -17,7 +17,6 @@ export function buildContextIndexGuideLines(input?: {
 }): string[] {
   const lines = [
     "[CONTEXT INDEX] This semantic index (summaries, phases, tools, files, and tokens) is usually sufficient to understand past work.",
-    "- Usually enough to continue work; drill down only for evidence, implementation detail, or prior rationale.",
   ]
 
   if (input?.includeTrustGuidance) {
