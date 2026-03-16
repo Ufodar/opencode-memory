@@ -400,6 +400,16 @@ tool.execute.after
 仍未完成的下一阶段：
 
 - 继续把 context builder / summary orchestration 更彻底地收进 worker 内核
+
+## 2026-03-16：context builder footer 当前能力
+
+- system context 现在除了 `[CONTEXT ECONOMICS]` 之外，还会在末尾追加：
+  - `[CONTEXT VALUE]`
+- 这条 footer 的作用不是重复 economics 数字，而是把当前注入记录压成一句价值判断：
+  - 当前 index 已经压缩了多少 covered observations
+  - 当前还有多少 checkpoints / direct observations
+  - 应先信任当前 index，再决定是否重读过去工作
+- 这条 footer 只出现在 system context，不进入 compaction context
 - 再决定是否需要更完整的 worker 生命周期治理：
   - 崩溃恢复
   - stale worker 清理

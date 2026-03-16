@@ -34,6 +34,17 @@ export function buildContextEconomicsLines(input: {
   ]
 }
 
+export function buildContextValueLines(input: {
+  summaryCount: number
+  directObservationCount: number
+  coveredObservationCount: number
+}): string[] {
+  return [
+    "[CONTEXT VALUE]",
+    `- This index condenses ${input.coveredObservationCount} covered observations into ${input.summaryCount} checkpoints and ${input.directObservationCount} direct observations; trust it before re-reading past work.`,
+  ]
+}
+
 export function buildProjectFreshnessLines(input: {
   projectPath?: string
   generatedAt?: Date

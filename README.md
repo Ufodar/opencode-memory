@@ -475,3 +475,19 @@ system context 当前已经会编译出这些 section：
 - observation line 会显示 `#obs_*`
 
 这样当前 context 和 `memory_details(ids)` 才真正接得上。
+
+## 2026-03-16：`024-context-value-footer`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓已经有 `[CONTEXT ECONOMICS]`
+  - 但 `claude-mem` footer 还会再给一句“这份 index 为什么值得先信”的收尾话
+  - 我们此前还缺这句 value statement
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/024-context-value-footer/spec.md`
+  - `specs/024-context-value-footer/plan.md`
+  - `specs/024-context-value-footer/tasks.md`
+- 本轮实现结果：
+  - system context 末尾新增 `[CONTEXT VALUE]`
+  - 这条 footer 会把当前 `summaries / direct observations / covered observations` 收成一句话
+  - 明确表达：先信任当前 index，再决定是否回头重读旧工作
+  - compaction context 继续保持轻量，不带这条 footer

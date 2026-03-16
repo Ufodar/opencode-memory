@@ -41,6 +41,17 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("[CONTEXT ECONOMICS]")
   })
 
+  test("does not include the system context value footer", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [],
+      maxChars: 220,
+    }).join("\n")
+
+    expect(text).not.toContain("[CONTEXT VALUE]")
+    expect(text).not.toContain("trust it before re-reading past work")
+  })
+
   test("does not include the system project freshness header", () => {
     const text = buildCompactionMemoryContext({
       summaries: [],

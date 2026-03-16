@@ -9,6 +9,7 @@ import {
   buildContextIndexGuideLines,
   buildTimelineKeyLines,
   buildContextEconomicsLines,
+  buildContextValueLines,
   buildProjectFreshnessLines,
   buildVisibleSummaryID,
   buildVisibleObservationID,
@@ -221,6 +222,19 @@ export function buildCompiledMemoryContext(input: {
   if (previousHandoff) {
     if (!push("[PREVIOUSLY]")) return lines
     push(`- ${previousHandoff}`)
+  }
+
+  const shouldRenderContextValue =
+    !hasPotentialBody || maxChars === Number.POSITIVE_INFINITY || maxChars > 640
+
+  if (shouldRenderContextValue) {
+    for (const line of buildContextValueLines({
+      summaryCount: input.summaries.length,
+      directObservationCount: input.observations.length,
+      coveredObservationCount,
+    })) {
+      if (!push(line)) return lines
+    }
   }
 
   return lines

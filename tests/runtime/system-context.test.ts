@@ -94,6 +94,42 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("covered observations: 0")
   })
 
+  test("adds a short context value footer that tells the model to trust the current index first", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_1",
+        requestSummary: "抽取资格条件",
+        outcomeSummary: "已提取3条资格条件并发现1项材料缺口",
+        observationIDs: ["obs_1", "obs_2", "obs_3"],
+        createdAt: 20,
+      },
+    ]
+
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_4",
+        content: "写入 questions.md 并生成缺口清单初稿",
+      }),
+      buildObservation({
+        id: "obs_5",
+        content: "检查缺口清单格式并准备人工复核",
+      }),
+    ]
+
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries,
+      observations,
+    }).join("\n")
+
+    expect(text).toContain("[CONTEXT VALUE]")
+    expect(text).toContain("This index condenses")
+    expect(text).toContain("trust it before re-reading past work")
+  })
+
   test("adds a project freshness header when projectPath is available", () => {
     const summaries: SummaryRecord[] = [
       {

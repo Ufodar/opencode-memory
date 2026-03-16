@@ -26,9 +26,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 024-context-value-footer: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 023-visible-memory-ids: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 memory worker / runtime injection 模块
 - 022-project-freshness-header: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 memory worker / runtime injection 模块
-- 021-context-economics: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 memory worker / runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->
