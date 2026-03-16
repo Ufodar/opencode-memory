@@ -562,3 +562,17 @@ tool.execute.after
     - `This semantic index is a recent working index.`
   - 其余 coverage / trust / drilldown bullet 保持不变
   - compaction context 继续不带这句 wording
+
+## 2026-03-16：`044-context-index-trust-wording`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[CONTEXT INDEX]` 已经有 trust line
+  - 但还是一般性的“先信 index 再读历史”
+  - `claude-mem` 的同位置更具体地写到：
+    - past decisions
+    - learnings
+- 本轮实现结果：
+  - system context 的 trust line 现在改成：
+    - `Trust this index over re-reading code for past decisions and learnings.`
+  - 其余 context index bullet 保持不变
+  - compaction context 继续不带这句 wording

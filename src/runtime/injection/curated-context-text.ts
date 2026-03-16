@@ -22,7 +22,7 @@ export function buildContextIndexGuideLines(input?: {
   ]
 
   if (input?.includeTrustGuidance) {
-    lines.splice(3, 0, "- Trust this index before re-reading code or past history.")
+    lines.splice(3, 0, "- Trust this index over re-reading code for past decisions and learnings.")
   }
 
   if (input?.includeDetailedSearchGuidance) {

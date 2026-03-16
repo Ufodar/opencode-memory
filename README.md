@@ -720,3 +720,21 @@ system context 当前已经会编译出这些 section：
     - `This semantic index is a recent working index.`
   - 其余 coverage / trust / drilldown bullet 保持不变
   - compaction context 继续不带这句 wording
+
+## 2026-03-16：`044-context-index-trust-wording`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[CONTEXT INDEX]` 已经有 trust line
+  - 但仍然是一般性的：
+    - `Trust this index before re-reading code or past history.`
+  - `claude-mem` 的同位置还会更具体写到：
+    - `past decisions and learnings`
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/044-context-index-trust-wording/spec.md`
+  - `specs/044-context-index-trust-wording/plan.md`
+  - `specs/044-context-index-trust-wording/tasks.md`
+- 本轮实现结果：
+  - system context 的 trust line 现在变成：
+    - `Trust this index over re-reading code for past decisions and learnings.`
+  - 其余 context index bullet 保持不变
+  - compaction context 继续不带这句 wording
