@@ -5,7 +5,7 @@ import type { ObservationRecord } from "../../memory/observation/types.js"
 const ELLIPSIS = "…"
 
 export interface SessionSnapshotField {
-  label: "Current Focus" | "Learned" | "Completed" | "Next"
+  label: "Current Focus" | "Investigated" | "Learned" | "Completed" | "Next"
   value: string
 }
 
@@ -163,6 +163,7 @@ export function buildExpandedObservationDetailLines(input: {
 
 export function buildSessionSnapshotFields(input: {
   requestSummary?: string
+  investigatedSummary?: string
   learnedSummary?: string
   outcomeSummary?: string
   nextStep?: string
@@ -173,6 +174,14 @@ export function buildSessionSnapshotFields(input: {
     fields.push({
       label: "Current Focus",
       value: currentFocus,
+    })
+  }
+
+  const investigated = buildSnapshotInvestigatedText(input.investigatedSummary)
+  if (investigated) {
+    fields.push({
+      label: "Investigated",
+      value: investigated,
     })
   }
 
@@ -265,6 +274,15 @@ function buildExpandedObservationToolText(observation: ObservationRecord): strin
 function buildSnapshotFocusText(value?: string): string | undefined {
   if (!value) return undefined
   return extractLeadClause(value, 88)
+}
+
+function buildSnapshotInvestigatedText(value?: string): string | undefined {
+  if (!value) return undefined
+  return buildCuratedMultiSegmentText(value, {
+    maxSegments: 2,
+    maxChars: 96,
+    maxSegmentChars: 48,
+  })
 }
 
 function buildSnapshotCompletedText(value?: string): string | undefined {

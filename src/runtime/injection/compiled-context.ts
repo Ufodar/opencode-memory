@@ -21,6 +21,7 @@ import {
 } from "./curated-context-text.js"
 import {
   buildExpandedObservationEvidenceText,
+  buildInvestigatedObservationHints,
   buildObservationEvidenceHint,
   buildObservationPrimaryFileLabel,
 } from "./evidence-hints.js"
@@ -95,6 +96,11 @@ export function buildCompiledMemoryContext(input: {
   const latestSummary = input.summaries[0]
   let summarySectionSummaries = input.summaries
   if (latestSummary) {
+    const investigatedSummary = buildLatestSummaryInvestigatedSummary({
+      summary: latestSummary,
+      latestSummaryObservations: input.latestSummaryObservations,
+      observations: input.observations,
+    })
     const learnedSummary = buildLatestSummaryLearnedSummary({
       summary: latestSummary,
       latestSummaryObservations: input.latestSummaryObservations,
@@ -102,6 +108,7 @@ export function buildCompiledMemoryContext(input: {
     })
     const snapshotFields = buildSessionSnapshotFields({
       requestSummary: latestSummary.requestSummary,
+      investigatedSummary,
       learnedSummary,
       outcomeSummary: latestSummary.outcomeSummary,
       nextStep: latestSummary.nextStep,
@@ -256,6 +263,21 @@ function buildLatestSummaryLearnedSummary(input: {
   if (!learnedObservation) return undefined
 
   return buildCuratedTimelineText(learnedObservation.content)
+}
+
+function buildLatestSummaryInvestigatedSummary(input: {
+  summary: SummaryRecord
+  latestSummaryObservations?: ObservationRecord[]
+  observations: ObservationRecord[]
+}): string | undefined {
+  const coveredObservations =
+    input.latestSummaryObservations?.length
+      ? input.latestSummaryObservations
+      : input.summary.observationIDs
+          .map((id) => input.observations.find((observation) => observation.id === id))
+          .filter((observation): observation is ObservationRecord => Boolean(observation))
+
+  return buildInvestigatedObservationHints(coveredObservations)
 }
 
 function buildResumeGuide(

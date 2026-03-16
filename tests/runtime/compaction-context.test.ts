@@ -129,6 +129,45 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("- 发现缺少近三年类似业绩证明材料")
   })
 
+  test("reuses the Investigated field in compaction snapshot when latest summary observations expose stable evidence", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_1",
+        requestSummary: "检查 smoke 文档",
+        outcomeSummary: "已完成 smoke 文档检查，并确认 snapshot 已进入 preview",
+        nextStep: "继续进入最新 smoke 检查",
+        observationIDs: ["obs_1", "obs_2"],
+        createdAt: 20,
+      },
+    ]
+
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_1",
+        content: "读取 brief.txt 并确认 smoke 目标",
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filesRead: ["/workspace/demo/brief.txt"],
+        },
+      }),
+      buildObservation({
+        id: "obs_2",
+        content: "更新 checklist.md 并记录 smoke 检查项",
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filesModified: ["/workspace/demo/checklist.md"],
+        },
+      }),
+    ]
+
+    const text = buildCompactionMemoryContext({ summaries, observations }).join("\n")
+
+    expect(text).toContain("Investigated: brief.txt；checklist.md")
+  })
+
   test("respects compaction character budget", () => {
     const summaries: SummaryRecord[] = [
       {

@@ -410,6 +410,21 @@ tool.execute.after
   - 当前还有多少 checkpoints / direct observations
   - 应先信任当前 index，再决定是否重读过去工作
 - 这条 footer 只出现在 system context，不进入 compaction context
+
+## 2026-03-16：latest snapshot 当前能力
+
+- latest snapshot 当前已不只包含：
+  - `Current Focus`
+  - `Learned`
+  - `Completed`
+  - `Next`
+- 在存在稳定 evidence 时，还会新增：
+  - `Investigated`
+- `Investigated` 的当前来源保持 deterministic：
+  - latest summary 覆盖的 observation trace
+  - 优先文件线索
+  - 其次命令线索
+- system context 与 compaction context 复用同一套 latest snapshot 字段策略
 - 再决定是否需要更完整的 worker 生命周期治理：
   - 崩溃恢复
   - stale worker 清理

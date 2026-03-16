@@ -22,6 +22,19 @@ export function buildObservationPrimaryFileLabel(
   return collectNormalizedFileHints(trace)[0]
 }
 
+export function buildInvestigatedObservationHints(
+  observations: ObservationRecord[],
+): string | undefined {
+  const hints = dedupe(
+    observations
+      .map((observation) => buildObservationInvestigationHint(observation.trace))
+      .filter((value): value is string => Boolean(value)),
+  ).slice(0, 2)
+
+  if (hints.length === 0) return undefined
+  return hints.join("；")
+}
+
 export function buildExpandedObservationEvidenceText(
   trace: ObservationRecord["trace"],
   currentFileLabel?: string,
@@ -63,6 +76,27 @@ function collectNormalizedFileHints(trace: ObservationRecord["trace"]): string[]
   return fileCandidates
     .map((value) => formatPathForHint(value, workingDirectory))
     .filter((value): value is string => Boolean(value))
+}
+
+function buildObservationInvestigationHint(
+  trace: ObservationRecord["trace"],
+): string | undefined {
+  const primaryFile = collectNormalizedFileHints(trace)[0]
+  if (primaryFile) return primaryFile
+
+  const command = trace.command?.trim()
+  if (!command) return undefined
+
+  return `cmd: ${clamp(command, 48)}`
+}
+
+function dedupe(values: string[]): string[] {
+  return Array.from(new Set(values))
+}
+
+function clamp(value: string, maxChars: number): string {
+  if (value.length <= maxChars) return value
+  return `${value.slice(0, Math.max(0, maxChars - 1))}…`
 }
 
 function formatPathForHint(value: string, workingDirectory?: string): string | undefined {

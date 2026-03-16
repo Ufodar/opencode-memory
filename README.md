@@ -491,3 +491,18 @@ system context 当前已经会编译出这些 section：
   - 这条 footer 会把当前 `summaries / direct observations / covered observations` 收成一句话
   - 明确表达：先信任当前 index，再决定是否回头重读旧工作
   - compaction context 继续保持轻量，不带这条 footer
+
+## 2026-03-16：`025-snapshot-investigated`
+
+- 继续先按 `claude-mem` 对照：
+  - `claude-mem` 的 latest summary fields 里有 `Investigated`
+  - 它表达的是：这一轮实际查了什么
+  - 我们此前只有 `Current Focus`，更像“在做什么”，不是“查了什么”
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/025-snapshot-investigated/spec.md`
+  - `specs/025-snapshot-investigated/plan.md`
+  - `specs/025-snapshot-investigated/tasks.md`
+- 本轮实现结果：
+  - latest snapshot 在存在稳定 evidence 时新增 `Investigated`
+  - 当前优先从 latest summary 覆盖 observation 的文件 / 命令 trace 中提取
+  - system context 与 compaction snapshot 保持一致
