@@ -32,8 +32,8 @@ describe("buildCompactionMemoryContext", () => {
     }).join("\n")
 
     expect(text).not.toContain("[TIMELINE KEY]")
-    expect(text).not.toContain("[summary] = checkpoint")
-    expect(text).not.toContain("[day] = date group")
+    expect(text).not.toContain("summary checkpoint marker")
+    expect(text).not.toContain("day grouping line")
   })
 
   test("does not include the system token key", () => {

@@ -535,3 +535,19 @@ tool.execute.after
   - 新的本地插件文件名
   - 或新的 import query string
   - 或新的临时 workspace / runtime
+
+## 2026-03-16：`042-timeline-key-detail-lines`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[TIMELINE KEY]` 已经能表达 checkpoint/tag/day/file
+  - 但仍然是单行压缩 legend
+  - `claude-mem` 的同位置更接近多条说明，扫读性更好
+- 本轮实现结果：
+  - system context 的 `[TIMELINE KEY]` 现在拆成多条完整 legend
+  - 分别解释：
+    - `[summary]: summary checkpoint marker`
+    - `[research/planning/execution/verification/decision]: phase label`
+    - `{tool}: source tool tag`
+    - `[day]: day grouping line`
+    - `[file]: file grouping line`
+  - compaction context 继续不带这组说明

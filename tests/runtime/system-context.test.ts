@@ -38,11 +38,11 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     expect(text).toContain("[TIMELINE KEY]")
-    expect(text).toContain("[summary]=checkpoint")
-    expect(text).toContain("[research/planning/execution/verification/decision]=phase")
-    expect(text).toContain("{tool}=source tool")
-    expect(text).toContain("[day]=date")
-    expect(text).toContain("[file]=file group")
+    expect(text).toContain("- [summary]: summary checkpoint marker")
+    expect(text).toContain("- [research/planning/execution/verification/decision]: phase label")
+    expect(text).toContain("- {tool}: source tool tag")
+    expect(text).toContain("- [day]: day grouping line")
+    expect(text).toContain("- [file]: file grouping line")
   })
 
   test("adds a short token key for observation token hints", () => {

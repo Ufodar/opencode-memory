@@ -41,7 +41,12 @@ export function buildContextIndexGuideLines(input?: {
 
 export function buildTimelineKeyLines(): string[] {
   return [
-    "[TIMELINE KEY] [summary]=checkpoint | [research/planning/execution/verification/decision]=phase | {tool}=source tool | [day]=date | [file]=file group",
+    "[TIMELINE KEY]",
+    "- [summary]: summary checkpoint marker",
+    "- [research/planning/execution/verification/decision]: phase label",
+    "- {tool}: source tool tag",
+    "- [day]: day grouping line",
+    "- [file]: file grouping line",
   ]
 }
 

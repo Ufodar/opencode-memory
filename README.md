@@ -677,3 +677,28 @@ system context 当前已经会编译出这些 section：
   - 当 direct observation 更新于 latest summary 时，不再渲染 `[LATEST SESSION SNAPSHOT]`
   - stale summary 会回到 timeline，而不是消失
   - system context 与 compaction context 复用同样的 freshness 规则
+
+## 2026-03-16：`042-timeline-key-detail-lines`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[TIMELINE KEY]` 已经能解释：
+    - `[summary]`
+    - phase label
+    - `{tool}`
+    - `[day]`
+    - `[file]`
+  - 但仍然是单行压缩写法
+  - `claude-mem` 的同位置更接近多条 legend，扫读性更好
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/042-timeline-key-detail-lines/spec.md`
+  - `specs/042-timeline-key-detail-lines/plan.md`
+  - `specs/042-timeline-key-detail-lines/tasks.md`
+- 本轮实现结果：
+  - system context 的 `[TIMELINE KEY]` 现在改成多条完整说明
+  - 分别解释：
+    - `[summary]`
+    - phase label
+    - `{tool}`
+    - `[day]`
+    - `[file]`
+  - compaction context 继续不带这组 legend
