@@ -16,7 +16,7 @@ export function buildContextIndexGuideLines(input?: {
   includeDetailedSearchGuidance?: boolean
 }): string[] {
   const lines = [
-    "[CONTEXT INDEX] This memory snapshot is a recent working index.",
+    "[CONTEXT INDEX] This semantic index is a recent working index.",
     "- Covers summaries, phases, tools, files, and tokens.",
     "- Usually enough to continue work; drill down only for evidence, implementation detail, or prior rationale.",
   ]

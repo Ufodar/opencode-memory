@@ -551,3 +551,14 @@ tool.execute.after
     - `[day]: day grouping line`
     - `[file]: file grouping line`
   - compaction context 继续不带这组说明
+
+## 2026-03-16：`043-semantic-context-index-wording`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[CONTEXT INDEX]` 已经有 recent working index 的定位
+  - 但 `claude-mem` 的同位置还会直接把它叫成 semantic index
+- 本轮实现结果：
+  - system context 的 `[CONTEXT INDEX]` 第一行现在改成：
+    - `This semantic index is a recent working index.`
+  - 其余 coverage / trust / drilldown bullet 保持不变
+  - compaction context 继续不带这句 wording

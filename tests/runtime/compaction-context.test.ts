@@ -14,6 +14,7 @@ describe("buildCompactionMemoryContext", () => {
 
     expect(text).not.toContain("[CONTEXT INDEX]")
     expect(text).not.toContain("This memory snapshot is a recent working index.")
+    expect(text).not.toContain("This semantic index is a recent working index.")
     expect(text).not.toContain("Covers summaries, phases, tools, files, and tokens.")
     expect(text).not.toContain("Trust this index before re-reading code or past history.")
     expect(text).not.toContain("past decisions, bugs, deeper research")

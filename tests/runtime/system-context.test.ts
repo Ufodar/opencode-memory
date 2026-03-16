@@ -15,7 +15,7 @@ describe("buildSystemMemoryContext", () => {
 
     expect(text).toContain("[CONTINUITY]")
     expect(text).toContain("[CONTEXT INDEX]")
-    expect(text).toContain("This memory snapshot is a recent working index.")
+    expect(text).toContain("This semantic index is a recent working index.")
     expect(text).toContain("Covers summaries, phases, tools, files, and tokens.")
     expect(text).toContain("Usually enough to continue work;")
     expect(text).toContain("Trust this index before re-reading code or past history.")
@@ -572,7 +572,7 @@ describe("buildSystemMemoryContext", () => {
     })
 
     const text = system.join("\n")
-    expect(text).toContain("This memory snapshot is a recent working index.")
+    expect(text).toContain("This semantic index is a recent working index.")
     expect(text).toContain("第一个很长的总结")
     expect(text).not.toContain("第二个总结不应该被纳入")
     expect(text.length).toBeLessThanOrEqual(420)

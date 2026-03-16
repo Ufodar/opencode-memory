@@ -35,9 +35,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 043-semantic-context-index-wording: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 042-timeline-key-detail-lines: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 041-token-key-detail-lines: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 041-token-key-detail-lines: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->
