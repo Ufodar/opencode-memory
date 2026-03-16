@@ -23,9 +23,9 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("When you need implementation details, rationale, or debugging context:")
     expect(text).toContain(
       [
-        "- memory_details=visible ID -> record detail",
-        "- memory_timeline=checkpoint window",
-        "- memory_search=decisions, bugs, deeper research",
+        "- Fetch by ID: memory_details(visible IDs) for record detail",
+        "- Expand a checkpoint window: memory_timeline(checkpoint)",
+        "- Search history: memory_search(decisions, bugs, deeper research)",
       ].join("\n"),
     )
   })

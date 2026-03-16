@@ -120,9 +120,9 @@
       - 在展开工具 bullet 前，还会先补一条导语：
         - `When you need implementation details, rationale, or debugging context:`
     - 正常预算下，section 会把三种工具说明拆成独立 bullet：
-      - `memory_details=visible ID -> record detail`
-      - `memory_timeline=checkpoint window`
-      - `memory_search=decisions, bugs, deeper research`
+      - `Fetch by ID: memory_details(visible IDs) for record detail`
+      - `Expand a checkpoint window: memory_timeline(checkpoint)`
+      - `Search history: memory_search(decisions, bugs, deeper research)`
     - 低预算时，会回退到单行压缩版，避免挤掉真正的 timeline 内容
     - latest summary 会先编译成 `Current Focus / Learned / Completed / Next`
     - `Learned` 只来自 latest summary 覆盖的 observation 证据

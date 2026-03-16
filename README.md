@@ -122,9 +122,9 @@ docs/
     - 正常预算下，三种工具说明会拆成独立 bullet：
       - 在这些 bullet 前会先有一条导语：
         - `When you need implementation details, rationale, or debugging context:`
-      - `memory_details` 适合看单条记录细节
-      - `memory_timeline` 适合围绕 checkpoint 扩展时间线
-      - `memory_search` 适合查过去决策、bug 与更深的研究背景
+      - `Fetch by ID: memory_details(visible IDs) for record detail`
+      - `Expand a checkpoint window: memory_timeline(checkpoint)`
+      - `Search history: memory_search(decisions, bugs, deeper research)`
     - 低预算时，这三种说明会回退到单行压缩版，避免把真正的 timeline 挤掉
   - older summaries 现在会进入 `MEMORY TIMELINE`，作为 summary checkpoint
   - `MEMORY TIMELINE` 会同时承载：
@@ -548,6 +548,24 @@ system context 当前已经会编译出这些 section：
   - system context 的 `[CONTEXT INDEX]` 在工具 bullet 前新增这条导语
   - 低预算压缩版继续不带这条额外句子，避免把真正的 timeline 挤掉
   - compaction context 继续不带这条导语
+
+## 2026-03-16：`039-action-led-context-tool-lines`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[CONTEXT INDEX]` 已经有：
+    - 一条 drilldown intro
+    - 三条拆开的工具 bullet
+  - 但 `claude-mem` 的同位置还会把这三条写成“动作在前”：
+    - `Fetch by ID: ...`
+    - `Search history: ...`
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/039-action-led-context-tool-lines/spec.md`
+  - `specs/039-action-led-context-tool-lines/plan.md`
+  - `specs/039-action-led-context-tool-lines/tasks.md`
+- 本轮实现结果：
+  - system context 的三条工具说明改成 action-led wording
+  - 低预算压缩版继续保持单行压缩
+  - compaction context 继续不带这些 wording
 
 ## 2026-03-16：`030-inline-observation-type-tags`
 
