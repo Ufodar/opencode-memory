@@ -130,6 +130,8 @@ docs/
       - `Fetch by ID: memory_details(visible IDs) for record detail`
       - `Expand a checkpoint window: memory_timeline(checkpoint)`
       - `Search history: memory_search(decisions, bugs, deeper research)`
+      - 这些 drilldown bullet 之后，才会落：
+        - `Trust this index over re-reading code for past decisions and learnings.`
     - 低预算时，这三种说明会回退到单行压缩版，避免把真正的 timeline 挤掉
   - older summaries 现在会进入 `MEMORY TIMELINE`，作为 summary checkpoint
   - `MEMORY TIMELINE` 会同时承载：

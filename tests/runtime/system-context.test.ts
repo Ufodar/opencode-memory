@@ -29,6 +29,10 @@ describe("buildSystemMemoryContext", () => {
         "- Search history: memory_search(decisions, bugs, deeper research)",
       ].join("\n"),
     )
+    expect(
+      text.indexOf("- Search history: memory_search(decisions, bugs, deeper research)") <
+        text.indexOf("- Trust this index over re-reading code for past decisions and learnings."),
+    ).toBe(true)
   })
 
   test("adds a short timeline legend for checkpoint tags", () => {

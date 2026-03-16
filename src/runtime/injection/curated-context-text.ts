@@ -19,10 +19,6 @@ export function buildContextIndexGuideLines(input?: {
     "[CONTEXT INDEX] This semantic index (summaries, phases, tools, files, and tokens) is usually sufficient to understand past work.",
   ]
 
-  if (input?.includeTrustGuidance) {
-    lines.splice(3, 0, "- Trust this index over re-reading code for past decisions and learnings.")
-  }
-
   if (input?.includeDetailedSearchGuidance) {
     lines.push("- When you need implementation details, rationale, or debugging context:")
     lines.push("- Fetch by ID: memory_details(visible IDs) for record detail")
@@ -32,6 +28,10 @@ export function buildContextIndexGuideLines(input?: {
     lines.push(
       "- memory_details=visible ID -> record detail | memory_timeline=checkpoint window | memory_search=broader lookup",
     )
+  }
+
+  if (input?.includeTrustGuidance) {
+    lines.push("- Trust this index over re-reading code for past decisions and learnings.")
   }
 
   return lines

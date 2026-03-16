@@ -125,6 +125,8 @@
       - `Fetch by ID: memory_details(visible IDs) for record detail`
       - `Expand a checkpoint window: memory_timeline(checkpoint)`
       - `Search history: memory_search(decisions, bugs, deeper research)`
+    - trust line 当前会排在这些 tool bullets 之后，更接近 `claude-mem` 的阅读顺序：
+      - `Trust this index over re-reading code for past decisions and learnings.`
     - 低预算时，会回退到单行压缩版，避免挤掉真正的 timeline 内容
     - latest summary 会先编译成 `Current Focus / Learned / Completed / Next`
     - `Learned` 只来自 latest summary 覆盖的 observation 证据
