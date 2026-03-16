@@ -17,6 +17,7 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("Covers summaries, phases, tools, files, and tokens.")
     expect(text).not.toContain("Trust this index before re-reading code or past history.")
     expect(text).not.toContain("past decisions, bugs, deeper research")
+    expect(text).not.toContain("When you need implementation details, rationale, or debugging context:")
     expect(text).not.toContain("memory_details")
     expect(text).not.toContain("memory_timeline=checkpoint window")
     expect(text).not.toContain("memory_timeline")

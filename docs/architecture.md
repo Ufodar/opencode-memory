@@ -117,6 +117,8 @@
       - 这份 memory index 通常已经足够继续工作
       - 默认先信这份 index，再决定是否回读代码或历史
       - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
+      - 在展开工具 bullet 前，还会先补一条导语：
+        - `When you need implementation details, rationale, or debugging context:`
     - 正常预算下，section 会把三种工具说明拆成独立 bullet：
       - `memory_details=visible ID -> record detail`
       - `memory_timeline=checkpoint window`

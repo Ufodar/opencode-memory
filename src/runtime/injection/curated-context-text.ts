@@ -26,6 +26,7 @@ export function buildContextIndexGuideLines(input?: {
   }
 
   if (input?.includeDetailedSearchGuidance) {
+    lines.push("- When you need implementation details, rationale, or debugging context:")
     lines.push("- memory_details=visible ID -> record detail")
     lines.push("- memory_timeline=checkpoint window")
     lines.push("- memory_search=decisions, bugs, deeper research")

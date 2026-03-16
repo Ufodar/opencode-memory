@@ -120,6 +120,8 @@ docs/
     - 默认先信这份 index，再决定是否回读代码或历史
     - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
     - 正常预算下，三种工具说明会拆成独立 bullet：
+      - 在这些 bullet 前会先有一条导语：
+        - `When you need implementation details, rationale, or debugging context:`
       - `memory_details` 适合看单条记录细节
       - `memory_timeline` 适合围绕 checkpoint 扩展时间线
       - `memory_search` 适合查过去决策、bug 与更深的研究背景
@@ -529,6 +531,23 @@ system context 当前已经会编译出这些 section：
     - `If this index is still not enough, use memory_details with visible IDs before re-reading history.`
   - 这条提醒不替换已有量化句，只做追加
   - compaction context 继续不带这条 footer 提醒
+
+## 2026-03-16：`038-context-drilldown-intro`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[CONTEXT INDEX]` 已经会说：
+    - `Trust this index before re-reading code or past history.`
+    - `memory_details / memory_timeline / memory_search`
+  - 但 `claude-mem` 在同位置还会先加一条过渡句：
+    - `When you need implementation details, rationale, or debugging context:`
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/038-context-drilldown-intro/spec.md`
+  - `specs/038-context-drilldown-intro/plan.md`
+  - `specs/038-context-drilldown-intro/tasks.md`
+- 本轮实现结果：
+  - system context 的 `[CONTEXT INDEX]` 在工具 bullet 前新增这条导语
+  - 低预算压缩版继续不带这条额外句子，避免把真正的 timeline 挤掉
+  - compaction context 继续不带这条导语
 
 ## 2026-03-16：`030-inline-observation-type-tags`
 

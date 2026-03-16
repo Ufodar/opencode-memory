@@ -20,6 +20,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("Usually enough to continue work;")
     expect(text).toContain("Trust this index before re-reading code or past history.")
     expect(text).toContain("drill down only for evidence, implementation detail, or prior rationale.")
+    expect(text).toContain("When you need implementation details, rationale, or debugging context:")
     expect(text).toContain(
       [
         "- memory_details=visible ID -> record detail",
