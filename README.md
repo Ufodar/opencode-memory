@@ -117,10 +117,11 @@ docs/
     - 这份 snapshot 是 recent working index
     - 这份 index 覆盖 summaries / phases / tools / files / tokens
     - 当前 index 通常已经足够继续工作
+    - 默认先信这份 index，再决定是否回读代码或历史
     - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
     - `memory_details` 适合看单条记录细节
     - `memory_timeline` 适合围绕 checkpoint 扩展时间线
-    - `memory_search` 适合做更广的项目级回查
+    - `memory_search` 适合查过去决策、bug 与更深的研究背景
   - older summaries 现在会进入 `MEMORY TIMELINE`，作为 summary checkpoint
   - `MEMORY TIMELINE` 会同时承载：
     - summary checkpoint

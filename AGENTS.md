@@ -15,6 +15,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-17
 - N/A（复用 observation 文本字段做 deterministic estimate，不新增持久化） (031-observation-token-hints)
 - N/A（只新增 header 说明，不新增持久化） (032-token-hint-key)
 - N/A（只调整 context 文本渲染） (033-inline-observation-token-hints)
+- N/A（只调整 header 文本渲染） (035-context-index-trust-guidance)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -34,9 +35,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 036-memory-search-guidance: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
+- 035-context-index-trust-guidance: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 034-context-index-coverage: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 033-inline-observation-token-hints: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 032-token-hint-key: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -70,7 +70,15 @@ export function buildCompiledMemoryContext(input: {
     }
   }
 
-  for (const guideLine of buildContextIndexGuideLines()) {
+  const shouldRenderContextTrustGuidance =
+    !hasPotentialBody || maxChars === Number.POSITIVE_INFINITY || maxChars > 480
+  const shouldRenderDetailedSearchGuidance =
+    !hasPotentialBody || maxChars === Number.POSITIVE_INFINITY || maxChars > 480
+
+  for (const guideLine of buildContextIndexGuideLines({
+    includeTrustGuidance: shouldRenderContextTrustGuidance,
+    includeDetailedSearchGuidance: shouldRenderDetailedSearchGuidance,
+  })) {
     if (!push(guideLine)) return lines
   }
   const shouldRenderTimelineKey =

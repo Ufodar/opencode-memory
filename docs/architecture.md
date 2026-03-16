@@ -115,8 +115,13 @@
     - section 会先明确：
       - 这份 index 覆盖 summaries / phases / tools / files / tokens
       - 这份 memory index 通常已经足够继续工作
+      - 默认先信这份 index，再决定是否回读代码或历史
       - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
     - section 仍然明确 `memory_details / memory_timeline / memory_search` 的下钻路径
+    - `memory_search` 现在会进一步被说明为：
+      - 查过去决策
+      - 查 bug
+      - 查更深的研究背景
     - latest summary 会先编译成 `Current Focus / Learned / Completed / Next`
     - `Learned` 只来自 latest summary 覆盖的 observation 证据
     - older summaries 会被压成更短的 summary checkpoint 并进入统一 timeline
