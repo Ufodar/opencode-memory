@@ -249,7 +249,7 @@ export function buildCompiledMemoryContext(input: {
   const previousHandoff = buildPreviouslyHandoffText(input.priorAssistantMessage)
   if (previousHandoff) {
     if (!push("[PREVIOUSLY]")) return lines
-    push(`- ${previousHandoff}`)
+    push(`- A: ${previousHandoff}`)
   }
 
   const shouldRenderContextValue =

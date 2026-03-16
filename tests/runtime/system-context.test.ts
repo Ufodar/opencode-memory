@@ -1243,7 +1243,9 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     expect(text).toContain("[PREVIOUSLY]")
-    expect(text).toContain("已完成 brief.txt 检查。 下一步进入 requirements.csv，并核对 evidence_source 列。")
+    expect(text).toContain(
+      "A: 已完成 brief.txt 检查。 下一步进入 requirements.csv，并核对 evidence_source 列。",
+    )
   })
 
   test("does not render a previously section when no prior assistant handoff exists", () => {

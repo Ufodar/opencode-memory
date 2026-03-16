@@ -77,7 +77,7 @@
     - `[LATEST SESSION SNAPSHOT]`
     - `[MEMORY TIMELINE]`
     - `[RESUME GUIDE]`
-    - `[PREVIOUSLY]`
+    - `[PREVIOUSLY]`（`A:` assistant handoff）
   - `[MEMORY TIMELINE]` 现在会同时承载：
     - older summary checkpoint
     - unsummarized observation checkpoint
@@ -137,7 +137,7 @@
   - `Previously` 当前来自 plugin 侧实时读取的最后一条 assistant 文本：
     - 不写入 SQLite
     - 不参与 summary / observation 持久化
-    - 只在构建 system context 时作为可选 handoff 文本传给 worker
+    - 只在构建 system context 时作为可选 handoff 文本传给 worker，并以 `A:` 前缀标记为 assistant handoff
 
 ### 检索器
 

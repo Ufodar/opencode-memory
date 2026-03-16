@@ -172,7 +172,7 @@ docs/
     - `Next`
   - 当前 session 若已有 assistant 文本回复，system context 末尾现在还会追加：
     - `[PREVIOUSLY]`
-    - 用来表达“上一次 assistant 停在了哪里”
+    - 用 `A:` 前缀明确表达“上一次 assistant 停在了哪里”
     - 该内容来自 OpenCode session message，而不是数据库
   - 当 latest summary 已被 snapshot 吸收后，它不会再重复出现在 timeline 或单独的 summary section
 - `session.idle` summary 主链已加入 session 级重入保护
@@ -293,7 +293,7 @@ docs/
 - 已新增：
 - `memory_context_preview`
   - 可直接预览当前将注入到 system context 的记忆内容
-  - 现在也会显示 `[PREVIOUSLY]`，如果当前 session 已经存在 assistant 交接文本
+  - 现在也会显示 `[PREVIOUSLY]`，并用 `A:` 标出 assistant 交接文本
   - 不再只能靠隐式 `system transform` 猜“现在会注入什么”
 - pending queue 已加入 stale processing 自愈：
   - worker 存活期间，如果某个 job 长时间卡在 `processing`

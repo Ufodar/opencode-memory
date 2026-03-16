@@ -17,6 +17,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-17
 - N/A（只调整 context 文本渲染） (033-inline-observation-token-hints)
 - N/A（只调整 header 文本渲染） (035-context-index-trust-guidance)
 - N/A（只调整 header 文本顺序） (049-reorder-context-index-trust-line)
+- N/A（只调整 `PREVIOUSLY` 文本格式） (050-previously-assistant-handoff-label)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -36,9 +37,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 050-previously-assistant-handoff-label: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 049-reorder-context-index-trust-line: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 048-drop-redundant-context-index-sufficiency-bullet: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 047-drop-redundant-context-index-coverage: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->
