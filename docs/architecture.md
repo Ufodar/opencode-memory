@@ -115,6 +115,8 @@
     - section 会先明确：
       - `[CONTEXT INDEX]` 首句会直接内联说明当前 index 的维度：
         - `summaries / phases / tools / files / tokens`
+      - `[CONTEXT INDEX]` 首句现在也会直接表达：
+        - 这份 semantic index 通常已经足够理解 past work
       - 这份 index 覆盖 summaries / phases / tools / files / tokens
       - 这份 memory index 通常已经足够继续工作
       - 默认先信这份 index，再决定是否回读代码或历史
