@@ -497,6 +497,9 @@ tool.execute.after
   - `[CONTEXT INDEX]`
   - `[TIMELINE KEY]`
   - `[CONTEXT ECONOMICS]`
+- `[TOKEN KEY]` 当前已经从单行缩写推进成两条完整说明：
+  - `Read: cost to read this memory now`
+  - `Work: past work tokens already spent to produce it`
 - 其中 `[CONTEXT ECONOMICS]` 当前已经包含两层：
   - 真实 coverage 计数：
     - summaries

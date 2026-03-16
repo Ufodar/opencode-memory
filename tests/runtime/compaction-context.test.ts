@@ -44,8 +44,8 @@ describe("buildCompactionMemoryContext", () => {
     }).join("\n")
 
     expect(text).not.toContain("[TOKEN KEY]")
-    expect(text).not.toContain("Read=current reading cost")
-    expect(text).not.toContain("Work=prior work investment")
+    expect(text).not.toContain("cost to read this memory now")
+    expect(text).not.toContain("past work tokens already spent to produce it")
   })
 
   test("does not include the system context economics section", () => {

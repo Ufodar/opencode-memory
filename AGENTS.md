@@ -35,9 +35,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 041-token-key-detail-lines: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
+- 041-token-key-detail-lines: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 040-project-header-wording: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 040-project-header-wording: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 039-action-led-context-tool-lines: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

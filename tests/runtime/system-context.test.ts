@@ -53,8 +53,8 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     expect(text).toContain("[TOKEN KEY]")
-    expect(text).toContain("Read=current reading cost")
-    expect(text).toContain("Work=prior work investment")
+    expect(text).toContain("- Read: cost to read this memory now")
+    expect(text).toContain("- Work: past work tokens already spent to produce it")
   })
 
   test("adds context economics with loading, work investment, savings, and coverage counts", () => {

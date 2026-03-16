@@ -109,6 +109,9 @@ docs/
 - system injection 已支持 count + character budget
 - system context 头部当前已从标签式改成标题式：
   - `# [project] recent context, ...`
+- `[TOKEN KEY]` 当前已从单行缩写改成两条完整说明：
+  - `Read` = 现在读懂这一条大概要花多少 token
+  - `Work` = 过去为产出这一条已经投入了多少工作 token
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
 - `read` observation 已升级为 semantic memory record：
   - 优先从文件正文提取高信息量片段
@@ -587,6 +590,21 @@ system context 当前已经会编译出这些 section：
   - system context 的 freshness 行改成标题式 wording
   - 无项目名时也会显示 `# recent context, ...`
   - compaction context 继续不带这行
+
+## 2026-03-16：`041-token-key-detail-lines`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前 `[TOKEN KEY]` 已经有：
+    - `Read=current reading cost`
+    - `Work=prior work investment`
+  - 但 `claude-mem` 的同位置还会把这两项解释成完整句子
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/041-token-key-detail-lines/spec.md`
+  - `specs/041-token-key-detail-lines/plan.md`
+  - `specs/041-token-key-detail-lines/tasks.md`
+- 本轮实现结果：
+  - system context 的 `[TOKEN KEY]` 改成两条完整说明
+  - compaction context 继续不带这些说明
 
 ## 2026-03-16：`030-inline-observation-type-tags`
 
