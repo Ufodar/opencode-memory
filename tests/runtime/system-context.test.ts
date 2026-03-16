@@ -58,7 +58,7 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     expect(text).toContain("[TOKEN KEY]")
-    expect(text).toContain("- Read: cost to read this memory now")
+    expect(text).toContain("- Read: cost to read this memory now (cost to learn it now)")
     expect(text).toContain(
       "- Work: past work tokens already spent to produce it (research, building, deciding)",
     )

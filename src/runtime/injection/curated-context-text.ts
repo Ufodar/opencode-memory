@@ -51,7 +51,7 @@ export function buildTimelineKeyLines(): string[] {
 export function buildTokenKeyLines(): string[] {
   return [
     "[TOKEN KEY]",
-    "- Read: cost to read this memory now",
+    "- Read: cost to read this memory now (cost to learn it now)",
     "- Work: past work tokens already spent to produce it (research, building, deciding)",
   ]
 }

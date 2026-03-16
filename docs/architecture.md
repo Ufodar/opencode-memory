@@ -82,7 +82,7 @@
     - older summary checkpoint
     - unsummarized observation checkpoint
   - system context header 现在还会补一条：
-    - `[TOKEN KEY] Read=current reading cost | Work=prior work investment (research, building, deciding)`
+    - `[TOKEN KEY] Read=current reading cost (cost to learn it now) | Work=prior work investment (research, building, deciding)`
   - older summary 与 unsummarized observation 会先汇成统一 checkpoint 列表，再按 `createdAt` 升序混排
   - older summary checkpoint 会优先保留 request 语义：
     - `请求概述：结果概述`
@@ -502,7 +502,7 @@ tool.execute.after
   - `[TIMELINE KEY]`
   - `[CONTEXT ECONOMICS]`
 - `[TOKEN KEY]` 当前已经从单行缩写推进成两条完整说明：
-  - `Read: cost to read this memory now`
+  - `Read: cost to read this memory now (cost to learn it now)`
   - `Work: past work tokens already spent to produce it (research, building, deciding)`
 - 其中 `[CONTEXT ECONOMICS]` 当前已经包含两层：
   - 真实 coverage 计数：
