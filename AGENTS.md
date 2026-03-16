@@ -26,9 +26,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 026-stale-snapshot-gating: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 025-snapshot-investigated: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 024-context-value-footer: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 023-visible-memory-ids: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 memory worker / runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

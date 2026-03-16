@@ -506,3 +506,17 @@ system context 当前已经会编译出这些 section：
   - latest snapshot 在存在稳定 evidence 时新增 `Investigated`
   - 当前优先从 latest summary 覆盖 observation 的文件 / 命令 trace 中提取
   - system context 与 compaction snapshot 保持一致
+
+## 2026-03-16：`026-stale-snapshot-gating`
+
+- 继续先按 `claude-mem` 对照：
+  - `claude-mem` 不会在 summary 比 direct observation 更旧时继续显示 latest summary
+  - 我们此前还没有这条 freshness gating
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/026-stale-snapshot-gating/spec.md`
+  - `specs/026-stale-snapshot-gating/plan.md`
+  - `specs/026-stale-snapshot-gating/tasks.md`
+- 本轮实现结果：
+  - 当 direct observation 更新于 latest summary 时，不再渲染 `[LATEST SESSION SNAPSHOT]`
+  - stale summary 会回到 timeline，而不是消失
+  - system context 与 compaction context 复用同样的 freshness 规则

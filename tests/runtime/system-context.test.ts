@@ -291,6 +291,38 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("Investigated: brief.txt；checklist.md")
   })
 
+  test("hides the latest snapshot when a newer direct observation exists and keeps the older summary in timeline", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_1",
+        requestSummary: "检查 smoke 文档",
+        outcomeSummary: "已完成 smoke 文档检查",
+        nextStep: "继续整理 smoke 结果",
+        observationIDs: [],
+        createdAt: 10,
+      },
+    ]
+
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_1",
+        content: "写入新的 smoke 观察并确认 preview 还需更新",
+        createdAt: 20,
+        phase: "execution",
+      }),
+    ]
+
+    const text = buildSystemMemoryContext({ summaries, observations }).join("\n")
+
+    expect(text).not.toContain("[LATEST SESSION SNAPSHOT]")
+    expect(text).toContain("[MEMORY TIMELINE]")
+    expect(text).toContain("[summary] 检查 smoke 文档：已完成 smoke 文档检查 (#sum_1)")
+    expect(text).toContain("写入新的 smoke 观察并确认 preview 还需更新")
+  })
+
   test("falls back to observations when no summaries exist", () => {
     const observations: ObservationRecord[] = [
       buildObservation({

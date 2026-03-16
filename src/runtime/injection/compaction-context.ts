@@ -9,6 +9,7 @@ import {
   buildResumeActionText,
   buildCheckpointTimePrefix,
   buildCheckpointDayLabel,
+  shouldRenderLatestSnapshot,
   selectExpandedObservationIDs,
 } from "./curated-context-text.js"
 import {
@@ -64,7 +65,7 @@ export function buildCompactionMemoryContext(input: {
 
   const latestSummary = summaries[0]
   let summarySectionSummaries = summaries
-  if (latestSummary) {
+  if (latestSummary && shouldRenderLatestSnapshot(latestSummary.createdAt, observations)) {
     const investigatedSummary = buildLatestSummaryInvestigatedSummary({
       summary: latestSummary,
       latestSummaryObservations,

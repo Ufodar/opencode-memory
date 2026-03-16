@@ -168,6 +168,38 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).toContain("Investigated: brief.txt；checklist.md")
   })
 
+  test("hides stale latest snapshot when a newer direct observation exists", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_1",
+        requestSummary: "检查 smoke 文档",
+        outcomeSummary: "已完成 smoke 文档检查",
+        nextStep: "继续整理 smoke 结果",
+        observationIDs: [],
+        createdAt: 10,
+      },
+    ]
+
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_1",
+        content: "写入新的 smoke 观察并确认 preview 还需更新",
+        createdAt: 20,
+        phase: "execution",
+      }),
+    ]
+
+    const text = buildCompactionMemoryContext({ summaries, observations }).join("\n")
+
+    expect(text).not.toContain("Latest session snapshot:")
+    expect(text).toContain("Recent timeline checkpoints:")
+    expect(text).toContain("[summary] 检查 smoke 文档：已完成 smoke 文档检查")
+    expect(text).toContain("[execution] 写入新的 smoke 观察并确认 preview 还需更新")
+  })
+
   test("respects compaction character budget", () => {
     const summaries: SummaryRecord[] = [
       {

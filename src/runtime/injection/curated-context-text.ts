@@ -136,6 +136,21 @@ export function selectExpandedObservationIDs(
   )
 }
 
+export function shouldRenderLatestSnapshot(
+  latestSummaryCreatedAt: number | undefined,
+  observations: ObservationRecord[],
+): boolean {
+  if (latestSummaryCreatedAt === undefined) return false
+  if (observations.length === 0) return true
+
+  const latestObservationCreatedAt = observations.reduce(
+    (currentMax, observation) => Math.max(currentMax, observation.createdAt),
+    Number.NEGATIVE_INFINITY,
+  )
+
+  return latestSummaryCreatedAt > latestObservationCreatedAt
+}
+
 export function buildExpandedObservationDetailLines(input: {
   observation: ObservationRecord
   evidenceText?: string

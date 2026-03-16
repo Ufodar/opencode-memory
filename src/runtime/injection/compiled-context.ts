@@ -17,6 +17,7 @@ import {
   buildPreviouslyHandoffText,
   buildCheckpointTimePrefix,
   buildCheckpointDayLabel,
+  shouldRenderLatestSnapshot,
   selectExpandedObservationIDs,
 } from "./curated-context-text.js"
 import {
@@ -95,7 +96,7 @@ export function buildCompiledMemoryContext(input: {
 
   const latestSummary = input.summaries[0]
   let summarySectionSummaries = input.summaries
-  if (latestSummary) {
+  if (latestSummary && shouldRenderLatestSnapshot(latestSummary.createdAt, input.observations)) {
     const investigatedSummary = buildLatestSummaryInvestigatedSummary({
       summary: latestSummary,
       latestSummaryObservations: input.latestSummaryObservations,

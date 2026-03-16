@@ -425,6 +425,10 @@ tool.execute.after
   - 优先文件线索
   - 其次命令线索
 - system context 与 compaction context 复用同一套 latest snapshot 字段策略
+- latest snapshot 现在还有 freshness gating：
+  - 如果 direct observation 比 latest summary 更新
+  - 就不再渲染 latest snapshot
+  - stale summary 会回到 timeline
 - 再决定是否需要更完整的 worker 生命周期治理：
   - 崩溃恢复
   - stale worker 清理
