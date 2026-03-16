@@ -34,9 +34,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 034-context-index-coverage: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 033-inline-observation-token-hints: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 032-token-hint-key: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 031-observation-token-hints: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

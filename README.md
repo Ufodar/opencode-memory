@@ -115,6 +115,7 @@ docs/
   - context builder 已继续升级为 curated working index：
   - 开头现在会先给一小段 memory index guide，告诉模型：
     - 这份 snapshot 是 recent working index
+    - 这份 index 覆盖 summaries / phases / tools / files / tokens
     - 当前 index 通常已经足够继续工作
     - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
     - `memory_details` 适合看单条记录细节

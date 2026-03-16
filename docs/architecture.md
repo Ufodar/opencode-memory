@@ -113,6 +113,7 @@
     - 开头会先插入 `[CONTEXT INDEX]` section
     - section 只出现在 system context，不进入 compaction context
     - section 会先明确：
+      - 这份 index 覆盖 summaries / phases / tools / files / tokens
       - 这份 memory index 通常已经足够继续工作
       - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
     - section 仍然明确 `memory_details / memory_timeline / memory_search` 的下钻路径

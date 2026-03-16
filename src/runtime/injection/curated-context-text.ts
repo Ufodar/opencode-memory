@@ -14,6 +14,7 @@ export interface SessionSnapshotField {
 export function buildContextIndexGuideLines(): string[] {
   return [
     "[CONTEXT INDEX] This memory snapshot is a recent working index.",
+    "- Covers summaries, phases, tools, files, and tokens.",
     "- Usually enough to continue work; drill down only for evidence, implementation detail, or prior rationale.",
     "- memory_details=visible ID -> record detail | memory_timeline=checkpoint window | memory_search=broader lookup",
   ]

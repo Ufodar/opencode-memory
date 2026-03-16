@@ -16,6 +16,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[CONTINUITY]")
     expect(text).toContain("[CONTEXT INDEX]")
     expect(text).toContain("This memory snapshot is a recent working index.")
+    expect(text).toContain("Covers summaries, phases, tools, files, and tokens.")
     expect(text).toContain("Usually enough to continue work;")
     expect(text).toContain("drill down only for evidence, implementation detail, or prior rationale.")
     expect(text).toContain("memory_details")
