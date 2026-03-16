@@ -542,6 +542,26 @@ system context 当前已经会编译出这些 section：
   - `Tool: ...` detail line 继续保留
   - compaction context 继续不引入这条 header 说明
 
+## 2026-03-16：`031-observation-token-hints`
+
+- 继续先按 `claude-mem` 对照：
+  - 我们当前 expanded observation 已经有：
+    - `Result`
+    - `Tool`
+    - `Evidence`
+  - 但 `claude-mem` 的记录层还会给出 `Read / Work` 这类局部 token 线索
+  - 我们此前只有全局 `[CONTEXT ECONOMICS]`
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/031-observation-token-hints/spec.md`
+  - `specs/031-observation-token-hints/plan.md`
+  - `specs/031-observation-token-hints/tasks.md`
+- 本轮实现结果：
+  - expanded observation detail 现在会显示：
+    - `Tokens: Read ~X | Work ~Y`
+  - 这条 hint 只进入 system context 的 expanded observation
+  - 折叠 observation 主行不新增 token hint
+  - compaction context 继续不显示这条 hint
+
 ## 2026-03-16：`025-snapshot-investigated`
 
 - 继续先按 `claude-mem` 对照：

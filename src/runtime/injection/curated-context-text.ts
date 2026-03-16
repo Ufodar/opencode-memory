@@ -239,6 +239,7 @@ export function shouldRenderLatestSnapshot(
 export function buildExpandedObservationDetailLines(input: {
   observation: ObservationRecord
   evidenceText?: string
+  includeTokenHint?: boolean
 }): string[] {
   const lines: string[] = []
   const result = buildExpandedObservationResultText(
@@ -254,11 +255,32 @@ export function buildExpandedObservationDetailLines(input: {
     lines.push(`  Tool: ${tool}`)
   }
 
+  if (input.includeTokenHint) {
+    const tokenHint = buildExpandedObservationTokenHint(input.observation)
+    if (tokenHint) {
+      lines.push(`  Tokens: ${tokenHint}`)
+    }
+  }
+
   if (input.evidenceText) {
     lines.push(`  Evidence: ${input.evidenceText}`)
   }
 
   return dedupe(lines)
+}
+
+function buildExpandedObservationTokenHint(
+  observation: ObservationRecord,
+): string | undefined {
+  const readTokens = estimateTokens(observation.content)
+  const workTokens =
+    estimateTokens(observation.input.summary) +
+    estimateTokens(observation.output.summary) +
+    estimateTokens(observation.content)
+
+  if (readTokens <= 0 && workTokens <= 0) return undefined
+
+  return `Read ~${readTokens} | Work ~${workTokens}`
 }
 
 export function buildSessionSnapshotFields(input: {

@@ -52,6 +52,17 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("trust it before re-reading past work")
   })
 
+  test("does not include expanded observation token hints", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [],
+      maxChars: 220,
+    }).join("\n")
+
+    expect(text).not.toContain("Tokens: Read ~")
+    expect(text).not.toContain("| Work ~")
+  })
+
   test("does not include the system project freshness header", () => {
     const text = buildCompactionMemoryContext({
       summaries: [],

@@ -436,6 +436,8 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[09:43] [execution] {write} 写入 questions.md 并生成缺口清单初稿")
     expect(text).toContain("  Result: 已生成缺口清单初稿")
     expect(text).toContain("待人工复核后进入正式写作")
+    expect(text).toContain("  Tokens: Read ~")
+    expect(text).toContain("| Work ~")
     expect(text).toContain("  Tool: write")
     expect(text).toContain("[09:41] [research] {read} 读取 requirements.csv 并确认 evidence_source 列仍缺失")
     expect(text).toContain("  Tool: read")
@@ -487,6 +489,7 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     expect(text).toContain("[09:45] [execution] {write} 写入 questions.md 并生成缺口清单初稿")
+    expect(text).toContain("  Tokens: Read ~")
     expect(text).toContain("  Tool: write")
     expect(text).toContain("[09:43] [verification] {read} 读取 checklist.md 并确认 smoke 步骤")
     expect(text).toContain("已确认 smoke 步骤顺序正确")
@@ -494,6 +497,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("  Tool: read")
     const oldestLine = "[09:41] [research] {read} 读取 brief.txt 并确认 smoke 目标"
     expect(text).toContain(oldestLine)
+    expect(text).not.toContain(`${oldestLine}\n  Tokens: Read ~`)
     expect(text).not.toContain(`${oldestLine}\n  Tool: read`)
   })
 

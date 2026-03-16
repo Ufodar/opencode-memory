@@ -430,6 +430,21 @@ tool.execute.after
   - `{tool}=source tool`
 - compaction context 继续不带这条 header 说明
 
+## 2026-03-16：expanded observation detail 当前能力
+
+- system context 的 expanded observation detail 当前除了：
+  - `Result`
+  - `Tool`
+  - `Evidence`
+- 还会继续显示一条局部 token hint：
+  - `Tokens: Read ~X | Work ~Y`
+- 这条 hint 的作用不是替代全局 `[CONTEXT ECONOMICS]`
+- 而是让单条 expanded observation 也能暴露：
+  - 读这条记录大概要花多少
+  - 它代表多少过去工作
+- 这条 hint 当前只出现在 system context 的 expanded observation
+- compaction context 继续不带这条 hint
+
 ## 2026-03-16：latest snapshot 当前能力
 
 - latest snapshot 当前已不只包含：

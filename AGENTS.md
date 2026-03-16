@@ -11,6 +11,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-16
 - N/A（复用已有 summary / observation 字段，不新增持久化） (027-context-work-economics)
 - N/A（复用已有 economics estimate，不新增持久化） (028-quantified-context-value)
 - N/A（复用已有 visible ID 与 footer 文本，不新增持久化） (029-footer-drilldown-reminder)
+- N/A（复用已有 observation.tool 信息，不新增持久化） (030-inline-observation-type-tags)
+- N/A（复用 observation 文本字段做 deterministic estimate，不新增持久化） (031-observation-token-hints)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -30,9 +32,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 031-observation-token-hints: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
+- 030-inline-observation-type-tags: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 029-footer-drilldown-reminder: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 029-footer-drilldown-reminder: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 028-quantified-context-value: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

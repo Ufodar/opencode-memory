@@ -173,6 +173,7 @@ export function buildCompiledMemoryContext(input: {
         ? buildExpandedObservationDetailLines({
             observation,
             evidenceText: buildExpandedObservationEvidenceText(observation.trace, fileLabel),
+            includeTokenHint: true,
           })
         : []
       timelineEntries.push({
