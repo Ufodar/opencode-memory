@@ -39,6 +39,18 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[file]=file group")
   })
 
+  test("adds a short token key for observation token hints", () => {
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries: [],
+      observations: [],
+    }).join("\n")
+
+    expect(text).toContain("[TOKEN KEY]")
+    expect(text).toContain("Read=current reading cost")
+    expect(text).toContain("Work=prior work investment")
+  })
+
   test("adds context economics with loading, work investment, savings, and coverage counts", () => {
     const summaries: SummaryRecord[] = [
       {

@@ -8,6 +8,7 @@ import {
   buildExpandedObservationDetailLines,
   buildContextIndexGuideLines,
   buildTimelineKeyLines,
+  buildTokenKeyLines,
   buildContextEconomicsLines,
   buildContextEconomicsEstimate,
   buildContextValueLines,
@@ -76,6 +77,9 @@ export function buildCompiledMemoryContext(input: {
 
   if (shouldRenderTimelineKey) {
     for (const guideLine of buildTimelineKeyLines()) {
+      if (!push(guideLine)) return lines
+    }
+    for (const guideLine of buildTokenKeyLines()) {
       if (!push(guideLine)) return lines
     }
   }

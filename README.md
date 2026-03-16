@@ -143,7 +143,11 @@ docs/
   - 最近几条关键 observation 现在会展开成多行条目，而不是永远只有一行：
     - 主行继续保留 timeline checkpoint
     - detail line 会补充 `Result` / `Tool` / `Evidence`
+    - system context 下的 expanded detail 现在还会补：
+      - `Tokens: Read ~X | Work ~Y`
     - 更旧 observation 仍保持单行，避免 timeline 重新膨胀
+  - system context header 现在还会补一条：
+    - `[TOKEN KEY] Read=current reading cost | Work=prior work investment`
   - `RESUME GUIDE` 会优先输出短动作提示，而不是重复整条 summary
   - latest summary 现在还会被编译成 `[LATEST SESSION SNAPSHOT]`
     - `Current Focus`

@@ -13,6 +13,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-16
 - N/A（复用已有 visible ID 与 footer 文本，不新增持久化） (029-footer-drilldown-reminder)
 - N/A（复用已有 observation.tool 信息，不新增持久化） (030-inline-observation-type-tags)
 - N/A（复用 observation 文本字段做 deterministic estimate，不新增持久化） (031-observation-token-hints)
+- N/A（只新增 header 说明，不新增持久化） (032-token-hint-key)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -32,9 +33,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 032-token-hint-key: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 031-observation-token-hints: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 030-inline-observation-type-tags: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 029-footer-drilldown-reminder: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

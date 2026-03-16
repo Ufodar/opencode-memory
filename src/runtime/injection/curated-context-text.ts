@@ -25,6 +25,12 @@ export function buildTimelineKeyLines(): string[] {
   ]
 }
 
+export function buildTokenKeyLines(): string[] {
+  return [
+    "[TOKEN KEY] Read=current reading cost | Work=prior work investment",
+  ]
+}
+
 export function buildInlineObservationTypeTag(toolName?: string): string {
   const normalized = normalizeText(toolName ?? "")
   if (!normalized) return ""

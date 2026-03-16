@@ -81,6 +81,8 @@
   - `[MEMORY TIMELINE]` 现在会同时承载：
     - older summary checkpoint
     - unsummarized observation checkpoint
+  - system context header 现在还会补一条：
+    - `[TOKEN KEY] Read=current reading cost | Work=prior work investment`
   - older summary 与 unsummarized observation 会先汇成统一 checkpoint 列表，再按 `createdAt` 升序混排
   - older summary checkpoint 会优先保留 request 语义：
     - `请求概述：结果概述`
@@ -100,6 +102,8 @@
   - 最近几条关键 observation 会继续展开成多行 checkpoint：
     - 主行保留时间 / phase / curated headline
     - detail line 只从现有 observation 字段提炼 `Result` / `Tool` / `Evidence`
+    - system context 下的 expanded detail 还会补：
+      - `Tokens: Read ~X | Work ~Y`
     - 更旧 observation 仍保持单行
   - `RESUME GUIDE` 已优先消费 semantic observation，而不是原始 `read: 路径`
   - context builder 现在还会做 deterministic 编译：

@@ -31,6 +31,18 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("[day] = date group")
   })
 
+  test("does not include the system token key", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [],
+      maxChars: 220,
+    }).join("\n")
+
+    expect(text).not.toContain("[TOKEN KEY]")
+    expect(text).not.toContain("Read=current reading cost")
+    expect(text).not.toContain("Work=prior work investment")
+  })
+
   test("does not include the system context economics section", () => {
     const text = buildCompactionMemoryContext({
       summaries: [],
