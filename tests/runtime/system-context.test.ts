@@ -38,7 +38,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[file]=file group")
   })
 
-  test("adds a short context economics section with summary and observation coverage counts", () => {
+  test("adds context economics with loading, work investment, savings, and coverage counts", () => {
     const summaries: SummaryRecord[] = [
       {
         id: "sum_1",
@@ -74,9 +74,12 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("summaries: 1")
     expect(text).toContain("direct observations: 2")
     expect(text).toContain("covered observations: 3")
+    expect(text).toContain("Loading:")
+    expect(text).toContain("Work investment:")
+    expect(text).toContain("Your savings:")
   })
 
-  test("shows zero covered observations when no summaries are injected", () => {
+  test("keeps loading, work investment, and savings visible when no summaries are injected", () => {
     const text = buildSystemMemoryContext({
       scope: "session",
       summaries: [],
@@ -92,6 +95,9 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("summaries: 0")
     expect(text).toContain("direct observations: 1")
     expect(text).toContain("covered observations: 0")
+    expect(text).toContain("Loading:")
+    expect(text).toContain("Work investment:")
+    expect(text).toContain("Your savings:")
   })
 
   test("adds a short context value footer that tells the model to trust the current index first", () => {

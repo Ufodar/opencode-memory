@@ -458,11 +458,18 @@ system context 当前已经会编译出这些 section：
 - `[RESUME GUIDE]`
 - `[PREVIOUSLY]`
 
-其中 `[CONTEXT ECONOMICS]` 当前是轻量版，不展示伪造 token，只展示真实 coverage：
+其中 `[CONTEXT ECONOMICS]` 当前已经包含两层：
 
-- summaries
-- direct observations
-- covered observations
+- 真实 coverage：
+  - summaries
+  - direct observations
+  - covered observations
+- deterministic token estimate：
+  - `Loading`
+  - `Work investment`
+  - `Your savings`
+
+这里的 token 不是 provider 账单，而是基于当前 summary / observation 文本长度做的保守估算。
 
 `Project: ... | Generated: ...` 当前用于告诉模型：
 

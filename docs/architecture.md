@@ -448,10 +448,16 @@ tool.execute.after
   - `[CONTEXT INDEX]`
   - `[TIMELINE KEY]`
   - `[CONTEXT ECONOMICS]`
-- 其中 `[CONTEXT ECONOMICS]` 采用真实 coverage 计数，而不是 token economics：
-  - summaries
-  - direct observations
-  - covered observations
+- 其中 `[CONTEXT ECONOMICS]` 当前已经包含两层：
+  - 真实 coverage 计数：
+    - summaries
+    - direct observations
+    - covered observations
+  - deterministic token estimate：
+    - `Loading`
+    - `Work investment`
+    - `Your savings`
+- token estimate 当前只依赖已有 summary / observation 字段，不新增 schema
 - compaction context 明确不复用这些运行时 header section
 - system context 当前还会直接暴露可见 record ID：
   - snapshot 中显示 `Summary ID: #sum_*`

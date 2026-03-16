@@ -9,6 +9,7 @@ import {
   buildContextIndexGuideLines,
   buildTimelineKeyLines,
   buildContextEconomicsLines,
+  buildContextEconomicsEstimate,
   buildContextValueLines,
   buildProjectFreshnessLines,
   buildVisibleSummaryID,
@@ -81,15 +82,16 @@ export function buildCompiledMemoryContext(input: {
   const coveredObservationCount = new Set(
     input.summaries.flatMap((summary) => summary.observationIDs),
   ).size
+  const contextEconomics = buildContextEconomicsEstimate({
+    summaries: input.summaries,
+    observations: input.observations,
+    coveredObservationCount,
+  })
   const shouldRenderContextEconomics =
     !hasPotentialBody || maxChars === Number.POSITIVE_INFINITY || maxChars > 560
 
   if (shouldRenderContextEconomics) {
-    for (const economicsLine of buildContextEconomicsLines({
-      summaryCount: input.summaries.length,
-      directObservationCount: input.observations.length,
-      coveredObservationCount,
-    })) {
+    for (const economicsLine of buildContextEconomicsLines(contextEconomics)) {
       if (!push(economicsLine)) return lines
     }
   }

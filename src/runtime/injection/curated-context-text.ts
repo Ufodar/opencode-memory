@@ -1,8 +1,10 @@
 import { basename } from "node:path"
 
 import type { ObservationRecord } from "../../memory/observation/types.js"
+import type { SummaryRecord } from "../../memory/summary/types.js"
 
 const ELLIPSIS = "…"
+const CHARS_PER_TOKEN_ESTIMATE = 4
 
 export interface SessionSnapshotField {
   label: "Current Focus" | "Investigated" | "Learned" | "Completed" | "Next"
@@ -27,11 +29,74 @@ export function buildContextEconomicsLines(input: {
   summaryCount: number
   directObservationCount: number
   coveredObservationCount: number
+  loadingTokens: number
+  workTokens: number
+  savingsTokens: number
+  savingsPercent: number
 }): string[] {
   return [
     "[CONTEXT ECONOMICS]",
     `- summaries: ${input.summaryCount} | direct observations: ${input.directObservationCount} | covered observations: ${input.coveredObservationCount}`,
+    `- Loading: ~${input.loadingTokens.toLocaleString()} tokens to read this index`,
+    `- Work investment: ~${input.workTokens.toLocaleString()} tokens captured from prior work`,
+    `- Your savings: ~${input.savingsTokens.toLocaleString()} tokens (${input.savingsPercent}% reuse reduction)`,
   ]
+}
+
+export function buildContextEconomicsEstimate(input: {
+  summaries: SummaryRecord[]
+  observations: ObservationRecord[]
+  coveredObservationCount: number
+}): {
+  summaryCount: number
+  directObservationCount: number
+  coveredObservationCount: number
+  loadingTokens: number
+  workTokens: number
+  savingsTokens: number
+  savingsPercent: number
+} {
+  const loadingTokens =
+    input.summaries.reduce((sum, summary) => {
+      return (
+        sum +
+        estimateTokens(summary.requestSummary) +
+        estimateTokens(summary.outcomeSummary) +
+        estimateTokens(summary.nextStep)
+      )
+    }, 0) +
+    input.observations.reduce((sum, observation) => sum + estimateTokens(observation.content), 0)
+
+  const workTokens =
+    input.summaries.reduce((sum, summary) => {
+      return (
+        sum +
+        estimateTokens(summary.requestSummary) +
+        estimateTokens(summary.outcomeSummary) +
+        estimateTokens(summary.nextStep)
+      )
+    }, 0) +
+    input.observations.reduce((sum, observation) => {
+      return (
+        sum +
+        estimateTokens(observation.input.summary) +
+        estimateTokens(observation.output.summary) +
+        estimateTokens(observation.content)
+      )
+    }, 0)
+
+  const savingsTokens = Math.max(workTokens - loadingTokens, 0)
+  const savingsPercent = workTokens > 0 ? Math.round((savingsTokens / workTokens) * 100) : 0
+
+  return {
+    summaryCount: input.summaries.length,
+    directObservationCount: input.observations.length,
+    coveredObservationCount: input.coveredObservationCount,
+    loadingTokens,
+    workTokens,
+    savingsTokens,
+    savingsPercent,
+  }
 }
 
 export function buildContextValueLines(input: {
@@ -239,6 +304,12 @@ function buildCuratedMultiSegmentText(
     .map((segment) => clamp(segment, options.maxSegmentChars))
 
   return clamp(segments.join("；"), options.maxChars)
+}
+
+function estimateTokens(value?: string): number {
+  const normalized = normalizeText(value ?? "")
+  if (!normalized) return 0
+  return Math.max(1, Math.ceil(normalized.length / CHARS_PER_TOKEN_ESTIMATE))
 }
 
 function formatGeneratedAt(value: Date): string {
