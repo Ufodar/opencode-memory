@@ -136,6 +136,8 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("trust it before re-reading past work")
     expect(text).toContain("Access ~")
     expect(text).toContain("for just ~")
+    expect(text).toContain("If this index is still not enough")
+    expect(text).toContain("use memory_details with visible IDs")
   })
 
   test("keeps the generic context value footer when the sample is too small for meaningful savings", () => {
@@ -156,6 +158,7 @@ describe("buildSystemMemoryContext", () => {
 
     expect(text).toContain("[CONTEXT VALUE]")
     expect(text).toContain("This index condenses")
+    expect(text).toContain("If this index is still not enough")
   })
 
   test("adds a project freshness header when projectPath is available", () => {

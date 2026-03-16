@@ -411,6 +411,8 @@ tool.execute.after
   - 应先信任当前 index，再决定是否重读过去工作
 - 现在这条 footer 还会继续补一条量化句：
   - `Access ~X tokens of prior work for just ~Y tokens of reading.`
+- 现在这条 footer 还会继续补一条动作提醒：
+  - `If this index is still not enough, use memory_details with visible IDs before re-reading history.`
 - 这条 footer 只出现在 system context，不进入 compaction context
 
 ## 2026-03-16：latest snapshot 当前能力

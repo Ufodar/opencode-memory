@@ -495,11 +495,29 @@ system context 当前已经会编译出这些 section：
   - `specs/024-context-value-footer/tasks.md`
 - 本轮实现结果：
   - system context 末尾新增 `[CONTEXT VALUE]`
-  - 这条 footer 会把当前 `summaries / direct observations / covered observations` 收成一句话
+- 这条 footer 会把当前 `summaries / direct observations / covered observations` 收成一句话
   - 明确表达：先信任当前 index，再决定是否回头重读旧工作
   - 现在还会继续补一条量化句：
     - `Access ~X tokens of prior work for just ~Y tokens of reading.`
-  - compaction context 继续保持轻量，不带这条 footer
+- compaction context 继续保持轻量，不带这条 footer
+
+## 2026-03-16：`029-footer-drilldown-reminder`
+
+- 继续先按 `claude-mem` 对照：
+  - 我们当前 footer 已经有：
+    - `[CONTEXT VALUE]`
+    - `Access ~X tokens of prior work for just ~Y tokens of reading.`
+  - 但 `claude-mem` 在同一个 footer 位置还会再多一句动作提醒：
+    - 这份 index 不够时，应该顺着当前 index 继续下钻
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/029-footer-drilldown-reminder/spec.md`
+  - `specs/029-footer-drilldown-reminder/plan.md`
+  - `specs/029-footer-drilldown-reminder/tasks.md`
+- 本轮实现结果：
+  - `[CONTEXT VALUE]` 现在会再多一条短提醒：
+    - `If this index is still not enough, use memory_details with visible IDs before re-reading history.`
+  - 这条提醒不替换已有量化句，只做追加
+  - compaction context 继续不带这条 footer 提醒
 
 ## 2026-03-16：`025-snapshot-investigated`
 
