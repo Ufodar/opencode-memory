@@ -16,11 +16,117 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[CONTINUITY]")
     expect(text).toContain("[CONTEXT INDEX]")
     expect(text).toContain("This memory snapshot is a recent working index.")
-    expect(text).toContain("Usually enough to continue work.")
-    expect(text).toContain("Drill down only for evidence, implementation detail, or prior rationale.")
+    expect(text).toContain("Usually enough to continue work;")
+    expect(text).toContain("drill down only for evidence, implementation detail, or prior rationale.")
     expect(text).toContain("memory_details")
+    expect(text).toContain("visible ID")
     expect(text).toContain("memory_timeline")
     expect(text).toContain("memory_search")
+  })
+
+  test("adds a short timeline legend for checkpoint tags", () => {
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries: [],
+      observations: [],
+    }).join("\n")
+
+    expect(text).toContain("[TIMELINE KEY]")
+    expect(text).toContain("[summary]=checkpoint")
+    expect(text).toContain("[research/planning/execution/verification/decision]=phase")
+    expect(text).toContain("[day]=date")
+    expect(text).toContain("[file]=file group")
+  })
+
+  test("adds a short context economics section with summary and observation coverage counts", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_1",
+        requestSummary: "抽取资格条件",
+        outcomeSummary: "已提取3条资格条件并发现1项材料缺口",
+        nextStep: "输出缺口清单",
+        observationIDs: ["obs_1", "obs_2", "obs_3"],
+        createdAt: 20,
+      },
+    ]
+
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_4",
+        content: "写入 questions.md 并生成缺口清单初稿",
+      }),
+      buildObservation({
+        id: "obs_5",
+        content: "检查缺口清单格式并准备人工复核",
+      }),
+    ]
+
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries,
+      observations,
+    }).join("\n")
+
+    expect(text).toContain("[CONTEXT ECONOMICS]")
+    expect(text).toContain("summaries: 1")
+    expect(text).toContain("direct observations: 2")
+    expect(text).toContain("covered observations: 3")
+  })
+
+  test("shows zero covered observations when no summaries are injected", () => {
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries: [],
+      observations: [
+        buildObservation({
+          id: "obs_1",
+          content: "读取 requirements.csv 并发现 evidence_source 列缺失",
+        }),
+      ],
+    }).join("\n")
+
+    expect(text).toContain("[CONTEXT ECONOMICS]")
+    expect(text).toContain("summaries: 0")
+    expect(text).toContain("direct observations: 1")
+    expect(text).toContain("covered observations: 0")
+  })
+
+  test("adds a project freshness header when projectPath is available", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo-project",
+        requestAnchorID: "req_1",
+        requestSummary: "抽取资格条件",
+        outcomeSummary: "已提取3条资格条件并发现1项材料缺口",
+        observationIDs: [],
+        createdAt: 20,
+      },
+    ]
+
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries,
+      observations: [],
+    }).join("\n")
+
+    expect(text).toContain("Project: demo-project")
+    expect(text).toContain("Generated:")
+  })
+
+  test("still adds a generated timestamp when projectPath is unavailable", () => {
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries: [],
+      observations: [],
+    }).join("\n")
+
+    expect(text).not.toContain("Project:")
+    expect(text).toContain("Generated:")
   })
 
   test("prefers summaries and excludes observations already covered by injected summaries", () => {
@@ -74,6 +180,39 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[file] questions.md")
     expect(text.match(/读取第3章资格条件并定位到3条硬约束/g)?.length).toBe(1)
     expect(text).not.toContain("- 发现缺少近三年类似业绩证明材料")
+  })
+
+  test("shows visible record IDs so memory_details can drill into current context", () => {
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_1",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_1",
+        requestSummary: "抽取资格条件",
+        outcomeSummary: "已提取3条资格条件并发现1项材料缺口",
+        nextStep: "输出缺口清单",
+        observationIDs: ["obs_1", "obs_2"],
+        createdAt: 20,
+      },
+    ]
+
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_3",
+        content: "写入缺口清单初稿到 questions.md",
+        phase: "execution",
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filesModified: ["/workspace/demo/questions.md"],
+        },
+      }),
+    ]
+
+    const text = buildSystemMemoryContext({ summaries, observations }).join("\n")
+
+    expect(text).toContain("Summary ID: #sum_1")
+    expect(text).toContain("[#obs_3]")
   })
 
   test("falls back to observations when no summaries exist", () => {
@@ -410,8 +549,9 @@ describe("buildSystemMemoryContext", () => {
 
     const summaryLineCount = system.filter(
       (line) =>
-        line ===
-        "- [summary] 再次验证 smoke 流程：brief.txt：这是一个真实 OpenCode 宿主 smoke 测试文件。",
+        line.startsWith(
+          "- [summary] 再次验证 smoke 流程：brief.txt：这是一个真实 OpenCode 宿主 smoke 测试文件。",
+        ) && line.includes("(#sum_curated_2)"),
     ).length
 
     expect(summaryLineCount).toBe(1)
@@ -756,7 +896,7 @@ describe("buildSystemMemoryContext", () => {
       observations,
     }).join("\n")
 
-    expect(text).not.toContain("[day] ")
+    expect(text).not.toContain("[day] 2026-")
   })
 
   test("inserts file grouping lines for observation checkpoints within the same day", () => {

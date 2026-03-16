@@ -19,6 +19,50 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("memory_search")
   })
 
+  test("does not include the system timeline legend", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [],
+      maxChars: 220,
+    }).join("\n")
+
+    expect(text).not.toContain("[TIMELINE KEY]")
+    expect(text).not.toContain("[summary] = checkpoint")
+    expect(text).not.toContain("[day] = date group")
+  })
+
+  test("does not include the system context economics section", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [],
+      maxChars: 220,
+    }).join("\n")
+
+    expect(text).not.toContain("[CONTEXT ECONOMICS]")
+  })
+
+  test("does not include the system project freshness header", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [],
+      maxChars: 220,
+    }).join("\n")
+
+    expect(text).not.toContain("Project:")
+    expect(text).not.toContain("Generated:")
+  })
+
+  test("does not require visible record IDs in compaction context", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [],
+      maxChars: 220,
+    }).join("\n")
+
+    expect(text).not.toContain("Summary ID:")
+    expect(text).not.toContain("[#obs_")
+  })
+
   test("prefers summaries and only keeps unsummarized observations", () => {
     const summaries: SummaryRecord[] = [
       {

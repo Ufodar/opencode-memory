@@ -412,6 +412,23 @@ tool.execute.after
 - 继续评估是否需要比日志更主动的状态暴露形态
 - 继续评估是否需要把结构化状态从文件/手动查询进一步推进到更持续的推送形态
 
+## 2026-03-16：context builder header 当前能力
+
+- system context header 当前已包含：
+  - `Project: ... | Generated: ...`
+  - `[CONTEXT INDEX]`
+  - `[TIMELINE KEY]`
+  - `[CONTEXT ECONOMICS]`
+- 其中 `[CONTEXT ECONOMICS]` 采用真实 coverage 计数，而不是 token economics：
+  - summaries
+  - direct observations
+  - covered observations
+- compaction context 明确不复用这些运行时 header section
+- system context 当前还会直接暴露可见 record ID：
+  - snapshot 中显示 `Summary ID: #sum_*`
+  - timeline 中显示 `#sum_* / #obs_*`
+- 这样 `memory_details(ids)` 可以直接顺着当前 context 下钻
+
 ## 真实宿主验证补充
 
 当前已经用本地 OpenCode 宿主完成 smoke test，确认：

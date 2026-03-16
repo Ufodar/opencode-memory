@@ -1,3 +1,5 @@
+import { basename } from "node:path"
+
 import type { ObservationRecord } from "../../memory/observation/types.js"
 
 const ELLIPSIS = "…"
@@ -9,12 +11,50 @@ export interface SessionSnapshotField {
 
 export function buildContextIndexGuideLines(): string[] {
   return [
-    "[CONTEXT INDEX]",
-    "This memory snapshot is a recent working index.",
-    "- Usually enough to continue work.",
-    "- Drill down only for evidence, implementation detail, or prior rationale.",
-    "- memory_details = record detail; memory_timeline = checkpoint window; memory_search = broader lookup",
+    "[CONTEXT INDEX] This memory snapshot is a recent working index.",
+    "- Usually enough to continue work; drill down only for evidence, implementation detail, or prior rationale.",
+    "- memory_details=visible ID -> record detail | memory_timeline=checkpoint window | memory_search=broader lookup",
   ]
+}
+
+export function buildTimelineKeyLines(): string[] {
+  return [
+    "[TIMELINE KEY] [summary]=checkpoint | [research/planning/execution/verification/decision]=phase | [day]=date | [file]=file group",
+  ]
+}
+
+export function buildContextEconomicsLines(input: {
+  summaryCount: number
+  directObservationCount: number
+  coveredObservationCount: number
+}): string[] {
+  return [
+    "[CONTEXT ECONOMICS]",
+    `- summaries: ${input.summaryCount} | direct observations: ${input.directObservationCount} | covered observations: ${input.coveredObservationCount}`,
+  ]
+}
+
+export function buildProjectFreshnessLines(input: {
+  projectPath?: string
+  generatedAt?: Date
+}): string[] {
+  const generatedAt = input.generatedAt ?? new Date()
+  const generatedAtLabel = formatGeneratedAt(generatedAt)
+  const projectLabel = input.projectPath ? basename(input.projectPath) : undefined
+
+  if (projectLabel) {
+    return [`Project: ${projectLabel} | Generated: ${generatedAtLabel}`]
+  }
+
+  return [`Generated: ${generatedAtLabel}`]
+}
+
+export function buildVisibleSummaryID(value: string): string {
+  return `#${value}`
+}
+
+export function buildVisibleObservationID(value: string): string {
+  return `#${value}`
 }
 
 export function buildCuratedSummaryText(value: string): string {
@@ -164,6 +204,22 @@ function buildCuratedMultiSegmentText(
     .map((segment) => clamp(segment, options.maxSegmentChars))
 
   return clamp(segments.join("；"), options.maxChars)
+}
+
+function formatGeneratedAt(value: Date): string {
+  const formatted = value
+    .toLocaleString("sv-SE", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    })
+    .replace(",", "")
+
+  return formatted
 }
 
 function buildExpandedObservationResultText(

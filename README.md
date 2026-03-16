@@ -443,3 +443,35 @@ OpenCode 本地插件在开发时存在模块缓存特征：
 - `claude-mem`
 
 当前仓库目标是吸收其机制角色，而不是复制其全部代码结构。
+
+## 2026-03-16：当前 context builder header
+
+system context 当前已经会编译出这些 section：
+
+- `Project: ... | Generated: ...`
+- `[CONTINUITY]`
+- `[CONTEXT INDEX]`
+- `[TIMELINE KEY]`
+- `[CONTEXT ECONOMICS]`
+- `[LATEST SESSION SNAPSHOT]`
+- `[MEMORY TIMELINE]`
+- `[RESUME GUIDE]`
+- `[PREVIOUSLY]`
+
+其中 `[CONTEXT ECONOMICS]` 当前是轻量版，不展示伪造 token，只展示真实 coverage：
+
+- summaries
+- direct observations
+- covered observations
+
+`Project: ... | Generated: ...` 当前用于告诉模型：
+
+- 这份 memory context 属于哪个项目
+- 这是本次 build 时生成的最新工作索引
+
+当前可见的 summary / observation line 也已经带上 record ID：
+
+- summary line 会显示 `#sum_*`
+- observation line 会显示 `#obs_*`
+
+这样当前 context 和 `memory_details(ids)` 才真正接得上。

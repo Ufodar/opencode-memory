@@ -7,6 +7,11 @@ import {
   buildCuratedTimelineText,
   buildExpandedObservationDetailLines,
   buildContextIndexGuideLines,
+  buildTimelineKeyLines,
+  buildContextEconomicsLines,
+  buildProjectFreshnessLines,
+  buildVisibleSummaryID,
+  buildVisibleObservationID,
   buildResumeActionText,
   buildPreviouslyHandoffText,
   buildCheckpointTimePrefix,
@@ -43,8 +48,47 @@ export function buildCompiledMemoryContext(input: {
     push(scopeLine)
   }
 
+  const hasPotentialBody =
+    input.summaries.length > 0 || input.observations.length > 0 || Boolean(input.priorAssistantMessage)
+  const headerProjectPath =
+    input.summaries[0]?.projectPath ??
+    input.observations[0]?.projectPath ??
+    input.latestSummaryObservations?.[0]?.projectPath
+  const shouldRenderProjectFreshness =
+    !hasPotentialBody || maxChars === Number.POSITIVE_INFINITY || maxChars > 640
+
+  if (shouldRenderProjectFreshness) {
+    for (const line of buildProjectFreshnessLines({ projectPath: headerProjectPath })) {
+      if (!push(line)) return lines
+    }
+  }
+
   for (const guideLine of buildContextIndexGuideLines()) {
     if (!push(guideLine)) return lines
+  }
+  const shouldRenderTimelineKey =
+    !hasPotentialBody || maxChars === Number.POSITIVE_INFINITY || maxChars > 480
+
+  if (shouldRenderTimelineKey) {
+    for (const guideLine of buildTimelineKeyLines()) {
+      if (!push(guideLine)) return lines
+    }
+  }
+
+  const coveredObservationCount = new Set(
+    input.summaries.flatMap((summary) => summary.observationIDs),
+  ).size
+  const shouldRenderContextEconomics =
+    !hasPotentialBody || maxChars === Number.POSITIVE_INFINITY || maxChars > 560
+
+  if (shouldRenderContextEconomics) {
+    for (const economicsLine of buildContextEconomicsLines({
+      summaryCount: input.summaries.length,
+      directObservationCount: input.observations.length,
+      coveredObservationCount,
+    })) {
+      if (!push(economicsLine)) return lines
+    }
   }
 
   const latestSummary = input.summaries[0]
@@ -65,6 +109,7 @@ export function buildCompiledMemoryContext(input: {
     if (snapshotFields.length > 0) {
       summarySectionSummaries = input.summaries.slice(1)
       if (!push("[LATEST SESSION SNAPSHOT]")) return lines
+      if (!push(`- Summary ID: ${buildVisibleSummaryID(latestSummary.id)}`)) return lines
       for (const field of snapshotFields) {
         if (!push(`- ${field.label}: ${field.value}`)) return lines
       }
@@ -87,7 +132,7 @@ export function buildCompiledMemoryContext(input: {
       const summaryLine = `- ${timePrefix}[summary] ${buildCuratedSummaryCheckpointText({
         requestSummary: summary.requestSummary,
         outcomeSummary: summary.outcomeSummary,
-      })}`
+      })} (${buildVisibleSummaryID(summary.id)})`
       const nextLine = summary.nextStep ? `  Next: ${buildResumeActionText(summary.nextStep)}` : undefined
       const dedupeKey = nextLine ? `${summaryLine}\n${nextLine}` : summaryLine
 
@@ -109,8 +154,8 @@ export function buildCompiledMemoryContext(input: {
       const evidenceHint = fileLabel ? undefined : buildObservationEvidenceHint(observation.trace)
       const curatedObservation = buildCuratedTimelineText(observation.content)
       const line = evidenceHint
-        ? `- ${timePrefix}${phasePrefix}${curatedObservation} (${evidenceHint})`
-        : `- ${timePrefix}${phasePrefix}${curatedObservation}`
+        ? `- ${timePrefix}${phasePrefix}${curatedObservation} (${evidenceHint}; ${buildVisibleObservationID(observation.id)})`
+        : `- ${timePrefix}${phasePrefix}${curatedObservation} ([${buildVisibleObservationID(observation.id)}])`
       const detailLines = expandedObservationIDs.has(observation.id)
         ? buildExpandedObservationDetailLines({
             observation,
