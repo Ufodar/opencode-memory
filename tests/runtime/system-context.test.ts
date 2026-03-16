@@ -34,6 +34,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[TIMELINE KEY]")
     expect(text).toContain("[summary]=checkpoint")
     expect(text).toContain("[research/planning/execution/verification/decision]=phase")
+    expect(text).toContain("{tool}=source tool")
     expect(text).toContain("[day]=date")
     expect(text).toContain("[file]=file group")
   })
@@ -397,7 +398,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("Scope: current session memory")
     expect(text).toContain("[MEMORY TIMELINE]")
     expect(text).toContain("[file] requirements.csv")
-    expect(text).toContain("[research] 读取 requirements.csv 并发现 evidence_source 列缺失")
+    expect(text).toContain("[research] {read} 读取 requirements.csv 并发现 evidence_source 列缺失")
   })
 
   test("expands the latest key observation into multiple timeline lines", () => {
@@ -432,11 +433,11 @@ describe("buildSystemMemoryContext", () => {
       observations,
     }).join("\n")
 
-    expect(text).toContain("[09:43] [execution] 写入 questions.md 并生成缺口清单初稿")
+    expect(text).toContain("[09:43] [execution] {write} 写入 questions.md 并生成缺口清单初稿")
     expect(text).toContain("  Result: 已生成缺口清单初稿")
     expect(text).toContain("待人工复核后进入正式写作")
     expect(text).toContain("  Tool: write")
-    expect(text).toContain("[09:41] [research] 读取 requirements.csv 并确认 evidence_source 列仍缺失")
+    expect(text).toContain("[09:41] [research] {read} 读取 requirements.csv 并确认 evidence_source 列仍缺失")
     expect(text).toContain("  Tool: read")
   })
 
@@ -485,13 +486,13 @@ describe("buildSystemMemoryContext", () => {
       observations,
     }).join("\n")
 
-    expect(text).toContain("[09:45] [execution] 写入 questions.md 并生成缺口清单初稿")
+    expect(text).toContain("[09:45] [execution] {write} 写入 questions.md 并生成缺口清单初稿")
     expect(text).toContain("  Tool: write")
-    expect(text).toContain("[09:43] [verification] 读取 checklist.md 并确认 smoke 步骤")
+    expect(text).toContain("[09:43] [verification] {read} 读取 checklist.md 并确认 smoke 步骤")
     expect(text).toContain("已确认 smoke 步骤顺序正确")
     expect(text).toContain("可以进入 questions.md 生成")
     expect(text).toContain("  Tool: read")
-    const oldestLine = "[09:41] [research] 读取 brief.txt 并确认 smoke 目标"
+    const oldestLine = "[09:41] [research] {read} 读取 brief.txt 并确认 smoke 目标"
     expect(text).toContain(oldestLine)
     expect(text).not.toContain(`${oldestLine}\n  Tool: read`)
   })
@@ -818,7 +819,7 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     expect(text).toContain("[09:41] [summary] 之前的准备工作：已整理 smoke 前置条件并记录到 checklist.md")
-    expect(text).toContain("[09:43] [research] 读取 requirements.csv 并补充时间线验证")
+    expect(text).toContain("[09:43] [research] {read} 读取 requirements.csv 并补充时间线验证")
   })
 
   test("keeps timeline checkpoints without time prefixes for synthetic timestamps", () => {
@@ -896,7 +897,7 @@ describe("buildSystemMemoryContext", () => {
       observations,
     }).join("\n")
 
-    const observationIndex = text.indexOf("[09:41] [research] 读取 requirements.csv 并补充时间线验证")
+    const observationIndex = text.indexOf("[09:41] [research] {read} 读取 requirements.csv 并补充时间线验证")
     const summaryIndex = text.indexOf("[09:43] [summary] 整理 smoke 清单：已整理 smoke 前置条件并记录到 checklist.md")
 
     expect(observationIndex).toBeGreaterThan(-1)
@@ -944,7 +945,7 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     const summaryIndex = text.indexOf("[09:41] [summary] 整理 smoke 清单：已整理 smoke 前置条件并记录到 checklist.md")
-    const observationIndex = text.indexOf("[09:43] [research] 读取 requirements.csv 并补充时间线验证")
+    const observationIndex = text.indexOf("[09:43] [research] {read} 读取 requirements.csv 并补充时间线验证")
 
     expect(summaryIndex).toBeGreaterThan(-1)
     expect(observationIndex).toBeGreaterThan(-1)
@@ -993,7 +994,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[day] 2026-03-16")
     expect(text).toContain("[day] 2026-03-17")
     expect(text.indexOf("[day] 2026-03-16")).toBeLessThan(text.indexOf("[23:50] [summary] 整理 smoke 清单：已整理 smoke 前置条件并记录到 checklist.md"))
-    expect(text.indexOf("[day] 2026-03-17")).toBeLessThan(text.indexOf("[00:10] [research] 读取 requirements.csv 并补充次日时间线验证"))
+    expect(text.indexOf("[day] 2026-03-17")).toBeLessThan(text.indexOf("[00:10] [research] {read} 读取 requirements.csv 并补充次日时间线验证"))
   })
 
   test("does not insert day grouping lines for single-day timelines", () => {
@@ -1081,10 +1082,10 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[file] brief.txt")
     expect(text).toContain("[file] checklist.md")
     expect(text.indexOf("[file] brief.txt")).toBeLessThan(
-      text.indexOf("[09:41] [research] 读取 brief.txt 并确认 smoke 目标"),
+      text.indexOf("[09:41] [research] {read} 读取 brief.txt 并确认 smoke 目标"),
     )
     expect(text.indexOf("[file] checklist.md")).toBeLessThan(
-      text.indexOf("[09:43] [verification] 读取 checklist.md 并确认 smoke 步骤"),
+      text.indexOf("[09:43] [verification] {read} 读取 checklist.md 并确认 smoke 步骤"),
     )
     expect(text.match(/\[file\] brief\.txt/g)?.length).toBe(1)
   })
@@ -1144,7 +1145,7 @@ describe("buildSystemMemoryContext", () => {
 
     expect(text.match(/\[file\] brief\.txt/g)?.length).toBe(2)
     expect(text.indexOf("[file] brief.txt")).toBeLessThan(
-      text.indexOf("[09:41] [research] 读取 brief.txt 并确认 smoke 目标"),
+      text.indexOf("[09:41] [research] {read} 读取 brief.txt 并确认 smoke 目标"),
     )
     expect(text.lastIndexOf("[file] brief.txt")).toBeGreaterThan(
       text.indexOf("[09:42] [summary] 整理 brief：已整理 brief.txt 的 smoke 目标"),
@@ -1198,7 +1199,7 @@ describe("buildSystemMemoryContext", () => {
     const text = system.join("\n")
     expect(text).toContain("[MEMORY TIMELINE]")
     expect(text).toContain("[file] brief.txt")
-    expect(text).toContain("[research] brief.txt：这是一个真实 OpenCode 宿主 smoke 测试文件")
+    expect(text).toContain("[research] {read} brief.txt：这是一个真实 OpenCode 宿主 smoke 测试文件")
     expect(text).not.toContain("这一条不应该继续出现在 timeline 里")
     expect(text).not.toContain("(files: brief.txt)")
   })

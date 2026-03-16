@@ -519,6 +519,29 @@ system context 当前已经会编译出这些 section：
   - 这条提醒不替换已有量化句，只做追加
   - compaction context 继续不带这条 footer 提醒
 
+## 2026-03-16：`030-inline-observation-type-tags`
+
+- 继续先按 `claude-mem` 对照：
+  - 我们当前 observation 行已经有：
+    - phase
+    - file 分组
+    - visible ID
+  - 但 `claude-mem` 的 observation 行本身还会直接带 type 提示
+  - 我们此前只有展开 observation 才会在下一行出现 `Tool: read/write/bash`
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/030-inline-observation-type-tags/spec.md`
+  - `specs/030-inline-observation-type-tags/plan.md`
+  - `specs/030-inline-observation-type-tags/tasks.md`
+- 本轮实现结果：
+  - system context 的 observation 主行现在会直接显示：
+    - `{read}`
+    - `{write}`
+    - `{bash}`
+  - `[TIMELINE KEY]` 现在会一起解释：
+    - `{tool}=source tool`
+  - `Tool: ...` detail line 继续保留
+  - compaction context 继续不引入这条 header 说明
+
 ## 2026-03-16：`025-snapshot-investigated`
 
 - 继续先按 `claude-mem` 对照：

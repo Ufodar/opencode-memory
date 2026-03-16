@@ -21,8 +21,14 @@ export function buildContextIndexGuideLines(): string[] {
 
 export function buildTimelineKeyLines(): string[] {
   return [
-    "[TIMELINE KEY] [summary]=checkpoint | [research/planning/execution/verification/decision]=phase | [day]=date | [file]=file group",
+    "[TIMELINE KEY] [summary]=checkpoint | [research/planning/execution/verification/decision]=phase | {tool}=source tool | [day]=date | [file]=file group",
   ]
+}
+
+export function buildInlineObservationTypeTag(toolName?: string): string {
+  const normalized = normalizeText(toolName ?? "")
+  if (!normalized) return ""
+  return `{${normalized.toLowerCase()}} `
 }
 
 export function buildContextEconomicsLines(input: {

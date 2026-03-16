@@ -415,6 +415,21 @@ tool.execute.after
   - `If this index is still not enough, use memory_details with visible IDs before re-reading history.`
 - 这条 footer 只出现在 system context，不进入 compaction context
 
+## 2026-03-16：timeline observation 行当前能力
+
+- system context 的 observation 主行现在除了：
+  - phase
+  - visible ID
+  - file 分组
+- 还会直接带一个短 tool/type tag：
+  - `{read}`
+  - `{write}`
+  - `{bash}`
+- 这层 tag 的作用不是替代 detail line，而是让折叠 observation 也能快速暴露工具来源
+- `[TIMELINE KEY]` 现在也会同步解释：
+  - `{tool}=source tool`
+- compaction context 继续不带这条 header 说明
+
 ## 2026-03-16：latest snapshot 当前能力
 
 - latest snapshot 当前已不只包含：
