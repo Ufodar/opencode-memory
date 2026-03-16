@@ -200,8 +200,7 @@ describe("buildSystemMemoryContext", () => {
       observations: [],
     }).join("\n")
 
-    expect(text).toContain("Project: demo-project")
-    expect(text).toContain("Generated:")
+    expect(text).toContain("# [demo-project] recent context, ")
   })
 
   test("still adds a generated timestamp when projectPath is unavailable", () => {
@@ -212,7 +211,7 @@ describe("buildSystemMemoryContext", () => {
     }).join("\n")
 
     expect(text).not.toContain("Project:")
-    expect(text).toContain("Generated:")
+    expect(text).toContain("# recent context, ")
   })
 
   test("prefers summaries and excludes observations already covered by injected summaries", () => {

@@ -107,6 +107,8 @@ docs/
 - retrieval tools 已开始内建 `session-first / project-fallback` 默认行为，减少 agent 端判断负担
 - system injection 已支持 session-first / project-fallback 选择
 - system injection 已支持 count + character budget
+- system context 头部当前已从标签式改成标题式：
+  - `# [project] recent context, ...`
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
 - `read` observation 已升级为 semantic memory record：
   - 优先从文件正文提取高信息量片段
@@ -566,6 +568,25 @@ system context 当前已经会编译出这些 section：
   - system context 的三条工具说明改成 action-led wording
   - 低预算压缩版继续保持单行压缩
   - compaction context 继续不带这些 wording
+
+## 2026-03-16：`040-project-header-wording`
+
+- 继续先按 `claude-mem` 对照：
+  - 当前仓此前头部已经有：
+    - 项目名
+    - 生成时间
+  - 但仍然是标签式：
+    - `Project: ... | Generated: ...`
+  - `claude-mem` 在同位置是标题式：
+    - `# [project] recent context, ...`
+- 本轮严格按 `spec-kit` 工件推进：
+  - `specs/040-project-header-wording/spec.md`
+  - `specs/040-project-header-wording/plan.md`
+  - `specs/040-project-header-wording/tasks.md`
+- 本轮实现结果：
+  - system context 的 freshness 行改成标题式 wording
+  - 无项目名时也会显示 `# recent context, ...`
+  - compaction context 继续不带这行
 
 ## 2026-03-16：`030-inline-observation-type-tags`
 

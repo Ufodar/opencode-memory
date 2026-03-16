@@ -171,10 +171,10 @@ export function buildProjectFreshnessLines(input: {
   const projectLabel = input.projectPath ? basename(input.projectPath) : undefined
 
   if (projectLabel) {
-    return [`Project: ${projectLabel} | Generated: ${generatedAtLabel}`]
+    return [`# [${projectLabel}] recent context, ${generatedAtLabel}`]
   }
 
-  return [`Generated: ${generatedAtLabel}`]
+  return [`# recent context, ${generatedAtLabel}`]
 }
 
 export function buildVisibleSummaryID(value: string): string {

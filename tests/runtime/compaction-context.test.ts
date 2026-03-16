@@ -21,6 +21,7 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("Fetch by ID:")
     expect(text).not.toContain("Expand a checkpoint window:")
     expect(text).not.toContain("Search history:")
+    expect(text).not.toContain("recent context,")
   })
 
   test("does not include the system timeline legend", () => {

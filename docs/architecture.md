@@ -493,7 +493,7 @@ tool.execute.after
 ## 2026-03-16：context builder header 当前能力
 
 - system context header 当前已包含：
-  - `Project: ... | Generated: ...`
+  - `# [project] recent context, ...`
   - `[CONTEXT INDEX]`
   - `[TIMELINE KEY]`
   - `[CONTEXT ECONOMICS]`
