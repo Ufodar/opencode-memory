@@ -242,6 +242,8 @@ export function buildCompiledMemoryContext(input: {
       summaryCount: input.summaries.length,
       directObservationCount: input.observations.length,
       coveredObservationCount,
+      loadingTokens: contextEconomics.loadingTokens,
+      workTokens: contextEconomics.workTokens,
     })) {
       if (!push(line)) return lines
     }

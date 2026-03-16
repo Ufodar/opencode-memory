@@ -497,6 +497,8 @@ system context 当前已经会编译出这些 section：
   - system context 末尾新增 `[CONTEXT VALUE]`
   - 这条 footer 会把当前 `summaries / direct observations / covered observations` 收成一句话
   - 明确表达：先信任当前 index，再决定是否回头重读旧工作
+  - 现在还会继续补一条量化句：
+    - `Access ~X tokens of prior work for just ~Y tokens of reading.`
   - compaction context 继续保持轻量，不带这条 footer
 
 ## 2026-03-16：`025-snapshot-investigated`

@@ -103,11 +103,21 @@ export function buildContextValueLines(input: {
   summaryCount: number
   directObservationCount: number
   coveredObservationCount: number
+  loadingTokens?: number
+  workTokens?: number
 }): string[] {
-  return [
+  const lines = [
     "[CONTEXT VALUE]",
     `- This index condenses ${input.coveredObservationCount} covered observations into ${input.summaryCount} checkpoints and ${input.directObservationCount} direct observations; trust it before re-reading past work.`,
   ]
+
+  if ((input.workTokens ?? 0) > 0 && (input.loadingTokens ?? 0) > 0) {
+    lines.push(
+      `- Access ~${input.workTokens!.toLocaleString()} tokens of prior work for just ~${input.loadingTokens!.toLocaleString()} tokens of reading.`,
+    )
+  }
+
+  return lines
 }
 
 export function buildProjectFreshnessLines(input: {

@@ -9,6 +9,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-16
 - TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 memory worker / runtime injection 模块 (016-expanded-key-observations)
 - TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块 (027-context-work-economics)
 - N/A（复用已有 summary / observation 字段，不新增持久化） (027-context-work-economics)
+- N/A（复用已有 economics estimate，不新增持久化） (028-quantified-context-value)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -28,9 +29,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 028-quantified-context-value: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 027-context-work-economics: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 026-stale-snapshot-gating: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 025-snapshot-investigated: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->

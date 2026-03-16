@@ -100,7 +100,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("Your savings:")
   })
 
-  test("adds a short context value footer that tells the model to trust the current index first", () => {
+  test("adds a quantified context value footer that keeps the generic trust guidance", () => {
     const summaries: SummaryRecord[] = [
       {
         id: "sum_1",
@@ -134,6 +134,28 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("[CONTEXT VALUE]")
     expect(text).toContain("This index condenses")
     expect(text).toContain("trust it before re-reading past work")
+    expect(text).toContain("Access ~")
+    expect(text).toContain("for just ~")
+  })
+
+  test("keeps the generic context value footer when the sample is too small for meaningful savings", () => {
+    const observations: ObservationRecord[] = [
+      buildObservation({
+        id: "obs_1",
+        content: "读取单个文件",
+        inputSummary: "",
+        outputSummary: "读取单个文件",
+      }),
+    ]
+
+    const text = buildSystemMemoryContext({
+      scope: "session",
+      summaries: [],
+      observations,
+    }).join("\n")
+
+    expect(text).toContain("[CONTEXT VALUE]")
+    expect(text).toContain("This index condenses")
   })
 
   test("adds a project freshness header when projectPath is available", () => {
