@@ -509,6 +509,8 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("  Tool: read")
     const oldestLine = "[09:41] [research] {read} 读取 brief.txt 并确认 smoke 目标"
     expect(text).toContain(oldestLine)
+    expect(text).toContain(`${oldestLine} (Read ~`)
+    expect(text).toContain("| Work ~")
     expect(text).not.toContain(`${oldestLine}\n  Tokens: Read ~`)
     expect(text).not.toContain(`${oldestLine}\n  Tool: read`)
   })

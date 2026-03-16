@@ -75,6 +75,29 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("| Work ~")
   })
 
+  test("does not include inline observation token hints on compaction timeline rows", () => {
+    const text = buildCompactionMemoryContext({
+      summaries: [],
+      observations: [
+        buildObservation({
+          id: "obs_inline",
+          content: "读取 brief.txt 并确认 smoke 目标",
+          phase: "research",
+          toolName: "read",
+          createdAt: Date.UTC(2026, 2, 17, 9, 41),
+          trace: {
+            workingDirectory: "/workspace/demo",
+            filesRead: ["/workspace/demo/brief.txt"],
+          },
+        }),
+      ],
+      maxChars: 320,
+    }).join("\n")
+
+    expect(text).toContain("[research] 读取 brief.txt 并确认 smoke 目标")
+    expect(text).not.toContain("[research] 读取 brief.txt 并确认 smoke 目标 (Read ~")
+  })
+
   test("does not include the system project freshness header", () => {
     const text = buildCompactionMemoryContext({
       summaries: [],

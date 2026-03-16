@@ -140,6 +140,9 @@ docs/
     - `[file] checklist.md`
     summary checkpoint 不进入文件分组，但会打断文件分组
   - 当 `[file] 文件名` 已经出现时，observation 行不再重复显示同样的 `(files: ...)`
+  - system context 的 observation 主行现在还会直接补：
+    - `Read ~X | Work ~Y`
+    - 不再必须展开后才知道这条 observation 的局部 token 价值
   - 最近几条关键 observation 现在会展开成多行条目，而不是永远只有一行：
     - 主行继续保留 timeline checkpoint
     - detail line 会补充 `Result` / `Tool` / `Evidence`

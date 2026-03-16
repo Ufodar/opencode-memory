@@ -16,6 +16,7 @@ import {
   buildVisibleSummaryID,
   buildVisibleObservationID,
   buildInlineObservationTypeTag,
+  buildInlineObservationTokenHint,
   buildResumeActionText,
   buildPreviouslyHandoffText,
   buildCheckpointTimePrefix,
@@ -167,12 +168,14 @@ export function buildCompiledMemoryContext(input: {
       const timePrefix = buildCheckpointTimePrefix(observation.createdAt)
       const phasePrefix = observation.phase ? `[${observation.phase}] ` : ""
       const toolTag = buildInlineObservationTypeTag(observation.tool.name)
+      const tokenHint = buildInlineObservationTokenHint(observation)
       const fileLabel = buildObservationPrimaryFileLabel(observation.trace)
       const evidenceHint = fileLabel ? undefined : buildObservationEvidenceHint(observation.trace)
       const curatedObservation = buildCuratedTimelineText(observation.content)
-      const line = evidenceHint
-        ? `- ${timePrefix}${phasePrefix}${toolTag}${curatedObservation} (${evidenceHint}; ${buildVisibleObservationID(observation.id)})`
-        : `- ${timePrefix}${phasePrefix}${toolTag}${curatedObservation} ([${buildVisibleObservationID(observation.id)}])`
+      const hintParts = [evidenceHint, tokenHint, `[${buildVisibleObservationID(observation.id)}]`].filter(
+        (value): value is string => Boolean(value),
+      )
+      const line = `- ${timePrefix}${phasePrefix}${toolTag}${curatedObservation} (${hintParts.join("; ")})`
       const detailLines = expandedObservationIDs.has(observation.id)
         ? buildExpandedObservationDetailLines({
             observation,

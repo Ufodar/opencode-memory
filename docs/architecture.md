@@ -99,6 +99,9 @@
     - `[file] checklist.md`
   - summary checkpoint 不进入文件分组，但会打断当前文件分组
   - 当 `[file] 文件名` 分组线已经存在时，同一 observation 行不再重复渲染 `files:` hint
+  - system context 的 observation 主行现在还会直接补：
+    - `Read ~X | Work ~Y`
+    - 不再必须展开后才知道这条 observation 的局部 token 价值
   - 最近几条关键 observation 会继续展开成多行 checkpoint：
     - 主行保留时间 / phase / curated headline
     - detail line 只从现有 observation 字段提炼 `Result` / `Tool` / `Evidence`

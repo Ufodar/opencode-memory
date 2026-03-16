@@ -37,6 +37,12 @@ export function buildInlineObservationTypeTag(toolName?: string): string {
   return `{${normalized.toLowerCase()}} `
 }
 
+export function buildInlineObservationTokenHint(
+  observation: ObservationRecord,
+): string | undefined {
+  return buildObservationTokenHint(observation)
+}
+
 export function buildContextEconomicsLines(input: {
   summaryCount: number
   directObservationCount: number
@@ -262,7 +268,7 @@ export function buildExpandedObservationDetailLines(input: {
   }
 
   if (input.includeTokenHint) {
-    const tokenHint = buildExpandedObservationTokenHint(input.observation)
+    const tokenHint = buildObservationTokenHint(input.observation)
     if (tokenHint) {
       lines.push(`  Tokens: ${tokenHint}`)
     }
@@ -275,7 +281,7 @@ export function buildExpandedObservationDetailLines(input: {
   return dedupe(lines)
 }
 
-function buildExpandedObservationTokenHint(
+function buildObservationTokenHint(
   observation: ObservationRecord,
 ): string | undefined {
   const readTokens = estimateTokens(observation.content)
