@@ -111,7 +111,7 @@ docs/
   - `# [project] recent context, ...`
 - `[TOKEN KEY]` 当前已从单行缩写改成两条完整说明：
   - `Read` = 现在读懂这一条大概要花多少 token
-  - `Work` = 过去为产出这一条已经投入了多少工作 token
+  - `Work` = 过去为产出这一条已经投入了多少工作 token（research / building / deciding）
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
 - `read` observation 已升级为 semantic memory record：
   - 优先从文件正文提取高信息量片段
@@ -163,7 +163,7 @@ docs/
       - `Tokens: Read ~X | Work ~Y`
     - 更旧 observation 仍保持单行，避免 timeline 重新膨胀
   - system context header 现在还会补一条：
-    - `[TOKEN KEY] Read=current reading cost | Work=prior work investment`
+    - `[TOKEN KEY] Read=current reading cost | Work=prior work investment (research, building, deciding)`
   - `RESUME GUIDE` 会优先输出短动作提示，而不是重复整条 summary
   - latest summary 现在还会被编译成 `[LATEST SESSION SNAPSHOT]`
     - `Current Focus`
