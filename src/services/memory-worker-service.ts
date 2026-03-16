@@ -21,8 +21,9 @@ import { buildCompactionMemoryContext as defaultBuildCompactionMemoryContext } f
 import { buildSystemMemoryContext as defaultBuildSystemMemoryContext } from "../runtime/injection/system-context.js"
 import { selectInjectionRecords as defaultSelectInjectionRecords } from "../runtime/injection/select-context.js"
 import { runIdleSummaryPipeline as defaultRunIdleSummaryPipeline } from "../runtime/pipelines/idle-summary-pipeline.js"
+import type { ModelObservationResult } from "./ai/model-observation.js"
 import type { ModelSummaryResult } from "./ai/model-summary.js"
-import type { IdleSummaryResponse } from "../worker/protocol.js"
+import type { IdleSummaryResponse, SessionCompleteResponse } from "../worker/protocol.js"
 
 type CaptureRequestAnchor = typeof defaultCaptureRequestAnchor
 type CaptureToolObservation = typeof defaultCaptureToolObservation
@@ -71,6 +72,7 @@ export interface MemoryWorkerService {
     },
   ): Awaitable<ObservationRecord | null>
   handleSessionIdle(sessionID: string): Awaitable<IdleSummaryResponse>
+  completeSession(sessionID: string): Awaitable<SessionCompleteResponse>
   selectInjectionRecords(input: {
     sessionID?: string
     maxSummaries: number
@@ -81,6 +83,7 @@ export interface MemoryWorkerService {
     maxSummaries: number
     maxObservations: number
     maxChars: number
+    priorAssistantMessage?: string
   }): Awaitable<string[]>
   buildCompactionContext(input: {
     sessionID?: string
@@ -129,6 +132,28 @@ export interface MemoryWorkerService {
     processingJobs: MemoryQueueProcessingJob[]
     failedJobs: MemoryQueueFailedJob[]
   }>
+  getLiveSnapshot(input: {
+    sessionID?: string
+    maxSummaries: number
+    maxObservations: number
+    queueLimit: number
+  }): Awaitable<{
+    scope: "session" | "project"
+    summaries: SummaryRecord[]
+    observations: ObservationRecord[]
+    queue: {
+      isProcessing: boolean
+      queueDepth: number
+      counts: {
+        pending: number
+        processing: number
+        failed: number
+      }
+      workerStatus: MemoryWorkerStatusSnapshot | null
+      processingJobs: MemoryQueueProcessingJob[]
+      failedJobs: MemoryQueueFailedJob[]
+    }
+  }>
   retryQueueJob(jobID: number): Awaitable<{
     retried: boolean
     jobID: number
@@ -145,6 +170,20 @@ export function createMemoryWorkerService(input: {
     request: RequestAnchorRecord
     observations: ObservationRecord[]
   }) => Promise<ModelSummaryResult | null>
+  generateModelObservation?: (input: {
+    toolInput: {
+      tool: string
+      sessionID: string
+      callID: string
+      args: unknown
+    }
+    output: {
+      title: string
+      output: string
+      metadata: Record<string, unknown>
+    }
+    observation: ObservationRecord
+  }) => Promise<ModelObservationResult | null>
   captureRequestAnchor?: CaptureRequestAnchor
   captureToolObservation?: CaptureToolObservation
   runIdleSummaryPipeline?: IdleSummaryPipeline
@@ -152,6 +191,8 @@ export function createMemoryWorkerService(input: {
   buildSystemMemoryContext?: BuildSystemMemoryContext
   buildCompactionMemoryContext?: BuildCompactionMemoryContext
   readWorkerStatus?: () => MemoryWorkerStatusSnapshot | null
+  onObservationCaptured?: (record: ObservationRecord) => void
+  onSummaryCaptured?: (record: Extract<MemoryDetailRecord, { kind: "summary" }>) => void
 }): MemoryWorkerService {
   const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
   const captureToolObservation = input.captureToolObservation ?? defaultCaptureToolObservation
@@ -162,6 +203,28 @@ export function createMemoryWorkerService(input: {
     input.buildCompactionMemoryContext ?? defaultBuildCompactionMemoryContext
   const saveRequestAnchor = input.saveRequestAnchor ?? ((record: RequestAnchorRecord) => input.store.saveRequestAnchor(record))
   const saveObservation = input.saveObservation ?? ((record: ObservationRecord) => input.store.saveObservation(record))
+
+  const readCurrentWorkerStatus = () => {
+    const snapshot = input.readWorkerStatus?.()
+    if (snapshot) {
+      return {
+        ...snapshot,
+        activeSessionIDs: snapshot.activeSessionIDs ?? [],
+      }
+    }
+
+    const counts = input.store.getQueueStats()
+    return {
+      updatedAt: Date.now(),
+      isProcessing: counts.pending > 0 || counts.processing > 0,
+      queueDepth: counts.pending + counts.processing,
+      counts,
+      activeSessionIDs: [],
+      lastEvent: {
+        type: "worker-started" as const,
+      },
+    }
+  }
 
   return {
     captureRequestAnchorFromMessage(message) {
@@ -180,7 +243,7 @@ export function createMemoryWorkerService(input: {
       return requestAnchor
     },
 
-    captureObservationFromToolCall(toolInput, output) {
+    async captureObservationFromToolCall(toolInput, output) {
       const observation = captureToolObservation(
         {
           ...toolInput,
@@ -193,8 +256,20 @@ export function createMemoryWorkerService(input: {
         return null
       }
 
-      saveObservation(observation)
-      return observation
+      const refinedObservation = await applyModelObservationRefinement(
+        observation,
+        input.generateModelObservation
+          ? await input.generateModelObservation({
+              toolInput,
+              output,
+              observation,
+            })
+          : null,
+      )
+
+      saveObservation(refinedObservation)
+      input.onObservationCaptured?.(refinedObservation)
+      return refinedObservation
     },
 
     async handleSessionIdle(sessionID) {
@@ -211,7 +286,42 @@ export function createMemoryWorkerService(input: {
         return { status: "busy" }
       }
 
-      return guardResult.result ?? { status: "missing-request" }
+      const result = guardResult.result ?? { status: "missing-request" }
+
+      if (result.status === "summarized") {
+        const summaryDetail = input
+          .store
+          .getMemoryDetails([result.summaryID])
+          .find((record): record is Extract<MemoryDetailRecord, { kind: "summary" }> => record.kind === "summary")
+
+        if (summaryDetail) {
+          input.onSummaryCaptured?.(summaryDetail)
+        }
+      }
+
+      return result
+    },
+
+    async completeSession(sessionID) {
+      const result = await this.handleSessionIdle(sessionID)
+
+      if ("accepted" in result) {
+        return {
+          status: "completed",
+          sessionID,
+          summaryStatus: "queued",
+        }
+      }
+
+      return {
+        status: "completed",
+        sessionID,
+        summaryStatus: result.status,
+        requestAnchorID: "requestAnchorID" in result ? result.requestAnchorID : undefined,
+        summaryID: "summaryID" in result ? result.summaryID : undefined,
+        checkpointObservationAt:
+          "checkpointObservationAt" in result ? result.checkpointObservationAt : undefined,
+      }
     },
 
     selectInjectionRecords(selectionInput) {
@@ -232,11 +342,17 @@ export function createMemoryWorkerService(input: {
         maxSummaries: contextInput.maxSummaries,
         maxObservations: contextInput.maxObservations,
       })
+      const latestSummaryObservations = getLatestSummaryObservations(
+        input.store,
+        selected.summaries[0],
+      )
 
       return buildSystemMemoryContext({
         scope: selected.scope,
         summaries: selected.summaries,
         observations: selected.observations,
+        latestSummaryObservations,
+        priorAssistantMessage: contextInput.priorAssistantMessage,
         maxSummaries: contextInput.maxSummaries,
         maxObservations: contextInput.maxObservations,
         maxChars: contextInput.maxChars,
@@ -251,10 +367,15 @@ export function createMemoryWorkerService(input: {
         maxSummaries: contextInput.maxSummaries,
         maxObservations: contextInput.maxObservations,
       })
+      const latestSummaryObservations = getLatestSummaryObservations(
+        input.store,
+        selected.summaries[0],
+      )
 
       return buildCompactionMemoryContext({
         summaries: selected.summaries,
         observations: selected.observations,
+        latestSummaryObservations,
         maxSummaries: contextInput.maxSummaries,
         maxObservations: contextInput.maxObservations,
         maxChars: contextInput.maxChars,
@@ -353,9 +474,32 @@ export function createMemoryWorkerService(input: {
         isProcessing: counts.pending > 0 || counts.processing > 0,
         queueDepth: counts.pending + counts.processing,
         counts,
-        workerStatus: input.readWorkerStatus?.() ?? null,
+        workerStatus: readCurrentWorkerStatus(),
         processingJobs: input.store.listProcessingJobs(queueInput.limit),
         failedJobs: input.store.listFailedJobs(queueInput.limit),
+      }
+    },
+
+    async getLiveSnapshot(snapshotInput) {
+      const selection = selectInjectionRecords({
+        store: input.store,
+        projectPath: input.projectPath,
+        sessionID: snapshotInput.sessionID,
+        maxSummaries: snapshotInput.maxSummaries,
+        maxObservations: snapshotInput.maxObservations,
+      })
+
+      const queue = await Promise.resolve(
+        this.getQueueStatus({
+          limit: snapshotInput.queueLimit,
+        }),
+      )
+
+      return {
+        scope: selection.scope,
+        summaries: selection.summaries,
+        observations: selection.observations,
+        queue,
       }
     },
 
@@ -366,4 +510,93 @@ export function createMemoryWorkerService(input: {
       }
     },
   }
+}
+
+function getLatestSummaryObservations(
+  store: MemoryInjectionStore,
+  latestSummary?: SummaryRecord,
+): ObservationRecord[] {
+  if (!latestSummary || latestSummary.observationIDs.length === 0) {
+    return []
+  }
+
+  const observationsByID = new Map(
+    store.getObservationsByIds(latestSummary.observationIDs).map((observation) => [observation.id, observation]),
+  )
+
+  return latestSummary.observationIDs
+    .map((id) => observationsByID.get(id))
+    .filter((observation): observation is ObservationRecord => Boolean(observation))
+}
+
+async function applyModelObservationRefinement(
+  observation: ObservationRecord,
+  refinement: ModelObservationResult | null,
+): Promise<ObservationRecord> {
+  if (!refinement) {
+    return observation
+  }
+
+  const content = normalizeContent(refinement.content)
+  if (!content) {
+    return observation
+  }
+
+  const outputSummary = normalizeSummary(refinement.outputSummary) ?? observation.output.summary
+  const tags = normalizeTags(refinement.tags) ?? observation.retrieval.tags
+  const importance = clampImportance(refinement.importance) ?? observation.retrieval.importance
+
+  return {
+    ...observation,
+    content,
+    output: {
+      ...observation.output,
+      summary: outputSummary,
+    },
+    retrieval: {
+      ...observation.retrieval,
+      tags,
+      importance,
+    },
+  }
+}
+
+function normalizeContent(value: string | undefined): string | null {
+  if (!value) return null
+  const normalized = collapseWhitespace(value)
+  return normalized || null
+}
+
+function normalizeSummary(value?: string): string | undefined {
+  if (!value) return undefined
+  const normalized = collapseWhitespace(value)
+  return normalized || undefined
+}
+
+function normalizeTags(value?: string[]): string[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined
+  }
+
+  const tags = Array.from(
+    new Set(
+      value
+        .map((item) => collapseWhitespace(String(item)))
+        .filter(Boolean),
+    ),
+  )
+
+  return tags.length > 0 ? tags : undefined
+}
+
+function clampImportance(value?: number): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined
+  }
+
+  return Math.max(0, Math.min(1, value))
+}
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim()
 }

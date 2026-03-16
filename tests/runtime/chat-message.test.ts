@@ -25,4 +25,15 @@ describe("captureRequestAnchor", () => {
     expect(record?.id).toBe("msg_1")
     expect(record?.content).toContain("先分析招标文件")
   })
+
+  test("skips pure memory context preview prompts", () => {
+    const record = captureRequestAnchor({
+      sessionID: "ses_demo",
+      messageID: "msg_2",
+      projectPath: "/workspace/demo",
+      text: "只做记忆上下文预览，不要读取任何文件。只调用 memory_context_preview。",
+    })
+
+    expect(record).toBeNull()
+  })
 })

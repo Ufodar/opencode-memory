@@ -1,6 +1,7 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import { shouldCaptureToolObservation } from "../../memory/observation/candidate.js"
 import { inferObservationPhaseFromToolCall } from "../../memory/observation/phase.js"
+import { buildReadSemanticSummary } from "./read-content-summary.js"
 
 export function captureToolObservation(input: {
   tool: string
@@ -55,7 +56,7 @@ export function captureToolObservation(input: {
       importance: 0.6,
       tags: [input.tool, "observation"],
     },
-    trace: {},
+    trace: buildObservationTrace(input.tool, input.args, output.output, input.projectPath),
   }
 }
 
@@ -83,7 +84,18 @@ function buildObservationSummaries(input: {
 } {
   if (input.tool === "read") {
     const filePath = readFilePathFromArgs(input.args) ?? readFilePathFromOutput(input.output)
+    const semanticReadSummary = buildReadSemanticSummary({
+      filePath,
+      output: input.output,
+    })
     const normalizedOutput = collapseWhitespace(input.output)
+
+    if (semanticReadSummary) {
+      return {
+        content: semanticReadSummary,
+        outputSummary: semanticReadSummary,
+      }
+    }
 
     if (normalizedOutput && !looksLikeRawReadPayload(input.output)) {
       const semantic = truncate(normalizedOutput, 220)
@@ -143,3 +155,73 @@ function summarizePath(value: string): string {
 function looksLikeRawReadPayload(output: string): boolean {
   return /<path>.*<\/path>/us.test(output) || /<content>.*<\/content>/us.test(output)
 }
+
+function extractTraceFilePaths(args: unknown, output: string): string[] | undefined {
+  const paths = new Set<string>()
+
+  const fromArgs = readFilePathFromArgs(args)
+  if (fromArgs) {
+    paths.add(fromArgs)
+  }
+
+  const fromOutput = readFilePathFromOutput(output)
+  if (fromOutput) {
+    paths.add(fromOutput)
+  }
+
+  return paths.size > 0 ? Array.from(paths) : undefined
+}
+
+function buildObservationTrace(
+  tool: string,
+  args: unknown,
+  output: string,
+  projectPath: string,
+): ObservationRecord["trace"] {
+  const filePaths = extractTraceFilePaths(args, output)
+  const filesRead = classifyFilesRead(tool, filePaths)
+  const filesModified = classifyFilesModified(tool, filePaths)
+  const command = readCommandFromArgs(args)
+
+  return compactTrace({
+    workingDirectory: projectPath,
+    filePaths,
+    filesRead,
+    filesModified,
+    command,
+  })
+}
+
+function classifyFilesRead(
+  tool: string,
+  filePaths: string[] | undefined,
+): string[] | undefined {
+  if (!filePaths || filePaths.length === 0) return undefined
+  if (!READ_OR_DISCOVERY_TOOLS.has(tool)) return undefined
+  return filePaths
+}
+
+function classifyFilesModified(
+  tool: string,
+  filePaths: string[] | undefined,
+): string[] | undefined {
+  if (!filePaths || filePaths.length === 0) return undefined
+  if (!WRITE_OR_MODIFY_TOOLS.has(tool)) return undefined
+  return filePaths
+}
+
+function readCommandFromArgs(args: unknown): string | undefined {
+  if (!args || typeof args !== "object") return undefined
+  const record = args as Record<string, unknown>
+  const value = record.command
+  return typeof value === "string" && value.trim() ? value.trim() : undefined
+}
+
+function compactTrace(trace: ObservationRecord["trace"]): ObservationRecord["trace"] {
+  return Object.fromEntries(
+    Object.entries(trace).filter(([, value]) => value !== undefined),
+  ) as ObservationRecord["trace"]
+}
+
+const READ_OR_DISCOVERY_TOOLS = new Set(["read", "grep", "glob"])
+const WRITE_OR_MODIFY_TOOLS = new Set(["write", "edit", "patch"])

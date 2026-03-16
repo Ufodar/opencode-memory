@@ -7,14 +7,18 @@ import { createToolExecuteAfterHandler } from "../../src/runtime/handlers/tool-e
 import type { MemoryWorkerService } from "../../src/services/memory-worker-service.js"
 
 describe("basic runtime handlers", () => {
-  test("chat.message delegates request-anchor capture to the memory worker", async () => {
+  test("chat.message completes the previous request window before capturing the next anchor", async () => {
     const calls: string[] = []
 
     const handler = createChatMessageHandler({
       worker: {
-        async handleSessionIdle(sessionID) {
-          calls.push(`idle:${sessionID}`)
-          return { status: "no-op" as const }
+        async completeSession(sessionID) {
+          calls.push(`complete:${sessionID}`)
+          return {
+            status: "completed" as const,
+            sessionID,
+            summaryStatus: "no-op" as const,
+          }
         },
         captureRequestAnchorFromMessage(input) {
           calls.push(`request:${input.sessionID}:${input.messageID}`)
@@ -26,7 +30,7 @@ describe("basic runtime handlers", () => {
             createdAt: 1,
           } satisfies RequestAnchorRecord
         },
-      } as Pick<MemoryWorkerService, "handleSessionIdle" | "captureRequestAnchorFromMessage">,
+      } as Pick<MemoryWorkerService, "completeSession" | "captureRequestAnchorFromMessage">,
     })
 
     await handler(
@@ -40,7 +44,7 @@ describe("basic runtime handlers", () => {
       },
     )
 
-    expect(calls).toEqual(["idle:ses_demo", "request:ses_demo:msg_1"])
+    expect(calls).toEqual(["complete:ses_demo", "request:ses_demo:msg_1"])
   })
 
   test("tool.execute.after delegates observation capture to the memory worker", async () => {
@@ -88,5 +92,66 @@ describe("basic runtime handlers", () => {
     )
 
     expect(calls).toEqual(["capture:read", "log:captured observation"])
+  })
+
+  test("chat.message still completes the previous request window when no new request anchor is created", async () => {
+    const calls: string[] = []
+    const handler = createChatMessageHandler({
+      worker: {
+        async completeSession(sessionID) {
+          calls.push(`complete:${sessionID}`)
+          return {
+            status: "completed" as const,
+            sessionID,
+            summaryStatus: "no-op" as const,
+          }
+        },
+        captureRequestAnchorFromMessage() {
+          calls.push("request:none")
+          return null
+        },
+      } as Pick<MemoryWorkerService, "completeSession" | "captureRequestAnchorFromMessage">,
+    })
+
+    await handler(
+      { sessionID: "ses_demo" },
+      {
+        message: { id: "msg_preview" },
+        parts: [{ type: "text", text: "只做记忆上下文预览，不要读取任何文件。只调用 memory_context_preview。" }],
+      },
+    )
+
+    expect(calls).toEqual(["complete:ses_demo", "request:none"])
+  })
+
+  test("tool.execute.after returns early when no observation is captured", async () => {
+    const calls: string[] = []
+    const handler = createToolExecuteAfterHandler({
+      worker: {
+        captureObservationFromToolCall() {
+          calls.push("capture:none")
+          return null
+        },
+      } as Pick<MemoryWorkerService, "captureObservationFromToolCall">,
+      log(message) {
+        calls.push(`log:${message}`)
+      },
+    })
+
+    await handler(
+      {
+        tool: "memory_search",
+        sessionID: "ses_demo",
+        callID: "call_1",
+        args: { query: "brief" },
+      },
+      {
+        title: "memory search",
+        output: "{\"success\":true}",
+        metadata: {},
+      },
+    )
+
+    expect(calls).toEqual(["capture:none"])
   })
 })

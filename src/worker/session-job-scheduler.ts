@@ -1,6 +1,7 @@
 export interface SessionJobScheduler {
   run<T>(sessionID: string, job: () => Promise<T>): Promise<T>
   enqueue(sessionID: string, job: () => Promise<unknown>): void
+  isBusy(sessionID: string): boolean
 }
 
 export function createSessionJobScheduler(): SessionJobScheduler {
@@ -30,6 +31,10 @@ export function createSessionJobScheduler(): SessionJobScheduler {
 
     enqueue(sessionID: string, job: () => Promise<unknown>) {
       void this.run(sessionID, job).catch(() => undefined)
+    },
+
+    isBusy(sessionID: string) {
+      return tails.has(sessionID)
     },
   }
 }

@@ -17,6 +17,7 @@ const LOW_VALUE_TOOLS = new Set([
   "memory_search",
   "memory_timeline",
   "memory_details",
+  "memory_context_preview",
   "memory_queue_status",
   "memory_queue_retry",
 ])

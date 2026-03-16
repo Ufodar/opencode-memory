@@ -10,6 +10,7 @@ import { classifyObservationPhase } from "../../memory/observation/phase.js"
 import {
   compareTimelineKinds,
   mapObservationDetailRow,
+  mapObservationEvidence,
   mapObservationRow,
   mapTimelineObservationRow,
   mapTimelineSummaryRow,
@@ -266,6 +267,7 @@ export class MemoryRetrievalService {
             tool: explicit.tool,
             importance: explicit.importance,
             tags: explicit.tags,
+            evidence: mapObservationEvidence(explicit.trace),
             isAnchor: true,
           }
     }
@@ -300,6 +302,12 @@ export class MemoryRetrievalService {
           tool: result.tool,
           importance: result.importance,
           tags: result.tags,
+          evidence: {
+            workingDirectory: undefined,
+            filesRead: undefined,
+            filesModified: undefined,
+            command: undefined,
+          },
           isAnchor: true,
         }
   }

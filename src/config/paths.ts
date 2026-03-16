@@ -1,11 +1,11 @@
 import { mkdirSync } from "node:fs"
+import { createHash } from "node:crypto"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 
 const DATA_DIR = join(homedir(), ".opencode-memory", "data")
 const DB_PATH = join(DATA_DIR, "memory.sqlite")
 const WORKER_REGISTRY_PATH = join(DATA_DIR, "worker-registry.json")
-const WORKER_STATUS_PATH = join(DATA_DIR, "worker-status.json")
 
 export function ensureDataDir(): string {
   mkdirSync(DATA_DIR, { recursive: true })
@@ -24,8 +24,22 @@ export function getDefaultWorkerRegistryPath(): string {
   return WORKER_REGISTRY_PATH
 }
 
-export function getDefaultWorkerStatusPath(): string {
+export function getDefaultWorkerStatusPath(input: {
+  projectPath: string
+  databasePath: string
+}): string {
   ensureDataDir()
-  mkdirSync(dirname(WORKER_STATUS_PATH), { recursive: true })
-  return WORKER_STATUS_PATH
+  const statusPath = join(
+    DATA_DIR,
+    `worker-status-${hashWorkerStatusKey(input)}.json`,
+  )
+  mkdirSync(dirname(statusPath), { recursive: true })
+  return statusPath
+}
+
+function hashWorkerStatusKey(input: { projectPath: string; databasePath: string }) {
+  return createHash("sha256")
+    .update(`${input.projectPath}::${input.databasePath}`)
+    .digest("hex")
+    .slice(0, 16)
 }

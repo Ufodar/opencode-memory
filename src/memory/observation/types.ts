@@ -32,7 +32,11 @@ export interface ObservationRecord {
   }
   trace: {
     relatedPromptId?: string
+    workingDirectory?: string
     filePaths?: string[]
+    filesRead?: string[]
+    filesModified?: string[]
+    command?: string
   }
 }
 

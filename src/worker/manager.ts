@@ -7,6 +7,7 @@ import {
   getDefaultWorkerRegistryPath,
   getDefaultWorkerStatusPath,
 } from "../config/paths.js"
+import { DEFAULTS } from "../config/defaults.js"
 import { log } from "../services/logger.js"
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 import { getOpencodeMemoryVersion } from "../version.js"
@@ -286,27 +287,27 @@ async function spawnManagedMemoryWorkerProcess(
   const port = await findAvailablePort()
   const workerEntry = fileURLToPath(new URL("./run-memory-worker.js", import.meta.url))
   const bunExecutable = Bun.which("bun")
-  const statusPath = getDefaultWorkerStatusPath()
+  const statusPath = getDefaultWorkerStatusPath({
+    projectPath: input.projectPath,
+    databasePath: input.databasePath,
+  })
 
   if (!bunExecutable) {
     throw new Error("Failed to locate Bun executable for memory worker startup")
   }
 
+  const workerArgs = buildManagedMemoryWorkerSpawnArgs({
+    workerEntry,
+    port,
+    projectPath: input.projectPath,
+    databasePath: input.databasePath,
+    registryPath,
+    statusPath,
+  })
+
   const child = spawn(
     bunExecutable,
-    [
-      workerEntry,
-      "--port",
-      String(port),
-      "--project-path",
-      input.projectPath,
-      "--database-path",
-      input.databasePath,
-      "--registry-path",
-      registryPath,
-      "--status-path",
-      statusPath,
-    ],
+    workerArgs,
     {
       env: process.env,
       stdio: "ignore",
@@ -340,6 +341,35 @@ async function spawnManagedMemoryWorkerProcess(
       databasePath: input.databasePath,
     }),
   }
+}
+
+export function buildManagedMemoryWorkerSpawnArgs(input: {
+  workerEntry: string
+  port?: number
+  projectPath: string
+  databasePath: string
+  registryPath: string
+  statusPath: string
+}) {
+  return [
+    input.workerEntry,
+    "--port",
+    String(input.port ?? 0),
+    "--project-path",
+    input.projectPath,
+    "--database-path",
+    input.databasePath,
+    "--registry-path",
+    input.registryPath,
+    "--status-path",
+    input.statusPath,
+    "--idle-shutdown-ms",
+    String(DEFAULTS.workerIdleShutdownMs),
+    "--active-session-max-idle-ms",
+    String(DEFAULTS.workerActiveSessionMaxIdleMs),
+    "--active-session-reap-interval-ms",
+    String(DEFAULTS.workerActiveSessionReapIntervalMs),
+  ]
 }
 
 interface RecoverManagedMemoryWorkerProcessDependencies {
@@ -520,6 +550,10 @@ function createProxyWorker(
       return callWorker(entry, dependencies, (worker) => worker.handleSessionIdle(sessionID))
     },
 
+    completeSession(sessionID) {
+      return callWorker(entry, dependencies, (worker) => worker.completeSession(sessionID))
+    },
+
     selectInjectionRecords(payload) {
       return callWorker(entry, dependencies, (worker) => worker.selectInjectionRecords(payload))
     },
@@ -546,6 +580,10 @@ function createProxyWorker(
 
     getQueueStatus(payload) {
       return callWorker(entry, dependencies, (worker) => worker.getQueueStatus(payload))
+    },
+
+    getLiveSnapshot(payload) {
+      return callWorker(entry, dependencies, (worker) => worker.getLiveSnapshot(payload))
     },
 
     retryQueueJob(jobID) {

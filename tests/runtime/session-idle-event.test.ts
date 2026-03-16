@@ -87,4 +87,28 @@ describe("createSessionIdleEventHandler", () => {
       "log:session.idle queued summary job",
     ])
   })
+
+  test("ignores events without a usable session id", async () => {
+    const calls: string[] = []
+    const handler = createSessionIdleEventHandler({
+      worker: {
+        async handleSessionIdle() {
+          calls.push("idle")
+          return { status: "missing-request" as const }
+        },
+      } as Pick<MemoryWorkerService, "handleSessionIdle">,
+      log(message) {
+        calls.push(`log:${message}`)
+      },
+    })
+
+    await handler({
+      event: {
+        type: "session.idle",
+        properties: { sessionID: "" },
+      },
+    })
+
+    expect(calls).toEqual([])
+  })
 })

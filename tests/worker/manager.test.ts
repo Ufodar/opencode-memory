@@ -1,9 +1,42 @@
 import { describe, expect, test } from "bun:test"
 
-import { createManagedMemoryWorkerManager } from "../../src/worker/manager.js"
+import {
+  buildManagedMemoryWorkerSpawnArgs,
+  createManagedMemoryWorkerManager,
+} from "../../src/worker/manager.js"
 import type { MemoryWorkerService } from "../../src/services/memory-worker-service.js"
 
 describe("managed memory worker manager", () => {
+  test("includes stale-session reaper defaults in worker spawn args", () => {
+    expect(
+      buildManagedMemoryWorkerSpawnArgs({
+        workerEntry: "/tmp/run-memory-worker.js",
+        projectPath: "/workspace/demo",
+        databasePath: "/tmp/demo.sqlite",
+        registryPath: "/tmp/worker-registry.json",
+        statusPath: "/tmp/worker-status.json",
+      }),
+    ).toEqual([
+      "/tmp/run-memory-worker.js",
+      "--port",
+      expect.any(String),
+      "--project-path",
+      "/workspace/demo",
+      "--database-path",
+      "/tmp/demo.sqlite",
+      "--registry-path",
+      "/tmp/worker-registry.json",
+      "--status-path",
+      "/tmp/worker-status.json",
+      "--idle-shutdown-ms",
+      "60000",
+      "--active-session-max-idle-ms",
+      "900000",
+      "--active-session-reap-interval-ms",
+      "120000",
+    ])
+  })
+
   test("reuses one worker process for the same project until the final handle stops", async () => {
     let created = 0
     let stopped = 0

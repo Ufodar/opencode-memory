@@ -63,6 +63,7 @@ describe("host smoke helpers", () => {
       '{"type":"tool_use","sessionID":"ses_demo_retrieval","part":{"tool":"memory_search","state":{"status":"completed"}}}',
       '{"type":"tool_use","sessionID":"ses_demo_retrieval","part":{"tool":"memory_timeline","state":{"status":"completed"}}}',
       '{"type":"tool_use","sessionID":"ses_demo_retrieval","part":{"tool":"memory_details","state":{"status":"completed"}}}',
+      '{"type":"tool_use","sessionID":"ses_demo_retrieval","part":{"tool":"memory_context_preview","state":{"status":"completed"}}}',
     ].join("\n")
 
     const result = evaluateRetrievalChain(parseRunOutput(runOutput))
@@ -70,6 +71,7 @@ describe("host smoke helpers", () => {
     expect(result.searchCalls).toBe(1)
     expect(result.timelineCalls).toBe(1)
     expect(result.detailsCalls).toBe(1)
+    expect(result.previewCalls).toBe(1)
     expect(result.passed).toBe(true)
   })
 
@@ -140,10 +142,41 @@ describe("host smoke helpers", () => {
         summaryLogSignals: 0,
         passed: true,
       },
+      snapshotChain: {
+        workerStatus: true,
+        hasMemoryRecords: true,
+        passed: true,
+      },
+      workerReuseChain: {
+        samePid: true,
+        samePort: true,
+        passed: true,
+      },
+      singleRunFlushChain: {
+        sessionCompleted: true,
+        completedSessionID: "ses_report_1",
+        summaryStatus: "summarized",
+        summariesPersisted: 1,
+        passed: true,
+      },
+      streamChain: {
+        connected: true,
+        initialStatus: true,
+        liveObservation: true,
+        passed: true,
+      },
+      completionChain: {
+        sessionCompleted: true,
+        completedSessionID: "ses_report_1",
+        summaryStatus: "summarized",
+        lastEventType: "session-complete",
+        passed: true,
+      },
       retrievalChain: {
         searchCalls: 1,
         timelineCalls: 1,
         detailsCalls: 1,
+        previewCalls: 1,
         passed: true,
       },
       sqliteCounts: {
@@ -169,10 +202,41 @@ describe("host smoke helpers", () => {
         summaryLogSignals: 0,
         passed: true,
       },
+      snapshotChain: {
+        workerStatus: true,
+        hasMemoryRecords: true,
+        passed: true,
+      },
+      workerReuseChain: {
+        samePid: true,
+        samePort: true,
+        passed: true,
+      },
+      singleRunFlushChain: {
+        sessionCompleted: true,
+        completedSessionID: "ses_report_1",
+        summaryStatus: "summarized",
+        summariesPersisted: 1,
+        passed: true,
+      },
+      streamChain: {
+        connected: true,
+        initialStatus: true,
+        liveObservation: true,
+        passed: true,
+      },
+      completionChain: {
+        sessionCompleted: true,
+        completedSessionID: "ses_report_1",
+        summaryStatus: "summarized",
+        lastEventType: "session-complete",
+        passed: true,
+      },
       retrievalChain: {
         searchCalls: 1,
         timelineCalls: 1,
         detailsCalls: 1,
+        previewCalls: 1,
         passed: true,
       },
       sqliteCounts: {
@@ -204,6 +268,14 @@ describe("host smoke helpers", () => {
     expect(markdown).toContain("## 控制变量测试")
     expect(markdown).toContain("总结论：")
     expect(markdown).toContain("写入链：通过")
+    expect(markdown).toContain("初始快照：通过")
+    expect(markdown).toContain("Worker 复用：通过")
+    expect(markdown).toContain("单次 run 收口：通过")
+    expect(markdown).toContain("实时流：通过")
+    expect(markdown).toContain("生命周期收口：通过")
+    expect(markdown).toContain("summaryCount=1")
+    expect(markdown).toContain("session=ses_report_1")
+    expect(markdown).toContain("summaryStatus=summarized")
     expect(markdown).toContain("数据库计数：request=1, observation=2, summary=1")
     expect(markdown).toContain("回查链：通过")
     expect(markdown).toContain("sqlite: /tmp/workspace/memory.sqlite")

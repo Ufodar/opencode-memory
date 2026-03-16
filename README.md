@@ -64,6 +64,10 @@ docs/
 
 - 独立 git 仓库初始化
 - MIT 许可
+- `spec-kit` 工作流已接入：
+  - `.opencode/command/speckit.*`
+  - `.specify/scripts/bash/*`
+  - `specs/<feature>/spec.md|plan.md|tasks.md`
 - OpenCode plugin 最小骨架
 - 核心 observation / summary 类型
 - SQLite observation 持久化
@@ -104,6 +108,53 @@ docs/
 - system injection 已支持 session-first / project-fallback 选择
 - system injection 已支持 count + character budget
 - observation 主文本已优先保留工具结果语义，而不是只写成 `tool: title`
+- `read` observation 已升级为 semantic memory record：
+  - 优先从文件正文提取高信息量片段
+  - 避免把原始 `<path>/<content>` payload 直接塞进 `content`
+  - summary / resume 已优先消费这些语义记录
+  - context builder 已继续升级为 curated working index：
+  - 开头现在会先给一小段 memory index guide，告诉模型：
+    - 这份 snapshot 是 recent working index
+    - 当前 index 通常已经足够继续工作
+    - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
+    - `memory_details` 适合看单条记录细节
+    - `memory_timeline` 适合围绕 checkpoint 扩展时间线
+    - `memory_search` 适合做更广的项目级回查
+  - older summaries 现在会进入 `MEMORY TIMELINE`，作为 summary checkpoint
+  - `MEMORY TIMELINE` 会同时承载：
+    - summary checkpoint
+    - observation checkpoint
+  - summary checkpoint 现在会优先编译成：
+    - `请求概述：结果概述`
+    - request 缺失时才退回 outcome-only
+  - timeline checkpoint 现在会优先带短时间前缀：
+    - `- [09:41] [summary] ...`
+    - `- [09:43] [research] ...`
+    - synthetic 小整数时间戳仍回退为无时间前缀
+  - older summary 与 unsummarized observation 现在会按 `createdAt` 混排，而不是先 summary 再 observation
+  - 当 timeline checkpoint 跨越多个自然日时，现在会先插入：
+    - `[day] YYYY-MM-DD`
+    再列出当天的 checkpoint
+  - 同一天内的 observation checkpoint 现在还会按主文件插入：
+    - `[file] brief.txt`
+    - `[file] checklist.md`
+    summary checkpoint 不进入文件分组，但会打断文件分组
+  - 当 `[file] 文件名` 已经出现时，observation 行不再重复显示同样的 `(files: ...)`
+  - 最近几条关键 observation 现在会展开成多行条目，而不是永远只有一行：
+    - 主行继续保留 timeline checkpoint
+    - detail line 会补充 `Result` / `Tool` / `Evidence`
+    - 更旧 observation 仍保持单行，避免 timeline 重新膨胀
+  - `RESUME GUIDE` 会优先输出短动作提示，而不是重复整条 summary
+  - latest summary 现在还会被编译成 `[LATEST SESSION SNAPSHOT]`
+    - `Current Focus`
+    - `Learned`
+    - `Completed`
+    - `Next`
+  - 当前 session 若已有 assistant 文本回复，system context 末尾现在还会追加：
+    - `[PREVIOUSLY]`
+    - 用来表达“上一次 assistant 停在了哪里”
+    - 该内容来自 OpenCode session message，而不是数据库
+  - 当 latest summary 已被 snapshot 吸收后，它不会再重复出现在 timeline 或单独的 summary section
 - `session.idle` summary 主链已加入 session 级重入保护
 - `session.idle -> summary` 主链已从 plugin 入口抽成独立 `pipeline`
 - memory 领域 contracts 已开始独立：
@@ -145,7 +196,20 @@ docs/
   - recover 旧 worker 时会先做版本握手；如果 worker 版本和当前 plugin 不一致，会先关旧 worker 再起新 worker
   - 旧 worker 不健康时自动替换
   - 已发出的 handle 会通过代理对象自动切到新 worker
-  - 关闭时会优先走 worker 自己的 `/shutdown`，失败后才回退到 PID kill
+- 关闭时会优先走 worker 自己的 `/shutdown`，失败后才回退到 PID kill
+- worker 现在会跨多次 `opencode run` 复用，而不是每次 run 都重启
+- worker 会在长时间无活动后自动自关，避免后台常驻进程越积越多
+- worker 状态快照已按 `projectPath + databasePath` 分文件，不再互相覆盖
+- host smoke 现在会单独验证：
+  - 单次 run 退出后，是否不依赖下一条 prompt 也能完成 session 收口
+  - `singleRunFlushChain`
+- session 收口后的本地 active tracker 现在更接近 `claude-mem` 的 `session-complete` 语义：
+  - 纯 memory 回查 prompt 不再保留 active session
+  - `system transform`
+  - `session compacting`
+  - `session.idle`
+  - 未真正落 observation 的 tool 调用
+  都不会再把已收口 session 重新标活
 - worker 内部已加入按 `sessionID` 串行的 job 调度：
   - 同一 session 的 capture / summary / session-scoped retrieval 不再并发直进
   - 不同 session 仍可并发
@@ -189,6 +253,28 @@ docs/
   - 默认写到 `~/.opencode-memory/data/worker-status.json`
   - `memory_queue_status` 现在会把这份 `workerStatus` 一起返回
   - 所以后面如果要做 UI、外部监控或更稳定的宿主验证，不需要再解析日志
+- worker 现在也会持续推送结构化实时事件：
+  - `GET /stream`
+  - 初始会发送：
+    - `connected`
+    - `processing_status`
+  - 后续会继续推送：
+    - `processing_status`
+    - `new_observation`
+    - `new_summary`
+  - 项目内已有正式的流读取辅助，不再只靠测试里手写 SSE 解析
+- worker 现在也会提供初始快照：
+  - `POST /stream/snapshot`
+  - 新连接不只看到“连上之后发生了什么”
+  - 也能先拿到：
+    - 当前 queue 状态
+    - 最近 summary
+    - 最近 unsummarized observation
+- 已新增：
+- `memory_context_preview`
+  - 可直接预览当前将注入到 system context 的记忆内容
+  - 现在也会显示 `[PREVIOUSLY]`，如果当前 session 已经存在 assistant 交接文本
+  - 不再只能靠隐式 `system transform` 猜“现在会注入什么”
 - pending queue 已加入 stale processing 自愈：
   - worker 存活期间，如果某个 job 长时间卡在 `processing`
   - 下一次 claim 同 session 队列时会先把它重置回 `pending`
@@ -204,6 +290,7 @@ docs/
   - `memory_search`
   - `memory_timeline`
   - `memory_details`
+  - `memory_context_preview`
   这类“只做回查”的请求不会继续污染 request 历史
 - decision 启发式已收紧，不再把普通“生成/输出”措辞直接当成 checkpoint 信号
 - internal memory tool 已统一过滤：
@@ -215,9 +302,19 @@ docs/
   - `bun run smoke:host -- --workspace <workspace> --mode robust`
 - 已完成本地 OpenCode 真实宿主 smoke test：
   - plugin 能被宿主加载
-  - `memory_search` / `memory_timeline` / `memory_details` 会进入真实 tool surface
+  - `memory_search` / `memory_timeline` / `memory_details` / `memory_context_preview` 会进入真实 tool surface
   - `read` observation 会真实落库
   - `memory_timeline` 已能在真实宿主返回时间上下文
+  - `memory_context_preview` 已能在真实宿主返回当前注入记忆预览
+  - 同一轮控制变量测试里会额外验证：
+    - 初始快照链成立
+    - worker 跨 run 复用成立
+  - 实时流现在也会在真实宿主里验证：
+    - 通过 worker 注册表找到正在跑的 worker
+    - 先拿一份 `stream/snapshot` 初始快照
+    - 连上 `GET /stream`
+    - 再触发一次真实 `opencode run`
+    - 验证 `new_observation` 会被实时推出来
 - 已加入 legacy observation 噪声清洗：
   - 旧 `memory_*` 自查询 observation 会在初始化时清除
   - 旧 raw `read` observation 会在初始化时归一化

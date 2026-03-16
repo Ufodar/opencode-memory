@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../src/memory/request/types.js"
 import { buildSummaryRecord } from "../../src/memory/summary/aggregate.js"
+import { captureToolObservation } from "../../src/runtime/hooks/tool-after.js"
 
 describe("buildSummaryRecord", () => {
   test("falls back to deterministic summary when model result is unavailable", async () => {
@@ -32,6 +33,61 @@ describe("buildSummaryRecord", () => {
     expect(summary.requestAnchorID).toBe("req_1")
     expect(summary.observationIDs).toEqual(["obs_1"])
   })
+
+  test("deterministic summary reuses semantic read observations instead of path shorthand", async () => {
+    const observation = captureToolObservation(
+      {
+        tool: "read",
+        sessionID: "ses_demo",
+        callID: "call_1",
+        args: {
+          filePath: "/workspace/demo/brief.txt",
+        },
+        projectPath: "/workspace/demo",
+      },
+      {
+        title: "",
+        output: `<path>/workspace/demo/brief.txt</path>
+<type>file</type>
+<content>1: 这是一个真实 OpenCode 宿主 smoke 测试文件。
+2:
+3: 目标：
+4: 1. 让 agent 使用 read 工具读取这个文件。
+5: 2. 让 opencode-memory 通过 tool.execute.after 写入 observation。
+
+(End of file - total 5 lines)
+</content>`,
+        metadata: {},
+      },
+    )
+
+    expect(observation).not.toBeNull()
+
+    const summary = await buildSummaryRecord({
+      request: buildRequest(),
+      observations: [observation!],
+      generateModelSummary: async () => null,
+    })
+
+    expect(summary.outcomeSummary).toContain("真实 OpenCode 宿主 smoke 测试文件")
+    expect(summary.outcomeSummary).not.toContain("read: /workspace/demo/brief.txt")
+  })
+
+  test("deterministic summary deduplicates repeated outcome bits", async () => {
+    const summary = await buildSummaryRecord({
+      request: buildRequest(),
+      observations: [
+        buildObservationWithContent("已提取第3章资格条件并发现材料缺口"),
+        buildObservationWithContent("已提取第3章资格条件并发现材料缺口"),
+        buildObservationWithContent("补充确认：仍需人工核实业绩证明年限"),
+      ],
+      generateModelSummary: async () => null,
+    })
+
+    expect(summary.outcomeSummary).toContain("已提取第3章资格条件并发现材料缺口")
+    expect(summary.outcomeSummary).toContain("仍需人工核实业绩证明年限")
+    expect(summary.outcomeSummary.match(/已提取第3章资格条件并发现材料缺口/gu)?.length).toBe(1)
+  })
 })
 
 function buildRequest(): RequestAnchorRecord {
@@ -45,9 +101,16 @@ function buildRequest(): RequestAnchorRecord {
 }
 
 function buildObservation(): ObservationRecord {
+  return buildObservationWithContent("读取第3章资格条件并定位到3条硬约束", "发现3条硬约束和1项待确认字段")
+}
+
+function buildObservationWithContent(
+  content: string,
+  outputSummary = content,
+): ObservationRecord {
   return {
     id: "obs_1",
-    content: "读取第3章资格条件并定位到3条硬约束",
+    content,
     sessionID: "ses_demo",
     projectPath: "/workspace/demo",
     createdAt: 20,
@@ -60,7 +123,7 @@ function buildObservation(): ObservationRecord {
       summary: "读取招标文件第3章",
     },
     output: {
-      summary: "发现3条硬约束和1项待确认字段",
+      summary: outputSummary,
     },
     retrieval: {
       importance: 0.92,

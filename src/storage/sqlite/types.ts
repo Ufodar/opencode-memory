@@ -43,6 +43,7 @@ export const INTERNAL_CONTINUITY_TOOLS = [
   "memory_search",
   "memory_timeline",
   "memory_details",
+  "memory_context_preview",
   "memory_queue_status",
   "memory_queue_retry",
 ] as const

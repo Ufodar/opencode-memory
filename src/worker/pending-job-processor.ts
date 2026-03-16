@@ -18,6 +18,8 @@ export function createPendingJobProcessor(input: {
   scheduler: SessionJobScheduler
   worker: JobWorker
   log?: typeof defaultLog
+  onSessionQueued?: (sessionID: string) => void
+  getActiveSessionIDs?: () => string[]
   publishWorkerStatus?: (snapshot: MemoryWorkerStatusSnapshot) => void
 }) {
   const log = input.log ?? defaultLog
@@ -29,7 +31,7 @@ export function createPendingJobProcessor(input: {
         return
       }
 
-      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue started job", {
+      publishQueueState(log, input.store, input.getActiveSessionIDs, input.publishWorkerStatus, "memory queue started job", {
         type: "start",
         sessionID,
         jobID: job.id,
@@ -40,7 +42,7 @@ export function createPendingJobProcessor(input: {
       try {
         await executeJob(job, input.worker)
         input.store.complete(job.id)
-        publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue completed job", {
+        publishQueueState(log, input.store, input.getActiveSessionIDs, input.publishWorkerStatus, "memory queue completed job", {
           type: "complete",
           sessionID,
           jobID: job.id,
@@ -48,7 +50,7 @@ export function createPendingJobProcessor(input: {
         })
       } catch (error) {
         const failureStatus = input.store.recordFailure(job.id, normalizeError(error))
-        publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue failed job", {
+        publishQueueState(log, input.store, input.getActiveSessionIDs, input.publishWorkerStatus, "memory queue failed job", {
           type: "fail",
           sessionID,
           jobID: job.id,
@@ -71,12 +73,13 @@ export function createPendingJobProcessor(input: {
 
   return {
     enqueueRequestAnchor(payload: Parameters<JobWorker["captureRequestAnchorFromMessage"]>[0]) {
+      input.onSessionQueued?.(payload.sessionID)
       const jobID = input.store.enqueue({
         sessionID: payload.sessionID,
         kind: "request-anchor",
         payload,
       })
-      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue enqueued job", {
+      publishQueueState(log, input.store, input.getActiveSessionIDs, input.publishWorkerStatus, "memory queue enqueued job", {
         type: "enqueue",
         sessionID: payload.sessionID,
         jobID,
@@ -89,12 +92,13 @@ export function createPendingJobProcessor(input: {
       toolInput: Parameters<JobWorker["captureObservationFromToolCall"]>[0],
       output: Parameters<JobWorker["captureObservationFromToolCall"]>[1],
     ) {
+      input.onSessionQueued?.(toolInput.sessionID)
       const jobID = input.store.enqueue({
         sessionID: toolInput.sessionID,
         kind: "observation",
         payload: { toolInput, output },
       })
-      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue enqueued job", {
+      publishQueueState(log, input.store, input.getActiveSessionIDs, input.publishWorkerStatus, "memory queue enqueued job", {
         type: "enqueue",
         sessionID: toolInput.sessionID,
         jobID,
@@ -104,12 +108,13 @@ export function createPendingJobProcessor(input: {
     },
 
     enqueueIdleSummary(payload: Parameters<JobWorker["handleSessionIdle"]>[0]) {
+      input.onSessionQueued?.(payload)
       const jobID = input.store.enqueue({
         sessionID: payload,
         kind: "session-idle",
         payload: { sessionID: payload },
       })
-      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue enqueued job", {
+      publishQueueState(log, input.store, input.getActiveSessionIDs, input.publishWorkerStatus, "memory queue enqueued job", {
         type: "enqueue",
         sessionID: payload,
         jobID,
@@ -127,12 +132,14 @@ export function createPendingJobProcessor(input: {
     resumePendingJobs() {
       const resetCount = input.store.resetProcessingToPending()
       const pendingSessions = input.store.listSessionIDsWithPendingJobs()
-      publishQueueState(log, input.store, input.publishWorkerStatus, "memory queue resumed pending jobs", {
+      publishQueueState(log, input.store, input.getActiveSessionIDs, input.publishWorkerStatus, "memory queue resumed pending jobs", {
         type: "resume",
         pendingSessions: pendingSessions.length,
         resetProcessingCount: resetCount,
+        activeSessionIDs: pendingSessions,
       })
       for (const sessionID of pendingSessions) {
+        input.onSessionQueued?.(sessionID)
         scheduleSession(sessionID)
       }
       return resetCount
@@ -167,6 +174,7 @@ function normalizeError(error: unknown) {
 function publishQueueState(
   log: typeof defaultLog,
   store: Pick<PendingJobStore, "getQueueStats">,
+  getActiveSessionIDs: (() => string[]) | undefined,
   publishWorkerStatus: ((snapshot: MemoryWorkerStatusSnapshot) => void) | undefined,
   message: string,
   metadata: Record<string, unknown> & MemoryWorkerStatusEvent,
@@ -177,6 +185,7 @@ function publishQueueState(
     counts,
     queueDepth: counts.pending + counts.processing,
     isProcessing: counts.pending > 0 || counts.processing > 0,
+    activeSessionIDs: getActiveSessionIDs?.() ?? [],
     lastEvent: {
       type: metadata.type,
       sessionID: metadata.sessionID,

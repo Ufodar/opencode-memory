@@ -12,6 +12,10 @@ import type {
   IdleSummaryResponse,
   MemoryDetailsRequest,
   MemoryDetailsResponse,
+  SessionCompleteRequest,
+  SessionCompleteResponse,
+  MemoryWorkerSnapshotRequest,
+  MemoryWorkerSnapshotResponse,
   QueueRetryRequest,
   QueueRetryResponse,
   QueueStatusRequest,
@@ -22,6 +26,7 @@ import type {
   SelectInjectionResponse,
   TimelineMemoryRequest,
   TimelineMemoryResponse,
+  MemoryWorkerStreamEvent,
   WorkerAcceptedResponse,
   WorkerHealthResponse,
 } from "./protocol.js"
@@ -30,6 +35,11 @@ type FetchLike = typeof fetch
 
 const DEFAULT_WORKER_REQUEST_TIMEOUT_MS = 5_000
 const DEFAULT_WORKER_HEALTH_TIMEOUT_MS = 1_000
+
+export interface MemoryWorkerEventStream {
+  readNext(timeoutMs?: number): Promise<MemoryWorkerStreamEvent>
+  close(): Promise<void>
+}
 
 export function createMemoryWorkerHttpClient(input: {
   baseUrl: string
@@ -63,6 +73,15 @@ export function createMemoryWorkerHttpClient(input: {
       return post<IdleSummaryRequest, IdleSummaryResponse>(
         fetchImpl,
         `${baseUrl}/enqueue/session-idle`,
+        { sessionID },
+        requestTimeoutMs,
+      )
+    },
+
+    completeSession(sessionID) {
+      return post<SessionCompleteRequest, SessionCompleteResponse>(
+        fetchImpl,
+        `${baseUrl}/session/complete`,
         { sessionID },
         requestTimeoutMs,
       )
@@ -126,6 +145,15 @@ export function createMemoryWorkerHttpClient(input: {
       return post<QueueStatusRequest, QueueStatusResponse>(
         fetchImpl,
         `${baseUrl}/queue/status`,
+        payload,
+        requestTimeoutMs,
+      )
+    },
+
+    getLiveSnapshot(payload) {
+      return post<MemoryWorkerSnapshotRequest, MemoryWorkerSnapshotResponse>(
+        fetchImpl,
+        `${baseUrl}/stream/snapshot`,
         payload,
         requestTimeoutMs,
       )
@@ -217,6 +245,89 @@ export async function shutdownMemoryWorker(input: {
   }
 }
 
+export async function openMemoryWorkerEventStream(input: {
+  baseUrl: string
+  fetchImpl?: FetchLike
+  requestTimeoutMs?: number
+}): Promise<MemoryWorkerEventStream> {
+  const fetchImpl = input.fetchImpl ?? fetch
+  const requestTimeoutMs = input.requestTimeoutMs ?? DEFAULT_WORKER_REQUEST_TIMEOUT_MS
+  const normalizedBaseUrl = input.baseUrl.replace(/\/$/, "")
+  const response = await withRequestTimeout(
+    (signal) => fetchImpl(`${normalizedBaseUrl}/stream`, { signal }),
+    requestTimeoutMs,
+    "Memory worker stream open",
+  )
+
+  if (!response.ok) {
+    const message = await safeReadError(response)
+    throw new Error(message)
+  }
+
+  if (!response.body) {
+    throw new Error("Memory worker stream has no response body")
+  }
+
+  const reader = response.body.getReader()
+  let buffer = ""
+
+  return {
+    async readNext(timeoutMs = requestTimeoutMs) {
+      const deadline = Date.now() + timeoutMs
+
+      while (Date.now() < deadline) {
+        const frame = tryReadSseFrame()
+        if (frame) {
+          return JSON.parse(frame) as MemoryWorkerStreamEvent
+        }
+
+        const remainingMs = deadline - Date.now()
+        const result = await Promise.race([
+          reader.read(),
+          sleep(Math.max(1, remainingMs)).then(() => "timeout" as const),
+        ])
+
+        if (result === "timeout") {
+          break
+        }
+
+        if (result.done) {
+          break
+        }
+
+        buffer += new TextDecoder().decode(result.value)
+      }
+
+      throw new Error(`Memory worker stream timed out after ${timeoutMs}ms`)
+    },
+
+    async close() {
+      await reader.cancel()
+    },
+  }
+
+  function tryReadSseFrame(): string | null {
+    const separatorIndex = buffer.indexOf("\n\n")
+    if (separatorIndex === -1) {
+      return null
+    }
+
+    const frame = buffer.slice(0, separatorIndex)
+    buffer = buffer.slice(separatorIndex + 2)
+
+    const dataLines = frame
+      .split("\n")
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice("data:".length).trim())
+
+    if (dataLines.length === 0) {
+      return null
+    }
+
+    return dataLines.join("\n")
+  }
+}
+
 async function post<TRequest, TResponse>(
   fetchImpl: FetchLike,
   url: string,
@@ -252,8 +363,9 @@ async function withRequestTimeout<T>(
 ): Promise<T> {
   const controller = new AbortController()
   const timeoutError = new Error(`${label} timed out after ${timeoutMs}ms`)
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined
   const timeoutPromise = new Promise<never>((_, reject) => {
-    const timer = setTimeout(() => {
+    timeoutHandle = setTimeout(() => {
       controller.abort(timeoutError)
       reject(timeoutError)
     }, timeoutMs)
@@ -261,7 +373,9 @@ async function withRequestTimeout<T>(
     controller.signal.addEventListener(
       "abort",
       () => {
-        clearTimeout(timer)
+        if (timeoutHandle) {
+          clearTimeout(timeoutHandle)
+        }
       },
       { once: true },
     )
@@ -279,6 +393,10 @@ async function withRequestTimeout<T>(
     }
 
     throw error
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
   }
 }
 

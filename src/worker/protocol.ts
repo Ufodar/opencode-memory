@@ -55,6 +55,19 @@ export type IdleSummaryResult =
 
 export type IdleSummaryResponse = WorkerAcceptedResponse | IdleSummaryResult
 
+export interface SessionCompleteRequest {
+  sessionID: string
+}
+
+export interface SessionCompleteResponse {
+  status: "completed"
+  sessionID: string
+  summaryStatus: "busy" | "missing-request" | "no-op" | "summarized" | "queued"
+  requestAnchorID?: string
+  summaryID?: string
+  checkpointObservationAt?: number
+}
+
 export interface SelectInjectionRequest {
   sessionID?: string
   maxSummaries: number
@@ -72,6 +85,7 @@ export interface BuildSystemContextRequest {
   maxSummaries: number
   maxObservations: number
   maxChars: number
+  priorAssistantMessage?: string
 }
 
 export type BuildSystemContextResponse = string[]
@@ -149,3 +163,37 @@ export interface WorkerHealthResponse {
   ok: true
   version: string
 }
+
+export interface MemoryWorkerSnapshotRequest {
+  sessionID?: string
+  maxSummaries: number
+  maxObservations: number
+  queueLimit: number
+}
+
+export interface MemoryWorkerSnapshotResponse {
+  scope: "session" | "project"
+  summaries: SummaryRecord[]
+  observations: ObservationRecord[]
+  queue: QueueStatusResponse
+}
+
+export type MemoryWorkerStreamEvent =
+  | {
+      type: "connected"
+      timestamp: number
+    }
+  | {
+      type: "new_observation"
+      timestamp: number
+      observation: ObservationRecord
+    }
+  | {
+      type: "new_summary"
+      timestamp: number
+      summary: Extract<MemoryDetailRecord, { kind: "summary" }>
+    }
+  | ({
+      type: "processing_status"
+      timestamp: number
+    } & MemoryWorkerStatusSnapshot)

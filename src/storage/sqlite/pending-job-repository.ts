@@ -121,6 +121,20 @@ export class PendingJobRepository implements PendingJobStore {
     return status
   }
 
+  hasOutstandingJobs(sessionID: string): boolean {
+    const row = this.db
+      .prepare(`
+        SELECT 1
+        FROM pending_jobs
+        WHERE session_id = ?
+          AND status IN ('pending', 'processing')
+        LIMIT 1
+      `)
+      .get(sessionID) as { 1: number } | undefined
+
+    return Boolean(row)
+  }
+
   listSessionIDsWithPendingJobs(): string[] {
     const rows = this.db
       .prepare(`

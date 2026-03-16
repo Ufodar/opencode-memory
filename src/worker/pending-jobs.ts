@@ -49,6 +49,7 @@ export interface PendingJobStore {
   claimNext(sessionID: string): PendingJobRecord | null
   complete(id: number): void
   recordFailure(id: number, error: string): "pending" | "failed"
+  hasOutstandingJobs(sessionID: string): boolean
   listSessionIDsWithPendingJobs(): string[]
   resetProcessingToPending(): number
   getQueueStats(): {

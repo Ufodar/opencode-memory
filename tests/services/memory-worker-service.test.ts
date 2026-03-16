@@ -43,7 +43,7 @@ describe("createMemoryWorkerService", () => {
     expect(saved[0]?.content).toBe("梳理第3章资格条件")
   })
 
-  test("captures and saves an observation from tool execution", () => {
+  test("captures and saves an observation from tool execution", async () => {
     const saved: ObservationRecord[] = []
 
     const worker = createMemoryWorkerService({
@@ -78,7 +78,7 @@ describe("createMemoryWorkerService", () => {
       },
     })
 
-    const observation = worker.captureObservationFromToolCall(
+    const observation = await worker.captureObservationFromToolCall(
       {
         tool: "read",
         sessionID: "ses_demo",
@@ -97,12 +97,172 @@ describe("createMemoryWorkerService", () => {
     expect(saved[0]?.content).toBe("发现3条约束")
   })
 
+  test("prefers model-assisted observation refinement when available", async () => {
+    const saved: ObservationRecord[] = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      saveObservation(record) {
+        saved.push(record)
+      },
+      captureToolObservation(input) {
+        return {
+          id: "obs_1",
+          content: "启发式 observation",
+          sessionID: input.sessionID,
+          projectPath: input.projectPath,
+          createdAt: 1,
+          tool: {
+            name: input.tool,
+            callID: input.callID,
+            status: "success",
+          },
+          input: { summary: "读取第3章" },
+          output: { summary: "启发式输出摘要" },
+          retrieval: { importance: 0.6, tags: ["read", "observation"] },
+          trace: {
+            workingDirectory: "/workspace/demo",
+            filesRead: ["/workspace/demo/brief.txt"],
+          },
+        }
+      },
+      generateModelObservation: async () => ({
+        content: "模型精炼后的 observation",
+        outputSummary: "模型精炼后的输出摘要",
+        tags: ["requirements", "eligibility"],
+        importance: 0.88,
+      }),
+    } as Parameters<typeof createMemoryWorkerService>[0] & {
+      generateModelObservation: () => Promise<{
+        content: string
+        outputSummary?: string
+        tags?: string[]
+        importance?: number
+      }>
+    })
+
+    const observation = await worker.captureObservationFromToolCall(
+      {
+        tool: "read",
+        sessionID: "ses_demo",
+        callID: "call_1",
+        args: { filePath: "招标文件.docx" },
+      },
+      {
+        title: "读取招标文件",
+        output: "第3章资格条件",
+        metadata: {},
+      },
+    )
+
+    expect(observation?.content).toBe("模型精炼后的 observation")
+    expect(observation?.output.summary).toBe("模型精炼后的输出摘要")
+    expect(observation?.retrieval.tags).toEqual(["requirements", "eligibility"])
+    expect(observation?.retrieval.importance).toBe(0.88)
+    expect(observation?.trace).toEqual({
+      workingDirectory: "/workspace/demo",
+      filesRead: ["/workspace/demo/brief.txt"],
+    })
+    expect(saved[0]?.content).toBe("模型精炼后的 observation")
+  })
+
+  test("falls back to deterministic observation when model refinement content is blank", async () => {
+    const saved: ObservationRecord[] = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      saveObservation(record) {
+        saved.push(record)
+      },
+      captureToolObservation(input) {
+        return {
+          id: "obs_1",
+          content: "启发式 observation",
+          sessionID: input.sessionID,
+          projectPath: input.projectPath,
+          createdAt: 1,
+          tool: {
+            name: input.tool,
+            callID: input.callID,
+            status: "success",
+          },
+          input: { summary: "读取第3章" },
+          output: { summary: "启发式输出摘要" },
+          retrieval: { importance: 0.6, tags: ["read", "observation"] },
+          trace: {
+            workingDirectory: "/workspace/demo",
+            filesRead: ["/workspace/demo/brief.txt"],
+          },
+        }
+      },
+      generateModelObservation: async () => ({
+        content: "   ",
+        outputSummary: "   ",
+      }),
+    } as Parameters<typeof createMemoryWorkerService>[0] & {
+      generateModelObservation: () => Promise<{
+        content: string
+        outputSummary?: string
+      }>
+    })
+
+    const observation = await worker.captureObservationFromToolCall(
+      {
+        tool: "read",
+        sessionID: "ses_demo",
+        callID: "call_1",
+        args: { filePath: "招标文件.docx" },
+      },
+      {
+        title: "读取招标文件",
+        output: "第3章资格条件",
+        metadata: {},
+      },
+    )
+
+    expect(observation?.content).toBe("启发式 observation")
+    expect(observation?.output.summary).toBe("启发式输出摘要")
+    expect(observation?.trace).toEqual({
+      workingDirectory: "/workspace/demo",
+      filesRead: ["/workspace/demo/brief.txt"],
+    })
+    expect(saved[0]?.content).toBe("启发式 observation")
+  })
+
   test("runs idle summary behind the session guard", async () => {
     const calls: string[] = []
 
     const worker = createMemoryWorkerService({
       projectPath: "/workspace/demo",
-      store: {} as MemoryIdleSummaryStore & MemoryInjectionStore,
+      store: {
+        getMemoryDetails() {
+          return [
+            {
+              kind: "summary" as const,
+              id: "sum_1",
+              content: "先整理资格条件，再补缺口清单。",
+              createdAt: 2,
+              requestSummary: "梳理第3章资格条件",
+              observationIDs: ["obs_1", "obs_2"],
+              coveredObservations: [],
+            },
+          ]
+        },
+      } as MemoryIdleSummaryStore & MemoryInjectionStore,
       idleSummaryGuard: {
         async run(sessionID, task) {
           calls.push(`guard:${sessionID}`)
@@ -119,6 +279,57 @@ describe("createMemoryWorkerService", () => {
     const result = await worker.handleSessionIdle("ses_demo")
 
     expect(result).toEqual({ status: "missing-request" })
+    expect(calls).toEqual(["guard:ses_demo", "pipeline:ses_demo"])
+  })
+
+  test("completes a session by running the idle summary pipeline first", async () => {
+    const calls: string[] = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        getMemoryDetails() {
+          return [
+            {
+              kind: "summary" as const,
+              id: "sum_1",
+              content: "先整理资格条件，再补缺口清单。",
+              createdAt: 2,
+              requestSummary: "梳理第3章资格条件",
+              observationIDs: ["obs_1", "obs_2"],
+              coveredObservations: [],
+            },
+          ]
+        },
+      } as MemoryIdleSummaryStore & MemoryInjectionStore,
+      idleSummaryGuard: {
+        async run(sessionID, task) {
+          calls.push(`guard:${sessionID}`)
+          const result = await task()
+          return { ran: true, result }
+        },
+      },
+      runIdleSummaryPipeline: async (input) => {
+        calls.push(`pipeline:${input.sessionID}`)
+        return {
+          status: "summarized" as const,
+          requestAnchorID: "req_1",
+          summaryID: "sum_1",
+          checkpointObservationAt: 2,
+        }
+      },
+    })
+
+    const result = await worker.completeSession("ses_demo")
+
+    expect(result).toEqual({
+      status: "completed",
+      sessionID: "ses_demo",
+      summaryStatus: "summarized",
+      requestAnchorID: "req_1",
+      summaryID: "sum_1",
+      checkpointObservationAt: 2,
+    })
     expect(calls).toEqual(["guard:ses_demo", "pipeline:ses_demo"])
   })
 
@@ -389,6 +600,7 @@ describe("createMemoryWorkerService", () => {
         isProcessing: true,
         queueDepth: 1,
         counts: { pending: 1, processing: 0, failed: 1 },
+        activeSessionIDs: [],
         lastEvent: {
           type: "enqueue",
           sessionID: "ses_demo",

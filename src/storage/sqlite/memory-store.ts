@@ -165,6 +165,10 @@ export class SQLiteMemoryStore
     return this.pendingJobs.listSessionIDsWithPendingJobs()
   }
 
+  hasOutstandingPendingJobs(sessionID: string): boolean {
+    return this.pendingJobs.hasOutstandingJobs(sessionID)
+  }
+
   resetProcessingPendingJobs(): number {
     return this.pendingJobs.resetProcessingToPending()
   }

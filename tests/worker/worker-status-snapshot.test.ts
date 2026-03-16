@@ -28,11 +28,20 @@ describe("memory worker status snapshot", () => {
       isProcessing: true,
       queueDepth: 2,
       counts: { pending: 1, processing: 1, failed: 0 },
+      activeSessionIDs: ["ses_demo", "ses_prev"],
       lastEvent: {
         type: "start",
         sessionID: "ses_demo",
         jobID: 7,
         kind: "observation",
+      },
+      lastSessionCompletion: {
+        sessionID: "ses_prev",
+        completedAt: 455,
+        summaryStatus: "summarized",
+        requestAnchorID: "req_1",
+        summaryID: "sum_1",
+        checkpointObservationAt: 123,
       },
     })
 
@@ -41,11 +50,20 @@ describe("memory worker status snapshot", () => {
       isProcessing: true,
       queueDepth: 2,
       counts: { pending: 1, processing: 1, failed: 0 },
+      activeSessionIDs: ["ses_demo", "ses_prev"],
       lastEvent: {
         type: "start",
         sessionID: "ses_demo",
         jobID: 7,
         kind: "observation",
+      },
+      lastSessionCompletion: {
+        sessionID: "ses_prev",
+        completedAt: 455,
+        summaryStatus: "summarized",
+        requestAnchorID: "req_1",
+        summaryID: "sum_1",
+        checkpointObservationAt: 123,
       },
     })
   })

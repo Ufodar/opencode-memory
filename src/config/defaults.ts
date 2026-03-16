@@ -6,4 +6,7 @@ export const DEFAULTS = {
   maxCompactionObservations: 10,
   maxCompactionChars: 1800,
   minObservationOutputLength: 40,
+  workerIdleShutdownMs: 60_000,
+  workerActiveSessionMaxIdleMs: 15 * 60_000,
+  workerActiveSessionReapIntervalMs: 2 * 60_000,
 } as const

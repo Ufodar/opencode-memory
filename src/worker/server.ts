@@ -1,4 +1,5 @@
 import { createSessionReentryGuard } from "../runtime/hooks/idle-summary-guard.js"
+import { generateModelObservation } from "../services/ai/model-observation.js"
 import { generateModelSummary } from "../services/ai/model-summary.js"
 import { log } from "../services/logger.js"
 import { createMemoryWorkerService } from "../services/memory-worker-service.js"
@@ -10,7 +11,9 @@ import {
 } from "./registry.js"
 import { createPendingJobProcessor } from "./pending-job-processor.js"
 import { createSessionJobScheduler } from "./session-job-scheduler.js"
+import { createMemoryWorkerStreamBroadcaster } from "./stream-broadcaster.js"
 import { createMemoryWorkerStatusSnapshotStore } from "./worker-status-snapshot.js"
+import { createActiveSessionRegistry } from "./active-session-registry.js"
 import type { MemoryWorkerStatusSnapshot } from "../memory/contracts.js"
 import type {
   BuildCompactionContextRequest,
@@ -25,6 +28,10 @@ import type {
   IdleSummaryResponse,
   MemoryDetailsRequest,
   MemoryDetailsResponse,
+  SessionCompleteRequest,
+  SessionCompleteResponse,
+  MemoryWorkerSnapshotRequest,
+  MemoryWorkerSnapshotResponse,
   QueueRetryRequest,
   QueueRetryResponse,
   QueueStatusRequest,
@@ -51,19 +58,43 @@ export async function startMemoryWorkerServer(input: {
   registryPath?: string
   statusPath?: string
   heartbeatIntervalMs?: number
+  idleShutdownMs?: number
+  activeSessionMaxIdleMs?: number
+  activeSessionReapIntervalMs?: number
 }): Promise<MemoryWorkerServerHandle> {
   const store = new SQLiteMemoryStore(input.databasePath)
   const statusStore = input.statusPath
     ? createMemoryWorkerStatusSnapshotStore(input.statusPath)
     : null
+  const initialStatusSnapshot = statusStore?.read() ?? null
+  // Active sessions are runtime state. On restart, they should be rebuilt from
+  // pending jobs and new capture events rather than revived from a stale status snapshot.
+  const activeSessions = createActiveSessionRegistry([])
+  let lastWorkerStatusSnapshot: MemoryWorkerStatusSnapshot | null = null
   const idleSummaryGuard = createSessionReentryGuard()
   const sessionJobs = createSessionJobScheduler()
+  const streamBroadcaster = createMemoryWorkerStreamBroadcaster({
+    getCurrentStatus: () =>
+      getCurrentWorkerStatusSnapshot({
+        statusStore,
+        store,
+        activeSessionIDs: activeSessions.list(),
+        lastSnapshot: lastWorkerStatusSnapshot,
+      }),
+  })
   const worker = createMemoryWorkerService({
     projectPath: input.projectPath,
     store,
     idleSummaryGuard,
+    generateModelObservation,
     generateModelSummary,
-    readWorkerStatus: () => statusStore?.read() ?? null,
+    readWorkerStatus: () => lastWorkerStatusSnapshot ?? initialStatusSnapshot,
+    onObservationCaptured(observation) {
+      streamBroadcaster.broadcastObservation(observation)
+    },
+    onSummaryCaptured(summary) {
+      streamBroadcaster.broadcastSummary(summary)
+    },
   })
   const pendingJobs = createPendingJobProcessor({
     store: {
@@ -78,6 +109,9 @@ export async function startMemoryWorkerServer(input: {
       },
       recordFailure(id, error) {
         return store.recordPendingJobFailure(id, error)
+      },
+      hasOutstandingJobs(sessionID) {
+        return store.hasOutstandingPendingJobs(sessionID)
       },
       listSessionIDsWithPendingJobs() {
         return store.listSessionIDsWithPendingJobs()
@@ -100,12 +134,62 @@ export async function startMemoryWorkerServer(input: {
     },
     scheduler: sessionJobs,
     worker,
+    onSessionQueued(sessionID) {
+      activeSessions.touch(sessionID)
+    },
+    getActiveSessionIDs() {
+      return activeSessions.list()
+    },
     publishWorkerStatus(snapshot) {
-      statusStore?.write(snapshot)
+      const mergedSnapshot: MemoryWorkerStatusSnapshot = {
+        ...snapshot,
+        activeSessionIDs: activeSessions.list(),
+        lastSessionCompletion:
+          snapshot.lastSessionCompletion ??
+          lastWorkerStatusSnapshot?.lastSessionCompletion ??
+          statusStore?.read()?.lastSessionCompletion,
+      }
+      lastWorkerStatusSnapshot = mergedSnapshot
+      statusStore?.write(mergedSnapshot)
+      streamBroadcaster.broadcastProcessingStatus(mergedSnapshot)
     },
   })
   let stopped = false
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined
+  let idleShutdownTimer: ReturnType<typeof setInterval> | undefined
+  let activeSessionReapTimer: ReturnType<typeof setInterval> | undefined
+  let lastActivityAt = Date.now()
+  const reapingSessionIDs = new Set<string>()
+
+  const completeActiveSession = async (sessionID: string) => {
+    const response = await sessionJobs.run(sessionID, async () => {
+      return await worker.completeSession(sessionID)
+    })
+
+    activeSessions.remove(sessionID)
+    publishWorkerLifecycleEvent({
+      statusStore,
+      store,
+      streamBroadcaster,
+      activeSessionIDs: activeSessions.list(),
+      onSnapshot(snapshot) {
+        lastWorkerStatusSnapshot = snapshot
+      },
+      previousSnapshot: lastWorkerStatusSnapshot,
+      lastEvent: {
+        type: "session-complete",
+        sessionID,
+      },
+      lastSessionCompletion: {
+        sessionID,
+        completedAt: Date.now(),
+        summaryStatus: response.summaryStatus,
+        requestAnchorID: response.requestAnchorID,
+        summaryID: response.summaryID,
+        checkpointObservationAt: response.checkpointObservationAt,
+      },
+    })
+  }
 
   const stopServer = async () => {
     if (stopped) {
@@ -117,6 +201,25 @@ export async function startMemoryWorkerServer(input: {
       clearInterval(heartbeatTimer)
       heartbeatTimer = undefined
     }
+    if (idleShutdownTimer) {
+      clearInterval(idleShutdownTimer)
+      idleShutdownTimer = undefined
+    }
+    if (activeSessionReapTimer) {
+      clearInterval(activeSessionReapTimer)
+      activeSessionReapTimer = undefined
+    }
+    const activeSessionIDs = activeSessions.list()
+    for (const sessionID of activeSessionIDs) {
+      try {
+        await completeActiveSession(sessionID)
+      } catch (error) {
+        log("memory worker shutdown flush failed", {
+          sessionID,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
     if (input.registryPath) {
       removeWorkerRegistryRecord({
         registryPath: input.registryPath,
@@ -124,9 +227,16 @@ export async function startMemoryWorkerServer(input: {
         databasePath: input.databasePath,
       })
     }
-    writeWorkerStatusSnapshot(statusStore, store.getQueueStats(), {
-      type: "worker-stopped",
-    })
+    lastWorkerStatusSnapshot = writeWorkerStatusSnapshot(
+      statusStore,
+      store.getQueueStats(),
+      activeSessions.list(),
+      {
+        type: "worker-stopped",
+      },
+      lastWorkerStatusSnapshot,
+    )
+    streamBroadcaster.close()
     server.stop(true)
     store.close()
   }
@@ -139,6 +249,12 @@ export async function startMemoryWorkerServer(input: {
 
       if (request.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, version: getOpencodeMemoryVersion() })
+      }
+
+      lastActivityAt = Date.now()
+
+      if (request.method === "GET" && url.pathname === "/stream") {
+        return streamBroadcaster.createResponse(request)
       }
 
       if (request.method === "POST" && url.pathname === "/shutdown") {
@@ -171,28 +287,32 @@ export async function startMemoryWorkerServer(input: {
           }
           case "/capture/request-anchor": {
             const payload = await readJson<CaptureRequestAnchorRequest>(request)
-            return json(
-              await sessionJobs.run(
-                payload.sessionID,
-                async () =>
-                  await worker.captureRequestAnchorFromMessage(
-                    payload,
-                  ) satisfies CaptureRequestAnchorResponse,
-              ),
+            const response = await sessionJobs.run(
+              payload.sessionID,
+              async () =>
+                await worker.captureRequestAnchorFromMessage(
+                  payload,
+                ) satisfies CaptureRequestAnchorResponse,
             )
+            if (response) {
+              activeSessions.touch(payload.sessionID)
+            }
+            return json(response)
           }
           case "/capture/observation": {
             const payload = await readJson<CaptureObservationRequest>(request)
-            return json(
-              await sessionJobs.run(
-                payload.toolInput.sessionID,
-                async () =>
-                  await worker.captureObservationFromToolCall(
-                    payload.toolInput,
-                    payload.output,
-                  ) satisfies CaptureObservationResponse,
-              ) satisfies CaptureObservationResponse,
-            )
+            const response = await sessionJobs.run(
+              payload.toolInput.sessionID,
+              async () =>
+                await worker.captureObservationFromToolCall(
+                  payload.toolInput,
+                  payload.output,
+                ) satisfies CaptureObservationResponse,
+            ) satisfies CaptureObservationResponse
+            if (response) {
+              activeSessions.touch(payload.toolInput.sessionID)
+            }
+            return json(response)
           }
           case "/session/idle": {
             const payload = await readJson<IdleSummaryRequest>(request)
@@ -202,6 +322,37 @@ export async function startMemoryWorkerServer(input: {
                 async () => await worker.handleSessionIdle(payload.sessionID),
               ) satisfies IdleSummaryResponse,
             )
+          }
+          case "/session/complete": {
+            const payload = await readJson<SessionCompleteRequest>(request)
+            const response = await sessionJobs.run(
+              payload.sessionID,
+              async () => await worker.completeSession(payload.sessionID),
+            )
+            activeSessions.remove(payload.sessionID)
+            publishWorkerLifecycleEvent({
+              statusStore,
+              store,
+              streamBroadcaster,
+              activeSessionIDs: activeSessions.list(),
+              onSnapshot(snapshot) {
+                lastWorkerStatusSnapshot = snapshot
+              },
+              previousSnapshot: lastWorkerStatusSnapshot,
+              lastEvent: {
+                type: "session-complete",
+                sessionID: payload.sessionID,
+              },
+              lastSessionCompletion: {
+                sessionID: payload.sessionID,
+                completedAt: Date.now(),
+                summaryStatus: response.summaryStatus,
+                requestAnchorID: response.requestAnchorID,
+                summaryID: response.summaryID,
+                checkpointObservationAt: response.checkpointObservationAt,
+              },
+            })
+            return json(response satisfies SessionCompleteResponse)
           }
           case "/injection/select": {
             const payload = await readJson<SelectInjectionRequest>(request)
@@ -232,6 +383,10 @@ export async function startMemoryWorkerServer(input: {
           case "/queue/status": {
             const payload = await readJson<QueueStatusRequest>(request)
             return json(await worker.getQueueStatus(payload) satisfies QueueStatusResponse)
+          }
+          case "/stream/snapshot": {
+            const payload = await readJson<MemoryWorkerSnapshotRequest>(request)
+            return json(await runSessionScoped(payload.sessionID, sessionJobs, async () => worker.getLiveSnapshot(payload)) satisfies MemoryWorkerSnapshotResponse)
           }
           case "/queue/retry": {
             const payload = await readJson<QueueRetryRequest>(request)
@@ -280,9 +435,79 @@ export async function startMemoryWorkerServer(input: {
     heartbeatTimer = setInterval(writeHeartbeat, input.heartbeatIntervalMs ?? 5_000)
   }
 
-  writeWorkerStatusSnapshot(statusStore, store.getQueueStats(), {
-    type: "worker-started",
-  })
+  if (input.idleShutdownMs && input.idleShutdownMs > 0) {
+    const intervalMs = Math.max(25, Math.min(1_000, Math.floor(input.idleShutdownMs / 2)))
+    idleShutdownTimer = setInterval(() => {
+      if (stopped) {
+        return
+      }
+
+      const counts = store.getQueueStats()
+      if (counts.pending > 0 || counts.processing > 0) {
+        return
+      }
+
+      if (streamBroadcaster.getClientCount() > 0) {
+        return
+      }
+
+      if (Date.now() - lastActivityAt < input.idleShutdownMs!) {
+        return
+      }
+
+      void stopServer()
+    }, intervalMs)
+  }
+
+  if (input.activeSessionMaxIdleMs && input.activeSessionMaxIdleMs > 0) {
+    const intervalMs =
+      input.activeSessionReapIntervalMs && input.activeSessionReapIntervalMs > 0
+        ? input.activeSessionReapIntervalMs
+        : Math.max(100, Math.min(5_000, Math.floor(input.activeSessionMaxIdleMs / 2)))
+
+    activeSessionReapTimer = setInterval(() => {
+      if (stopped) {
+        return
+      }
+
+      const staleSessionIDs = activeSessions.listStale(input.activeSessionMaxIdleMs!)
+      for (const sessionID of staleSessionIDs) {
+        if (reapingSessionIDs.has(sessionID)) {
+          continue
+        }
+        if (store.hasOutstandingPendingJobs(sessionID)) {
+          continue
+        }
+        if (sessionJobs.isBusy(sessionID)) {
+          continue
+        }
+
+        reapingSessionIDs.add(sessionID)
+        void completeActiveSession(sessionID)
+          .finally(() => {
+            reapingSessionIDs.delete(sessionID)
+          })
+      }
+    }, intervalMs)
+  }
+
+  lastWorkerStatusSnapshot = writeWorkerStatusSnapshot(
+    statusStore,
+    store.getQueueStats(),
+    activeSessions.list(),
+    {
+      type: "worker-started",
+    },
+    lastWorkerStatusSnapshot ?? initialStatusSnapshot,
+  )
+  streamBroadcaster.broadcastProcessingStatus(
+    getCurrentWorkerStatusSnapshot({
+      statusStore,
+      store,
+      activeSessionIDs: activeSessions.list(),
+      lastSnapshot: lastWorkerStatusSnapshot,
+    }),
+  )
   pendingJobs.resumePendingJobs()
 
   return {
@@ -297,19 +522,80 @@ export async function startMemoryWorkerServer(input: {
 function writeWorkerStatusSnapshot(
   statusStore: ReturnType<typeof createMemoryWorkerStatusSnapshotStore> | null,
   counts: MemoryWorkerStatusSnapshot["counts"],
+  activeSessionIDs: string[],
   lastEvent: MemoryWorkerStatusSnapshot["lastEvent"],
+  previousSnapshot?: MemoryWorkerStatusSnapshot | null,
+  lastSessionCompletion?: MemoryWorkerStatusSnapshot["lastSessionCompletion"],
 ) {
-  if (!statusStore) {
-    return
-  }
-
-  statusStore.write({
+  const snapshot = {
     updatedAt: Date.now(),
     counts,
     queueDepth: counts.pending + counts.processing,
     isProcessing: counts.pending > 0 || counts.processing > 0,
+    activeSessionIDs,
     lastEvent,
-  })
+    lastSessionCompletion: lastSessionCompletion ?? previousSnapshot?.lastSessionCompletion,
+  }
+
+  statusStore?.write(snapshot)
+  return snapshot
+}
+
+function publishWorkerLifecycleEvent(input: {
+  statusStore: ReturnType<typeof createMemoryWorkerStatusSnapshotStore> | null
+  store: Pick<SQLiteMemoryStore, "getQueueStats">
+  streamBroadcaster: ReturnType<typeof createMemoryWorkerStreamBroadcaster>
+  activeSessionIDs: string[]
+  lastEvent: MemoryWorkerStatusSnapshot["lastEvent"]
+  lastSessionCompletion?: MemoryWorkerStatusSnapshot["lastSessionCompletion"]
+  previousSnapshot?: MemoryWorkerStatusSnapshot | null
+  onSnapshot?: (snapshot: MemoryWorkerStatusSnapshot) => void
+}) {
+  const counts = input.store.getQueueStats()
+  const snapshot = writeWorkerStatusSnapshot(
+    input.statusStore,
+    counts,
+    input.activeSessionIDs,
+    input.lastEvent,
+    input.previousSnapshot,
+    input.lastSessionCompletion,
+  )
+  input.onSnapshot?.(snapshot)
+  input.streamBroadcaster.broadcastProcessingStatus(
+    getCurrentWorkerStatusSnapshot({
+      statusStore: input.statusStore,
+      store: input.store,
+      activeSessionIDs: input.activeSessionIDs,
+      lastSnapshot: snapshot,
+    }),
+  )
+}
+
+function getCurrentWorkerStatusSnapshot(
+  input: {
+    statusStore: ReturnType<typeof createMemoryWorkerStatusSnapshotStore> | null
+    store: Pick<SQLiteMemoryStore, "getQueueStats">
+    activeSessionIDs?: string[]
+    lastSnapshot: MemoryWorkerStatusSnapshot | null
+  },
+): MemoryWorkerStatusSnapshot {
+  const currentSnapshot = input.lastSnapshot ?? input.statusStore?.read()
+  if (currentSnapshot) {
+    return currentSnapshot
+  }
+
+  const counts = input.store.getQueueStats()
+  return {
+    updatedAt: Date.now(),
+    counts,
+    queueDepth: counts.pending + counts.processing,
+    isProcessing: counts.pending > 0 || counts.processing > 0,
+    activeSessionIDs: input.activeSessionIDs ?? [],
+    lastEvent: {
+      type: "worker-started",
+    },
+    lastSessionCompletion: undefined,
+  }
 }
 
 async function readJson<T>(request: Request): Promise<T> {

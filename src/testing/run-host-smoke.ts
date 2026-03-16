@@ -5,6 +5,12 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 import {
+  createMemoryWorkerHttpClient,
+  openMemoryWorkerEventStream,
+} from "../worker/client.js"
+import { readWorkerRegistryRecord } from "../worker/registry.js"
+import type { MemoryWorkerStreamEvent } from "../worker/protocol.js"
+import {
   buildMinimalHostConfig,
   buildSmokeReport,
   evaluateRetrievalChain,
@@ -48,6 +54,9 @@ const TIMELINE_PROMPT = (id: string) =>
   `只做 memory 回查，不要读取任何文件。只调用 memory_timeline，anchor 使用这个 id：${id}。`
 const DETAILS_PROMPT = (id: string) =>
   `只做 memory 回查，不要读取任何文件。只调用 memory_details，ids 只包含这个 id：${id}。`
+const PREVIEW_PROMPT = "只做记忆上下文预览，不要读取任何文件。只调用 memory_context_preview。"
+const STREAM_PROBE_PROMPT = (workspace: string) =>
+  `只读取这个绝对路径，且不要改写路径：${path.join(workspace, "brief.txt")}。不要调用任何 memory 工具，也不要读取任何其他路径。`
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
@@ -112,7 +121,9 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
   const retrievalSearchPath = path.join(options.workspace, `${stamp}-run2-search.jsonl`)
   const retrievalTimelinePath = path.join(options.workspace, `${stamp}-run3-timeline.jsonl`)
   const retrievalDetailsPath = path.join(options.workspace, `${stamp}-run4-details.jsonl`)
+  const retrievalPreviewPath = path.join(options.workspace, `${stamp}-run5-preview.jsonl`)
   const dbPath = path.join(tempHome, ".opencode-memory", "data", "memory.sqlite")
+  const registryPath = path.join(tempHome, ".opencode-memory", "data", "worker-registry.json")
 
   await mkdir(tempHome, { recursive: true })
   await writeFile(tempConfigPath, JSON.stringify(minimalHostConfig, null, 2) + "\n")
@@ -142,6 +153,39 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
   const writeChain = evaluateWriteChain(parsedWrite)
 
   let retrievalChain = undefined
+  let snapshotChain = undefined
+  let workerReuseChain = undefined
+  let singleRunFlushChain = undefined
+  let streamChain = undefined
+  let completionChain = undefined
+
+  if (mode === "control" && sessionId) {
+    snapshotChain = await runSnapshotProbe({
+      options,
+      tempHome,
+      dbPath,
+      sessionId,
+    })
+  }
+
+  if (mode === "control" && sessionId) {
+    streamChain = await runStreamProbe({
+      options,
+      tempHome,
+      tempConfigPath,
+      dbPath,
+      sessionId,
+    })
+  }
+
+  const initialWorkerRecord =
+    mode === "control"
+      ? await waitForWorkerRegistryRecord({
+          registryPath,
+          projectPath: options.workspace,
+          databasePath: dbPath,
+        })
+      : undefined
 
   if (mode === "control" && sessionId) {
     await runOpencode({
@@ -213,17 +257,74 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
         ],
         outputPath: retrievalDetailsPath,
       })
+
+      await runOpencode({
+        bin: options.opencodeBin,
+        cwd: options.workspace,
+        env: {
+          HOME: tempHome,
+          OPENCODE_CONFIG: tempConfigPath,
+        },
+        args: [
+          "run",
+          "--dir",
+          options.workspace,
+          "--session",
+          sessionId,
+          "--model",
+          `${options.provider}/${options.model}`,
+          "--format",
+          "json",
+          PREVIEW_PROMPT,
+        ],
+        outputPath: retrievalPreviewPath,
+      })
     }
 
     const combinedRetrievalOutput = [
       await readFile(retrievalSearchPath, "utf8"),
       anchorId ? await readFile(retrievalTimelinePath, "utf8") : "",
       anchorId ? await readFile(retrievalDetailsPath, "utf8") : "",
+      anchorId ? await readFile(retrievalPreviewPath, "utf8") : "",
     ]
       .filter(Boolean)
       .join("\n")
 
     retrievalChain = evaluateRetrievalChain(parseRunOutput(combinedRetrievalOutput))
+  }
+
+  if (mode === "control" && initialWorkerRecord) {
+    const finalWorkerRecord = await waitForWorkerRegistryRecord({
+      registryPath,
+      projectPath: options.workspace,
+      databasePath: dbPath,
+    })
+
+    workerReuseChain = {
+      samePid: initialWorkerRecord.pid === finalWorkerRecord.pid,
+      samePort: initialWorkerRecord.port === finalWorkerRecord.port,
+      passed:
+        initialWorkerRecord.pid === finalWorkerRecord.pid &&
+        initialWorkerRecord.port === finalWorkerRecord.port,
+    }
+  }
+
+  if (mode === "control" && sessionId) {
+    singleRunFlushChain = await runSingleRunFlushProbe({
+      options,
+      tempHome,
+      dbPath,
+      sessionId,
+    })
+  }
+
+  if (mode === "control" && sessionId) {
+    completionChain = await runCompletionProbe({
+      options,
+      tempHome,
+      dbPath,
+      sessionId,
+    })
   }
 
   const sqliteCounts = readSqliteCounts(dbPath)
@@ -232,6 +333,11 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
     mode,
     sessionId,
     writeChain,
+    snapshotChain,
+    workerReuseChain,
+    singleRunFlushChain,
+    streamChain,
+    completionChain,
     retrievalChain,
     sqliteCounts,
   })
@@ -243,9 +349,222 @@ async function runMode(mode: "control" | "robust", options: SmokeOptions, minima
       run2: mode === "control" ? retrievalSearchPath : undefined,
       run3: mode === "control" ? retrievalTimelinePath : undefined,
       run4: mode === "control" ? retrievalDetailsPath : undefined,
+      run5: mode === "control" ? retrievalPreviewPath : undefined,
       sqlite: dbPath,
       tempConfig: tempConfigPath,
     },
+  }
+}
+
+async function runSingleRunFlushProbe(input: {
+  options: SmokeOptions
+  tempHome: string
+  dbPath: string
+  sessionId: string
+}) {
+  const registryPath = path.join(input.tempHome, ".opencode-memory", "data", "worker-registry.json")
+  const deadline = Date.now() + 2_500
+
+  while (Date.now() < deadline) {
+    const record = readWorkerRegistryRecord({
+      registryPath,
+      projectPath: input.options.workspace,
+      databasePath: input.dbPath,
+    })
+
+    if (!record) {
+      await Bun.sleep(50)
+      continue
+    }
+
+    const worker = createMemoryWorkerHttpClient({
+      baseUrl: `http://127.0.0.1:${record.port}`,
+      requestTimeoutMs: 1_000,
+    })
+
+    const queueStatus = await worker.getQueueStatus({
+      limit: 5,
+    })
+
+    const completedSession = queueStatus.workerStatus?.lastSessionCompletion
+    const sqliteCounts = readSqliteCounts(input.dbPath)
+    const sessionCompleted = completedSession?.sessionID === input.sessionId
+    const summariesPersisted = sqliteCounts.summaries
+
+    if (sessionCompleted && summariesPersisted >= 1) {
+      return {
+        sessionCompleted,
+        completedSessionID: completedSession?.sessionID,
+        summaryStatus: completedSession?.summaryStatus,
+        summariesPersisted,
+        passed: true,
+      }
+    }
+
+    await Bun.sleep(50)
+  }
+
+  const fallbackRecord = await waitForWorkerRegistryRecord({
+    registryPath,
+    projectPath: input.options.workspace,
+    databasePath: input.dbPath,
+  })
+
+  const worker = createMemoryWorkerHttpClient({
+    baseUrl: `http://127.0.0.1:${fallbackRecord.port}`,
+    requestTimeoutMs: 1_000,
+  })
+  const queueStatus = await worker.getQueueStatus({
+    limit: 5,
+  })
+  const completedSession = queueStatus.workerStatus?.lastSessionCompletion
+  const sqliteCounts = readSqliteCounts(input.dbPath)
+
+  return {
+    sessionCompleted: completedSession?.sessionID === input.sessionId,
+    completedSessionID: completedSession?.sessionID,
+    summaryStatus: completedSession?.summaryStatus,
+    summariesPersisted: sqliteCounts.summaries,
+    passed: completedSession?.sessionID === input.sessionId && sqliteCounts.summaries >= 1,
+  }
+}
+
+async function runCompletionProbe(input: {
+  options: SmokeOptions
+  tempHome: string
+  dbPath: string
+  sessionId: string
+}) {
+  const registryPath = path.join(input.tempHome, ".opencode-memory", "data", "worker-registry.json")
+  const record = await waitForWorkerRegistryRecord({
+    registryPath,
+    projectPath: input.options.workspace,
+    databasePath: input.dbPath,
+  })
+
+  const worker = createMemoryWorkerHttpClient({
+    baseUrl: `http://127.0.0.1:${record.port}`,
+    requestTimeoutMs: 1_000,
+  })
+
+  const queueStatus = await worker.getQueueStatus({
+    limit: 5,
+  })
+
+  const completedSession = queueStatus.workerStatus?.lastSessionCompletion
+  const lastEventType = queueStatus.workerStatus?.lastEvent?.type
+
+  return {
+    sessionCompleted: completedSession?.sessionID === input.sessionId,
+    completedSessionID: completedSession?.sessionID,
+    summaryStatus: completedSession?.summaryStatus,
+    lastEventType,
+    passed: completedSession?.sessionID === input.sessionId,
+  }
+}
+
+async function runStreamProbe(input: {
+  options: SmokeOptions
+  tempHome: string
+  tempConfigPath: string
+  dbPath: string
+  sessionId: string
+}) {
+  const registryPath = path.join(input.tempHome, ".opencode-memory", "data", "worker-registry.json")
+  const record = await waitForWorkerRegistryRecord({
+    registryPath,
+    projectPath: input.options.workspace,
+    databasePath: input.dbPath,
+  })
+
+  const stream = await openMemoryWorkerEventStream({
+    baseUrl: `http://127.0.0.1:${record.port}`,
+    requestTimeoutMs: 1_000,
+  })
+
+  let connected = false
+  let initialStatus = false
+  let liveObservation = false
+
+  try {
+    const firstEvent = await stream.readNext(1_000)
+    connected = firstEvent.type === "connected"
+
+    const secondEvent = await waitForStreamEvent(stream, (event) => event.type === "processing_status")
+    initialStatus = secondEvent.type === "processing_status"
+
+    await runOpencode({
+      bin: input.options.opencodeBin,
+      cwd: input.options.workspace,
+      env: {
+        HOME: input.tempHome,
+        OPENCODE_CONFIG: input.tempConfigPath,
+      },
+      args: [
+        "run",
+        "--dir",
+        input.options.workspace,
+        "--session",
+        input.sessionId,
+        "--model",
+        `${input.options.provider}/${input.options.model}`,
+        "--format",
+        "json",
+        STREAM_PROBE_PROMPT(input.options.workspace),
+      ],
+      outputPath: path.join(input.options.workspace, `control-${Date.now()}-stream-probe.jsonl`),
+    })
+
+    const observationEvent = await waitForStreamEvent(
+      stream,
+      (event) => event.type === "new_observation",
+      2_000,
+    )
+    liveObservation = observationEvent.type === "new_observation"
+  } finally {
+    await stream.close()
+  }
+
+  return {
+    connected,
+    initialStatus,
+    liveObservation,
+    passed: connected && initialStatus && liveObservation,
+  }
+}
+
+async function runSnapshotProbe(input: {
+  options: SmokeOptions
+  tempHome: string
+  dbPath: string
+  sessionId: string
+}) {
+  const registryPath = path.join(input.tempHome, ".opencode-memory", "data", "worker-registry.json")
+  const record = await waitForWorkerRegistryRecord({
+    registryPath,
+    projectPath: input.options.workspace,
+    databasePath: input.dbPath,
+  })
+
+  const worker = createMemoryWorkerHttpClient({
+    baseUrl: `http://127.0.0.1:${record.port}`,
+    requestTimeoutMs: 1_000,
+  })
+
+  const snapshot = await worker.getLiveSnapshot({
+    sessionID: input.sessionId,
+    maxSummaries: 2,
+    maxObservations: 3,
+    queueLimit: 5,
+  })
+
+  const workerStatus = snapshot.queue.workerStatus !== null
+  const hasMemoryRecords = snapshot.summaries.length > 0 || snapshot.observations.length > 0
+
+  return {
+    workerStatus,
+    hasMemoryRecords,
+    passed: workerStatus && hasMemoryRecords,
   }
 }
 
@@ -348,6 +667,42 @@ async function assertFile(filepath: string, label: string) {
   } catch {
     throw new Error(`Missing ${label}: ${filepath}`)
   }
+}
+
+async function waitForWorkerRegistryRecord(input: {
+  registryPath: string
+  projectPath: string
+  databasePath: string
+}) {
+  const deadline = Date.now() + 2_000
+
+  while (Date.now() < deadline) {
+    const record = readWorkerRegistryRecord(input)
+    if (record) {
+      return record
+    }
+
+    await Bun.sleep(25)
+  }
+
+  throw new Error(`Timed out waiting for worker registry record: ${input.registryPath}`)
+}
+
+async function waitForStreamEvent(
+  stream: Awaited<ReturnType<typeof openMemoryWorkerEventStream>>,
+  match: (event: MemoryWorkerStreamEvent) => boolean,
+  timeoutMs = 1_000,
+) {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    const event = await stream.readNext(deadline - Date.now())
+    if (match(event)) {
+      return event
+    }
+  }
+
+  throw new Error(`Timed out waiting for matching stream event after ${timeoutMs}ms`)
 }
 
 function parseArgs(argv: string[]): SmokeOptions {

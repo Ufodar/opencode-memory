@@ -3,6 +3,7 @@ import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
 import { classifyObservationPhase } from "../../memory/observation/phase.js"
 import type {
+  MemoryObservationEvidence,
   MemoryObservationDetailRecord,
   MemoryTimelineItem,
 } from "../../memory/contracts.js"
@@ -104,15 +105,17 @@ export function mapTimelineObservationRow(
   row: ObservationRow,
   isAnchor: boolean,
 ): MemoryTimelineItem {
+  const observation = mapObservationRow(row)
   return {
     kind: "observation",
     id: row.id,
     content: row.content,
     createdAt: row.created_at,
-    phase: classifyObservationPhase(mapObservationRow(row)),
+    phase: classifyObservationPhase(observation),
     tool: row.tool_name,
     importance: row.importance,
     tags: parseStringArray(row.tags_json),
+    evidence: mapObservationEvidence(observation.trace),
     isAnchor,
   }
 }
@@ -148,6 +151,17 @@ export function parseTrace(value: string): ObservationRecord["trace"] {
 export function normalizeStatus(value: string): ObservationRecord["tool"]["status"] {
   if (value === "success" || value === "error" || value === "unknown") return value
   return "unknown"
+}
+
+export function mapObservationEvidence(
+  trace: ObservationRecord["trace"],
+): MemoryObservationEvidence {
+  return {
+    workingDirectory: trace.workingDirectory,
+    filesRead: trace.filesRead,
+    filesModified: trace.filesModified,
+    command: trace.command,
+  }
 }
 
 export function summarizeLegacyReadRow(

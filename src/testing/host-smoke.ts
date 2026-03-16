@@ -34,6 +34,36 @@ type MinimalHostConfigOptions = {
 
 type WriteChainEvaluation = ReturnType<typeof evaluateWriteChain>
 type RetrievalChainEvaluation = ReturnType<typeof evaluateRetrievalChain>
+type SnapshotChainEvaluation = {
+  workerStatus: boolean
+  hasMemoryRecords: boolean
+  passed: boolean
+}
+type WorkerReuseChainEvaluation = {
+  samePid: boolean
+  samePort: boolean
+  passed: boolean
+}
+type SingleRunFlushChainEvaluation = {
+  sessionCompleted: boolean
+  completedSessionID?: string
+  summaryStatus?: "busy" | "missing-request" | "no-op" | "summarized" | "queued"
+  summariesPersisted: number
+  passed: boolean
+}
+type StreamChainEvaluation = {
+  connected: boolean
+  initialStatus: boolean
+  liveObservation: boolean
+  passed: boolean
+}
+type CompletionChainEvaluation = {
+  sessionCompleted: boolean
+  completedSessionID?: string
+  summaryStatus?: "busy" | "missing-request" | "no-op" | "summarized" | "queued"
+  lastEventType?: string
+  passed: boolean
+}
 type SqliteCounts = {
   requestAnchors: number
   observations: number
@@ -47,6 +77,7 @@ type SmokeOutputFiles = {
   run2?: string
   run3?: string
   run4?: string
+  run5?: string
   sqlite: string
   tempConfig: string
 }
@@ -57,6 +88,11 @@ type SmokeResult = {
   passed: boolean
   failures: string[]
   writeChain: WriteChainEvaluation
+  snapshotChain?: SnapshotChainEvaluation
+  workerReuseChain?: WorkerReuseChainEvaluation
+  singleRunFlushChain?: SingleRunFlushChainEvaluation
+  streamChain?: StreamChainEvaluation
+  completionChain?: CompletionChainEvaluation
   retrievalChain?: RetrievalChainEvaluation
   sqliteCounts: SqliteCounts
   outputFiles: SmokeOutputFiles
@@ -127,12 +163,14 @@ export function evaluateRetrievalChain(parsed: ParsedRunOutput) {
   const searchCalls = countCompletedToolUses(parsed, "memory_search")
   const timelineCalls = countCompletedToolUses(parsed, "memory_timeline")
   const detailsCalls = countCompletedToolUses(parsed, "memory_details")
+  const previewCalls = countCompletedToolUses(parsed, "memory_context_preview")
 
   return {
     searchCalls,
     timelineCalls,
     detailsCalls,
-    passed: searchCalls >= 1 && timelineCalls >= 1 && detailsCalls >= 1,
+    previewCalls,
+    passed: searchCalls >= 1 && timelineCalls >= 1 && detailsCalls >= 1 && previewCalls >= 1,
   }
 }
 
@@ -175,6 +213,11 @@ export function buildSmokeReport(input: {
   mode: SmokeMode
   sessionId?: string
   writeChain: WriteChainEvaluation
+  snapshotChain?: SnapshotChainEvaluation
+  workerReuseChain?: WorkerReuseChainEvaluation
+  singleRunFlushChain?: SingleRunFlushChainEvaluation
+  streamChain?: StreamChainEvaluation
+  completionChain?: CompletionChainEvaluation
   retrievalChain?: RetrievalChainEvaluation
   sqliteCounts: SqliteCounts
 }) {
@@ -186,6 +229,26 @@ export function buildSmokeReport(input: {
 
   if (!input.writeChain.passed) {
     failures.push("write chain failed")
+  }
+
+  if (input.mode === "control" && input.snapshotChain && !input.snapshotChain.passed) {
+    failures.push("snapshot chain failed")
+  }
+
+  if (input.mode === "control" && input.workerReuseChain && !input.workerReuseChain.passed) {
+    failures.push("worker reuse chain failed")
+  }
+
+  if (input.mode === "control" && input.singleRunFlushChain && !input.singleRunFlushChain.passed) {
+    failures.push("single run flush chain failed")
+  }
+
+  if (input.mode === "control" && input.streamChain && !input.streamChain.passed) {
+    failures.push("stream chain failed")
+  }
+
+  if (input.mode === "control" && input.completionChain && !input.completionChain.passed) {
+    failures.push("completion chain failed")
   }
 
   if (input.sqliteCounts.observations < 1) {
@@ -208,6 +271,11 @@ export function buildSmokeReport(input: {
     passed: failures.length === 0,
     failures,
     writeChain: input.writeChain,
+    snapshotChain: input.snapshotChain,
+    workerReuseChain: input.workerReuseChain,
+    singleRunFlushChain: input.singleRunFlushChain,
+    streamChain: input.streamChain,
+    completionChain: input.completionChain,
     retrievalChain: input.retrievalChain,
     sqliteCounts: input.sqliteCounts,
   }
@@ -228,6 +296,19 @@ export function renderSmokeSummary(report: SmokeRunReport) {
     lines.push(`- 总结论：${result.passed ? "通过" : "失败"}`)
     lines.push(`- Session ID：${result.sessionId ?? "未拿到"}`)
     lines.push(`- 写入链：${describeWriteChain(result.writeChain)}`)
+    if (result.mode === "control") {
+      lines.push(`- 初始快照：${describeSnapshotChain(result.snapshotChain)}`)
+      lines.push(`- Worker 复用：${describeWorkerReuseChain(result.workerReuseChain)}`)
+      lines.push(`- 单次 run 收口：${describeSingleRunFlushChain(result.singleRunFlushChain)}`)
+      lines.push(`- 实时流：${describeStreamChain(result.streamChain)}`)
+      lines.push(`- 生命周期收口：${describeCompletionChain(result.completionChain)}`)
+    } else {
+      lines.push("- 初始快照：本模式不做初始快照校验")
+      lines.push("- Worker 复用：本模式不做 worker 复用校验")
+      lines.push("- 单次 run 收口：本模式不做单次 run 收口校验")
+      lines.push("- 实时流：本模式不做实时流校验")
+      lines.push("- 生命周期收口：本模式不做显式 session-complete 校验")
+    }
     lines.push(
       `- 数据库计数：request=${result.sqliteCounts.requestAnchors}, observation=${result.sqliteCounts.observations}, summary=${result.sqliteCounts.summaries}`,
     )
@@ -252,6 +333,7 @@ export function renderSmokeSummary(report: SmokeRunReport) {
     if (result.outputFiles.run2) lines.push(`  - run2: ${result.outputFiles.run2}`)
     if (result.outputFiles.run3) lines.push(`  - run3: ${result.outputFiles.run3}`)
     if (result.outputFiles.run4) lines.push(`  - run4: ${result.outputFiles.run4}`)
+    if (result.outputFiles.run5) lines.push(`  - run5: ${result.outputFiles.run5}`)
     lines.push(`  - sqlite: ${result.outputFiles.sqlite}`)
     lines.push(`  - tempConfig: ${result.outputFiles.tempConfig}`)
     lines.push("")
@@ -286,14 +368,71 @@ function describeRetrievalChain(result?: RetrievalChainEvaluation) {
   }
 
   return result.passed
-    ? `通过（search=${result.searchCalls}, timeline=${result.timelineCalls}, details=${result.detailsCalls}）`
-    : `失败（search=${result.searchCalls}, timeline=${result.timelineCalls}, details=${result.detailsCalls}）`
+    ? `通过（search=${result.searchCalls}, timeline=${result.timelineCalls}, details=${result.detailsCalls}, preview=${result.previewCalls}）`
+    : `失败（search=${result.searchCalls}, timeline=${result.timelineCalls}, details=${result.detailsCalls}, preview=${result.previewCalls}）`
+}
+
+function describeSnapshotChain(result?: SnapshotChainEvaluation) {
+  if (!result) {
+    return "未执行"
+  }
+
+  return result.passed
+    ? "通过"
+    : `失败（workerStatus=${result.workerStatus ? "是" : "否"}, hasMemoryRecords=${result.hasMemoryRecords ? "是" : "否"}）`
+}
+
+function describeWorkerReuseChain(result?: WorkerReuseChainEvaluation) {
+  if (!result) {
+    return "未执行"
+  }
+
+  return result.passed
+    ? "通过"
+    : `失败（samePid=${result.samePid ? "是" : "否"}, samePort=${result.samePort ? "是" : "否"}）`
+}
+
+function describeSingleRunFlushChain(result?: SingleRunFlushChainEvaluation) {
+  if (!result) {
+    return "未执行"
+  }
+
+  const detail = `session=${result.completedSessionID ?? "未知"}, summaryStatus=${result.summaryStatus ?? "未知"}, summaryCount=${result.summariesPersisted}`
+
+  return result.passed ? `通过（${detail}）` : `失败（${detail}）`
+}
+
+function describeStreamChain(result?: StreamChainEvaluation) {
+  if (!result) {
+    return "未执行"
+  }
+
+  return result.passed
+    ? "通过"
+    : `失败（connected=${result.connected ? "是" : "否"}, initialStatus=${result.initialStatus ? "是" : "否"}, liveObservation=${result.liveObservation ? "是" : "否"}）`
+}
+
+function describeCompletionChain(result?: CompletionChainEvaluation) {
+  if (!result) {
+    return "未执行"
+  }
+
+  const detail = `session=${result.completedSessionID ?? "未知"}, summaryStatus=${result.summaryStatus ?? "未知"}, lastEvent=${result.lastEventType ?? "未知"}`
+
+  return result.passed
+    ? `通过（${detail}）`
+    : `失败（${detail}）`
 }
 
 function describeFailure(failure: string) {
   const knownFailures: Record<string, string> = {
     "missing session id": "没有拿到 session id",
     "write chain failed": "写入链没有成立",
+    "snapshot chain failed": "初始快照没有成立",
+    "worker reuse chain failed": "worker 跨 run 复用没有成立",
+    "single run flush chain failed": "单次 run 退出后的收口没有成立",
+    "stream chain failed": "实时流没有成立",
+    "completion chain failed": "session-complete 生命周期收口没有成立",
     "missing observations in sqlite": "SQLite 里没有 observation",
     "missing summaries in sqlite": "SQLite 里没有 summary",
     "retrieval chain failed": "回查链没有成立",
@@ -302,4 +441,4 @@ function describeFailure(failure: string) {
   return knownFailures[failure] ?? failure
 }
 
-export type { ParsedRunOutput, SmokeRunReport, SmokeResult, SqliteCounts }
+export type { CompletionChainEvaluation, ParsedRunOutput, SingleRunFlushChainEvaluation, SmokeRunReport, SmokeResult, SqliteCounts, SnapshotChainEvaluation, StreamChainEvaluation, WorkerReuseChainEvaluation }

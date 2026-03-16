@@ -35,6 +35,11 @@ export type MemoryObservationDetailRecord = {
   trace: ObservationRecord["trace"]
 }
 
+export type MemoryObservationEvidence = Pick<
+  ObservationRecord["trace"],
+  "workingDirectory" | "filesRead" | "filesModified" | "command"
+>
+
 export type MemoryDetailRecord =
   | {
       kind: "summary"
@@ -67,6 +72,7 @@ export type MemoryTimelineItem =
       tool: string
       importance: number
       tags: string[]
+      evidence: MemoryObservationEvidence
       isAnchor: boolean
     }
 
@@ -100,11 +106,28 @@ export type MemoryQueueProcessingJob = {
 }
 
 export type MemoryWorkerStatusEvent = {
-  type: "enqueue" | "start" | "complete" | "fail" | "resume" | "worker-started" | "worker-stopped"
+  type:
+    | "enqueue"
+    | "start"
+    | "complete"
+    | "fail"
+    | "resume"
+    | "worker-started"
+    | "worker-stopped"
+    | "session-complete"
   sessionID?: string
   jobID?: number
   kind?: "request-anchor" | "observation" | "session-idle"
   failureStatus?: "pending" | "failed"
+}
+
+export type MemoryWorkerSessionCompletion = {
+  sessionID: string
+  completedAt: number
+  summaryStatus: "busy" | "missing-request" | "no-op" | "summarized" | "queued"
+  requestAnchorID?: string
+  summaryID?: string
+  checkpointObservationAt?: number
 }
 
 export type MemoryWorkerStatusSnapshot = {
@@ -116,7 +139,9 @@ export type MemoryWorkerStatusSnapshot = {
     processing: number
     failed: number
   }
+  activeSessionIDs: string[]
   lastEvent: MemoryWorkerStatusEvent
+  lastSessionCompletion?: MemoryWorkerSessionCompletion
 }
 
 export interface MemoryQueueStore {
@@ -156,6 +181,7 @@ export interface MemoryInjectionStore {
     sessionID?: string
     limit: number
   }): ObservationRecord[]
+  getObservationsByIds(ids: string[]): ObservationRecord[]
 }
 
 export interface MemoryIdleSummaryStore {

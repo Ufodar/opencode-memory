@@ -62,6 +62,12 @@ describe("SQLiteMemoryStore retrieval surface", () => {
       buildObservation({
         id: "obs_1",
         content: "形成决策：先输出缺口清单",
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filePaths: ["/workspace/demo/brief.txt"],
+          filesRead: ["/workspace/demo/brief.txt"],
+          command: "cat brief.txt",
+        },
       }),
     )
 
@@ -79,6 +85,12 @@ describe("SQLiteMemoryStore retrieval surface", () => {
           kind: "observation",
           id: "obs_1",
           outputSummary: "形成决策：先输出缺口清单",
+          trace: {
+            workingDirectory: "/workspace/demo",
+            filePaths: ["/workspace/demo/brief.txt"],
+            filesRead: ["/workspace/demo/brief.txt"],
+            command: "cat brief.txt",
+          },
         },
       ],
     })
@@ -86,6 +98,12 @@ describe("SQLiteMemoryStore retrieval surface", () => {
       kind: "observation",
       id: "obs_1",
       outputSummary: "形成决策：先输出缺口清单",
+      trace: {
+        workingDirectory: "/workspace/demo",
+        filePaths: ["/workspace/demo/brief.txt"],
+        filesRead: ["/workspace/demo/brief.txt"],
+        command: "cat brief.txt",
+      },
     })
   })
 
@@ -275,6 +293,11 @@ describe("SQLiteMemoryStore retrieval surface", () => {
         id: "obs_before",
         content: "读取资格条件正文并确认3条核心约束",
         createdAt: 10,
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filePaths: ["/workspace/demo/requirements.md"],
+          filesRead: ["/workspace/demo/requirements.md"],
+        },
       }),
     )
     store.saveSummary(
@@ -290,6 +313,11 @@ describe("SQLiteMemoryStore retrieval surface", () => {
         id: "obs_after",
         content: "输出缺口清单草稿，并标记需要补充业绩证明",
         createdAt: 30,
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filePaths: ["/workspace/demo/gap-checklist.md"],
+          filesModified: ["/workspace/demo/gap-checklist.md"],
+        },
       }),
     )
 
@@ -304,6 +332,13 @@ describe("SQLiteMemoryStore retrieval surface", () => {
     expect(timeline?.items.map((item) => item.id)).toEqual(["sum_anchor", "obs_after"])
     expect(timeline?.items.map((item) => item.kind)).toEqual(["summary", "observation"])
     expect(timeline?.items[0]?.isAnchor).toBe(true)
+    expect(timeline?.items[1]).toMatchObject({
+      kind: "observation",
+      evidence: {
+        workingDirectory: "/workspace/demo",
+        filesModified: ["/workspace/demo/gap-checklist.md"],
+      },
+    })
   })
 
   test("keeps covered observation when it is the explicit timeline anchor", () => {
@@ -312,6 +347,11 @@ describe("SQLiteMemoryStore retrieval surface", () => {
         id: "obs_anchor",
         content: "读取资格条件正文并确认3条核心约束",
         createdAt: 10,
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filePaths: ["/workspace/demo/requirements.md"],
+          filesRead: ["/workspace/demo/requirements.md"],
+        },
       }),
     )
     store.saveSummary(
@@ -340,6 +380,13 @@ describe("SQLiteMemoryStore retrieval surface", () => {
     expect(timeline?.anchor.id).toBe("obs_anchor")
     expect(timeline?.items.map((item) => item.id)).toEqual(["obs_anchor", "sum_cover", "obs_after"])
     expect(timeline?.items[0]?.isAnchor).toBe(true)
+    expect(timeline?.anchor).toMatchObject({
+      kind: "observation",
+      evidence: {
+        workingDirectory: "/workspace/demo",
+        filesRead: ["/workspace/demo/requirements.md"],
+      },
+    })
   })
 
   test("resolves query timeline from top memory hit within session scope", () => {
@@ -365,6 +412,10 @@ describe("SQLiteMemoryStore retrieval surface", () => {
         content: "输出当前会话的缺口清单",
         createdAt: 30,
         sessionID: "ses_current",
+        trace: {
+          workingDirectory: "/workspace/demo",
+          command: "python scripts/gap_report.py",
+        },
       }),
     )
 
@@ -384,6 +435,10 @@ describe("SQLiteMemoryStore retrieval surface", () => {
     expect(timeline?.items[1]).toMatchObject({
       kind: "observation",
       phase: "research",
+      evidence: {
+        workingDirectory: "/workspace/demo",
+        command: "python scripts/gap_report.py",
+      },
     })
   })
 })
@@ -416,6 +471,7 @@ function buildObservation(input: {
   importance?: number
   toolName?: string
   sessionID?: string
+  trace?: ObservationRecord["trace"]
 }): ObservationRecord {
   return {
     id: input.id,
@@ -438,6 +494,6 @@ function buildObservation(input: {
       importance: input.importance ?? 0.8,
       tags: ["observation"],
     },
-    trace: {},
+    trace: input.trace ?? {},
   }
 }

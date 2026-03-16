@@ -19,13 +19,14 @@ export function captureRequestAnchor(input: {
   }
 }
 
-const MEMORY_TOOL_PATTERN = /\bmemory_(search|timeline|details)\b/
+const MEMORY_TOOL_PATTERN = /\bmemory_(search|timeline|details|context_preview|queue_status|queue_retry)\b/
 const PURE_MEMORY_RETRIEVAL_HINTS = [
   /只做\s+memory\s*回查/,
-  /只调用\s+memory_(search|timeline|details)/,
+  /只做\s+记忆上下文预览/,
+  /只调用\s+memory_(search|timeline|details|context_preview|queue_status|queue_retry)/,
   /不要读取任何文件/,
   /do not read any files/i,
-  /only call\s+memory_(search|timeline|details)/i,
+  /only call\s+memory_(search|timeline|details|context_preview|queue_status|queue_retry)/i,
 ]
 
 function isPureMemoryRetrievalPrompt(text: string): boolean {

@@ -9,7 +9,7 @@ export function summarizeRequestWindow(input: {
   observations: ObservationRecord[]
 }): SummaryRecord {
   const ordered = [...input.observations].sort((a, b) => a.createdAt - b.createdAt)
-  const topOutcomeBits = ordered.slice(0, 3).map((item) => item.output.summary || item.content)
+  const topOutcomeBits = collectOutcomeBits(ordered)
   const decisionLike = [...ordered]
     .reverse()
     .find((item) => looksLikeDecisionSignal(item.content))
@@ -113,4 +113,19 @@ function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
     if (predicate(items[index]!)) return index
   }
   return -1
+}
+
+function collectOutcomeBits(observations: ObservationRecord[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const observation of observations) {
+    const value = truncate((observation.output.summary || observation.content).trim(), 120)
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    result.push(value)
+    if (result.length >= 3) break
+  }
+
+  return result
 }

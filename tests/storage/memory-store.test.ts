@@ -105,6 +105,36 @@ describe("SQLiteMemoryStore", () => {
     expect(results[0]?.phase).toBe("verification")
   })
 
+  test("persists enriched observation trace fields", () => {
+    store.saveObservation(
+      buildObservation({
+        id: "obs_trace",
+        projectPath: "/workspace/demo",
+        content: "读取 requirements.md 并写入 questions.md",
+        trace: {
+          workingDirectory: "/workspace/demo",
+          filePaths: ["/workspace/demo/requirements.md", "/workspace/demo/questions.md"],
+          filesRead: ["/workspace/demo/requirements.md"],
+          filesModified: ["/workspace/demo/questions.md"],
+          command: "bun test",
+        },
+      }),
+    )
+
+    const [result] = store.listRecentObservations({
+      projectPath: "/workspace/demo",
+      limit: 5,
+    })
+
+    expect(result?.trace).toEqual({
+      workingDirectory: "/workspace/demo",
+      filePaths: ["/workspace/demo/requirements.md", "/workspace/demo/questions.md"],
+      filesRead: ["/workspace/demo/requirements.md"],
+      filesModified: ["/workspace/demo/questions.md"],
+      command: "bun test",
+    })
+  })
+
   test("cleans legacy internal-tool rows and normalizes legacy read payloads on init", () => {
     const dbPath = join(tempDir, "memory.sqlite")
     store.close()
@@ -183,6 +213,7 @@ function buildObservation(input: {
   projectPath: string
   content: string
   phase?: ObservationRecord["phase"]
+  trace?: ObservationRecord["trace"]
 }): ObservationRecord {
   return {
     id: input.id,
@@ -207,7 +238,7 @@ function buildObservation(input: {
       importance: 0.8,
       tags: ["read", "observation"],
     },
-    trace: {
+    trace: input.trace ?? {
       filePaths: ["/workspace/demo/source.md"],
     },
   }

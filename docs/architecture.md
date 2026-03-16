@@ -39,6 +39,10 @@
 
 - OpenCode 等价点：`tool.execute.after`
 - 作用：把高价值工具调用转成 observation 候选并落库
+- 当前补充策略：
+  - `read` 工具优先从正文里提取 deterministic semantic 摘要
+  - observation model 只是可选增强层
+  - 即使模型失败，也保留 deterministic trace / evidence
 
 ### 压缩器
 
@@ -69,6 +73,52 @@
   - 若当前 session 没有记忆，再回退到 project 记忆
   - 受 count 和 character budget 双重约束
   - observation 会带 phase，便于保留阶段语义
+  - system context 已从平铺列表升级为结构化 section：
+    - `[LATEST SESSION SNAPSHOT]`
+    - `[MEMORY TIMELINE]`
+    - `[RESUME GUIDE]`
+    - `[PREVIOUSLY]`
+  - `[MEMORY TIMELINE]` 现在会同时承载：
+    - older summary checkpoint
+    - unsummarized observation checkpoint
+  - older summary 与 unsummarized observation 会先汇成统一 checkpoint 列表，再按 `createdAt` 升序混排
+  - older summary checkpoint 会优先保留 request 语义：
+    - `请求概述：结果概述`
+    - request 缺失时才退回 outcome-only
+  - timeline checkpoint 现在会优先带短时间前缀：
+    - `- [09:41] [summary] ...`
+    - `- [09:43] [research] ...`
+    - synthetic 小整数时间戳不显示前缀，保持兼容
+  - 当 timeline 跨越多个自然日时，会先插入：
+    - `[day] YYYY-MM-DD`
+    再列出当天 checkpoint，帮助恢复“昨天做了什么，今天又做了什么”
+  - 同一天内的 observation checkpoint 现在会继续按主文件插入：
+    - `[file] brief.txt`
+    - `[file] checklist.md`
+  - summary checkpoint 不进入文件分组，但会打断当前文件分组
+  - 当 `[file] 文件名` 分组线已经存在时，同一 observation 行不再重复渲染 `files:` hint
+  - 最近几条关键 observation 会继续展开成多行 checkpoint：
+    - 主行保留时间 / phase / curated headline
+    - detail line 只从现有 observation 字段提炼 `Result` / `Tool` / `Evidence`
+    - 更旧 observation 仍保持单行
+  - `RESUME GUIDE` 已优先消费 semantic observation，而不是原始 `read: 路径`
+  - context builder 现在还会做 deterministic 编译：
+    - 开头会先插入 `[CONTEXT INDEX]` section
+    - section 只出现在 system context，不进入 compaction context
+    - section 会先明确：
+      - 这份 memory index 通常已经足够继续工作
+      - 只有缺证据、缺实现细节、缺过去决策理由时，才继续下钻
+    - section 仍然明确 `memory_details / memory_timeline / memory_search` 的下钻路径
+    - latest summary 会先编译成 `Current Focus / Learned / Completed / Next`
+    - `Learned` 只来自 latest summary 覆盖的 observation 证据
+    - older summaries 会被压成更短的 summary checkpoint 并进入统一 timeline
+    - timeline observation 会被压成短 checkpoint
+    - resume guide 会优先输出短动作提示
+  - `RESUME GUIDE` 当前由 deterministic 规则生成，不依赖额外模型调用
+  - `Previously` 当前来自 plugin 侧实时读取的最后一条 assistant 文本：
+    - 不写入 SQLite
+    - 不参与 summary / observation 持久化
+    - 只在构建 system context 时作为可选 handoff 文本传给 worker
 
 ### 检索器
 
@@ -82,6 +132,12 @@
   - `memory_timeline` 围绕 summary / observation anchor 返回时间上下文
   - `memory_timeline` 未指定 `scope` 时默认 `session-first / project-fallback`
   - `memory_details` mixed details
+  - `memory_details` observation detail 已稳定暴露结构化 evidence：
+    - `workingDirectory`
+    - `filesRead`
+    - `filesModified`
+    - `command`
+  - `memory_timeline` observation item 已稳定暴露最小 evidence 视图
   - `memory_search` 支持 `session / project` scope
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
   - `memory_search` 在组内按命中强度与重要度做 deterministic ranking
@@ -99,6 +155,13 @@
   - 优先 recent summaries
   - 再补 recent unsummarized observations
   - observation 显式带 `phase` 前缀
+  - observation 会追加精简 evidence hint：
+    - `files: ...`
+    - `cmd: ...`
+  - summary checkpoint 与 unsummarized observation 会按统一时间线混排
+  - 当 checkpoint 跨越多个自然日时，会插入 `[day] YYYY-MM-DD` 分组线
+  - observation checkpoint 有主文件线索时，会继续插入 `[file] 文件名` 分组线
+  - 当文件分组线已经存在时，不再重复渲染同样的 `files:` hint
   - 受独立 compaction budget 约束
 
 ## 当前已落地的最小数据链
@@ -222,7 +285,33 @@ tool.execute.after
     - worker 会把最新状态写到 `worker-status.json`
     - `memory_queue_status` 现在会把这份 `workerStatus` 一起返回
     - 后续如果要接 UI、宿主监控或更强的 smoke，不需要再解析日志
-  - stale processing 自愈：
+  - worker 现在也会持续推送结构化实时事件：
+    - `GET /stream`
+    - 初始先推：
+      - `connected`
+      - `processing_status`
+    - 后续继续推：
+      - `processing_status`
+      - `new_observation`
+      - `new_summary`
+    - 现在已经有正式的流读取辅助，可供后续 UI、watcher 或宿主验证复用
+  - worker 现在也会提供“初始快照”：
+    - `POST /stream/snapshot`
+    - 新消费者不只看到连接后的新事件
+    - 也能先拿到当前 queue 状态、最近 summary 和最近 observation
+- 当前也有显式上下文预览工具：
+    - `memory_context_preview`
+    - 用来直接查看当前 system injection 内容
+    - 现在会与真实 system injection 共享同一套结构化 section 输出
+- evidence-aware memory 当前已落地到三条消费链：
+  - detail：
+    - `memory_details`
+    - `coveredObservations`
+  - timeline：
+    - observation item 最小 evidence 视图
+  - context：
+    - system / compaction 中的短 evidence hint
+- stale processing 自愈：
     - `pending_jobs` 现在会记录 `started_processing_at`
     - claim 下一条 job 前，会先把超过阈值的 `processing` 重置回 `pending`
     - 不再只依赖 worker 重启来恢复卡死 job
@@ -232,6 +321,7 @@ tool.execute.after
   - worker HTTP timeout：
     - plugin -> worker 的请求有明确 timeout
     - health check 超时直接视为不健康
+    - 长连接打开成功后会清掉初始 timeout，不会再把 SSE 自己中断
 - run-mode summary fallback 已落地：
   - `chat.message` 进入时先尝试 flush 上一个 request 的 summary
   - 再记录新的 request anchor
@@ -239,6 +329,35 @@ tool.execute.after
 - request anchor capture 当前也已加入一层边界：
   - 纯 memory 回查 prompt 不再写入 request history
   - 避免 `memory_search / memory_timeline / memory_details` 这类自查询请求不断污染 request anchor 链
+  - `memory_context_preview` 也属于这类“只看现状、不推进正式工作”的请求
+- session 收口语义进一步收紧：
+  - `chat.message` 在 `completeSession()` 成功后，会先把该 session 从 tracker 里移掉
+  - 只有真的生成了新的 request anchor，才会重新标记为 active
+  - 只有真的落下了新的 observation，tool handler 才会重新标记 active
+  - `system transform`、`session compacting`、`session.idle` 这些读路径或收尾路径，不再单独把 session 标成 active
+  - 这样最终 `tracker` 更接近“仍有未收口工作”的集合，而不是“最近碰到过的 session”集合
+- host smoke 现在分出一条显式的 `singleRunFlushChain`
+  - 不靠后续 prompt
+  - 只看第一次 `opencode run` 退出后，worker 状态和 SQLite 是否已经完成 session 收口
+  - 这条链更贴近 `claude-mem` 的 `Stop` / `session-complete` 验证思路
+
+## 真实宿主实时流验证
+
+- 当前 host smoke 已不只验证：
+  - 写入链
+  - 回查链
+  - 初始快照链
+  - worker 跨 run 复用
+- 也会验证：
+  - 通过 worker 注册表找到当前 worker
+  - 先调用 `POST /stream/snapshot`
+  - 确认新连接能先拿到当前 queue 状态和最近记忆
+  - 通过 worker 注册表找到当前 worker
+  - 连上 `GET /stream`
+  - 再触发一次真实 `opencode run`
+  - 确认 `new_observation` 会被实时推出来
+
+这一步的意义不是“多一条测试”，而是把“初始快照 + 实时流”这套消费面，一起推进到了真实 OpenCode 宿主验证。
 
 ## 当前局部重写进度
 
