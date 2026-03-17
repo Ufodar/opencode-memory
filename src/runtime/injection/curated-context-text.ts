@@ -83,7 +83,7 @@ export function buildContextEconomicsLines(input: {
     `- summaries: ${input.summaryCount} | direct observations: ${input.directObservationCount} | covered observations: ${input.coveredObservationCount}`,
     `- Loading: ${visibleRecordCount} records (~${input.loadingTokens.toLocaleString()} tokens to read)`,
     `- Work investment: ~${input.workTokens.toLocaleString()} tokens spent on research, building, and decisions`,
-    `- Your savings: ~${input.savingsTokens.toLocaleString()} tokens (${input.savingsPercent}% reuse reduction)`,
+    `- Your savings: ~${input.savingsTokens.toLocaleString()} tokens (${input.savingsPercent}% reduction from reuse)`,
   ]
 }
 

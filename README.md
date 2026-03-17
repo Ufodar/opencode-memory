@@ -488,7 +488,7 @@ system context 当前已经会编译出这些 section：
   - `Loading` 行现在会直接带出可见记录数
   - `Loading`
   - `Work investment` 会直接写成过去在 `research / building / decisions` 上已经花掉的投入
-  - `Your savings`
+  - `Your savings` 现在会把百分比写成 `reduction from reuse`
 
 这里的 token 不是 provider 账单，而是基于当前 summary / observation 文本长度做的保守估算。
 

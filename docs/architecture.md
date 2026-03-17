@@ -517,7 +517,7 @@ tool.execute.after
     - `Loading` 行现在会直接带出可见记录数
     - `Loading`
     - `Work investment` 会直接写成过去在 `research / building / decisions` 上已经花掉的投入
-    - `Your savings`
+    - `Your savings` 现在会把百分比写成 `reduction from reuse`
 - token estimate 当前只依赖已有 summary / observation 字段，不新增 schema
 - compaction context 明确不复用这些运行时 header section
 - system context 当前还会直接暴露可见 record ID：

@@ -104,6 +104,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("Work investment: ")
     expect(text).toContain("spent on research, building, and decisions")
     expect(text).toContain("Your savings:")
+    expect(text).toContain("reduction from reuse")
   })
 
   test("keeps loading, work investment, and savings visible when no summaries are injected", () => {
@@ -126,6 +127,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("Work investment: ")
     expect(text).toContain("spent on research, building, and decisions")
     expect(text).toContain("Your savings:")
+    expect(text).toContain("reduction from reuse")
   })
 
   test("adds a quantified context value footer that keeps the generic trust guidance", () => {
