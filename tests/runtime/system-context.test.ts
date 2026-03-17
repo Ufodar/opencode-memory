@@ -161,6 +161,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("This index condenses")
     expect(text).toContain("trust it before re-reading past work")
     expect(text).toContain("Access ~")
+    expect(text).toContain("tokens of past research, building, and decisions")
     expect(text).toContain("for just ~")
     expect(text).toContain("If this index is still not enough")
     expect(text).toContain("use memory_details with visible IDs")

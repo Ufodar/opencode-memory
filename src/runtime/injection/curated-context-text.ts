@@ -156,7 +156,7 @@ export function buildContextValueLines(input: {
 
   if ((input.workTokens ?? 0) > 0 && (input.loadingTokens ?? 0) > 0) {
     lines.push(
-      `- Access ~${input.workTokens!.toLocaleString()} tokens of prior work for just ~${input.loadingTokens!.toLocaleString()} tokens of reading.`,
+      `- Access ~${input.workTokens!.toLocaleString()} tokens of past research, building, and decisions for just ~${input.loadingTokens!.toLocaleString()} tokens of reading.`,
     )
   }
 
