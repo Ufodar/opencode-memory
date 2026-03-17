@@ -96,6 +96,56 @@ describe("retrieval tools", () => {
     expect(result.results[0].id).toBe("sum_only")
   })
 
+  test("memory_search forwards phase filter to the memory worker", async () => {
+    const calls: Array<{
+      kind: "search"
+      sessionID?: string
+      phase?: string
+    }> = []
+    const searchTool = createMemorySearchTool(
+      {
+        searchMemoryRecords(input: any) {
+          calls.push({
+            kind: "search",
+            sessionID: input.sessionID,
+            phase: input.phase,
+          })
+          return {
+            scope: "session",
+            results: [
+              {
+                kind: "observation",
+                id: "obs_decision",
+                content: "decision result",
+                createdAt: 1,
+                tool: "read",
+                importance: 0.9,
+                tags: ["decision"],
+                phase: "decision",
+              },
+            ] satisfies MemorySearchRecord[],
+          }
+        },
+      } as Pick<MemoryWorkerService, "searchMemoryRecords">,
+    )
+
+    const result = JSON.parse(
+      await searchTool.execute(
+        { query: "requirements", phase: "decision", limit: 5 },
+        buildToolContext(),
+      ),
+    )
+
+    expect(calls).toEqual([
+      {
+        kind: "search",
+        sessionID: "ses_current",
+        phase: "decision",
+      },
+    ])
+    expect(result.results[0].id).toBe("obs_decision")
+  })
+
   test("memory_timeline delegates timeline resolution to the memory worker", async () => {
     const calls: Array<{ kind: "timeline"; sessionID?: string; scope?: "session" | "project" }> = []
     const timelineTool = createMemoryTimelineTool(

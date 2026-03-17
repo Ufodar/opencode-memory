@@ -48,9 +48,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 067-memory-search-phase-filter: Added TypeScript / Bun + `@opencode-ai/plugin`, `bun:sqlite`, `usearch`
 - 066-memory-search-kind-filter: Added TypeScript / Bun + `@opencode-ai/plugin`, `bun:sqlite`, `usearch`
 - 065-hybrid-memory-search-results: Added TypeScript / Bun + `@opencode-ai/plugin`, `bun:sqlite`, `usearch`
-- 062-semantic-memory-timeline: Added TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch`
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -174,6 +174,40 @@ describe("SQLiteMemoryStore retrieval surface", () => {
     ])
   })
 
+  test("supports phase filters for text retrieval", () => {
+    store.saveSummary(
+      buildSummary({
+        id: "sum_1",
+        outcomeSummary: "当前会话已完成资格条件抽取",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_decision",
+        content: "资格条件形成决策：先补缺口清单",
+        phase: "decision",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_research",
+        content: "读取资格条件附表并记录补充要求",
+        phase: "research",
+      }),
+    )
+
+    const results = (store as any).searchMemoryRecords({
+      projectPath: "/workspace/demo",
+      query: "资格条件",
+      limit: 10,
+      phase: "decision",
+    })
+
+    expect(results.map((item: MemorySearchRecord) => `${item.kind}:${item.id}`)).toEqual([
+      "observation:obs_decision",
+    ])
+  })
+
   test("hides observations already covered by returned summaries", () => {
     store.saveSummary(
       buildSummary({
@@ -506,6 +540,7 @@ function buildObservation(input: {
   importance?: number
   toolName?: string
   sessionID?: string
+  phase?: ObservationRecord["phase"]
   trace?: ObservationRecord["trace"]
 }): ObservationRecord {
   return {
@@ -514,6 +549,7 @@ function buildObservation(input: {
     sessionID: input.sessionID ?? "ses_demo",
     projectPath: "/workspace/demo",
     createdAt: input.createdAt ?? 10,
+    phase: input.phase,
     tool: {
       name: input.toolName ?? "read",
       callID: `call_${input.id}`,

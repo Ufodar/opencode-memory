@@ -83,6 +83,7 @@ export interface MemorySearchStore {
     query: string
     limit: number
     kinds?: Array<MemorySearchRecord["kind"]>
+    phase?: ObservationRecord["phase"]
   }): MemorySearchRecord[]
 }
 

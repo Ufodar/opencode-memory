@@ -100,6 +100,9 @@ docs/
   - `memory_search` 现在支持可选 `kind`：
     - `summary`
     - `observation`
+  - `memory_search` 现在还支持可选 `phase`：
+    - 仅对 observation 生效
+    - 指定 `phase` 时结果面默认 observation-only
     - `memory_timeline(query=...)` 的 observation anchor 解析
 - 核心控制 heuristics 已开始 language-neutral 化：
   - `decision` 识别支持中英常见信号

@@ -131,6 +131,7 @@ export class SQLiteMemoryStore
     query: string
     limit: number
     kinds?: Array<MemorySearchRecord["kind"]>
+    phase?: ObservationRecord["phase"]
   }): MemorySearchRecord[] {
     return this.retrieval.searchRecords(input)
   }

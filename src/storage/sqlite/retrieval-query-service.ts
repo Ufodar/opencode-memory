@@ -6,6 +6,7 @@ import type {
   MemoryTimelineItem,
   MemoryTimelineResult,
 } from "../../memory/contracts.js"
+import type { ObservationRecord } from "../../memory/observation/types.js"
 import { classifyObservationPhase } from "../../memory/observation/phase.js"
 import {
   compareTimelineKinds,
@@ -33,9 +34,10 @@ export class MemoryRetrievalService {
     query: string
     limit: number
     kinds?: Array<MemorySearchRecord["kind"]>
+    phase?: ObservationRecord["phase"]
   }): MemorySearchRecord[] {
     const pattern = `%${input.query.toLowerCase()}%`
-    const includeSummaries = !input.kinds || input.kinds.includes("summary")
+    const includeSummaries = (!input.kinds || input.kinds.includes("summary")) && !input.phase
     const includeObservations = !input.kinds || input.kinds.includes("observation")
 
     const summaries = !includeSummaries
@@ -71,44 +73,95 @@ export class MemoryRetrievalService {
     const observations = !includeObservations
       ? []
       : input.sessionID
-      ? (this.db
-          .prepare(`
-            SELECT * FROM observations
-            WHERE project_path = ? AND session_id = ?
-              AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
-              AND (
-                lower(content) LIKE ?
-                OR lower(input_summary) LIKE ?
-                OR lower(output_summary) LIKE ?
-                OR lower(tags_json) LIKE ?
-              )
-            ORDER BY created_at DESC
-            LIMIT ?
-          `)
-          .all(
-            input.projectPath,
-            input.sessionID,
-            pattern,
-            pattern,
-            pattern,
-            pattern,
-            input.limit,
-          ) as ObservationRow[])
-      : (this.db
-          .prepare(`
-            SELECT * FROM observations
-            WHERE project_path = ?
-              AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
-              AND (
-                lower(content) LIKE ?
-                OR lower(input_summary) LIKE ?
-                OR lower(output_summary) LIKE ?
-                OR lower(tags_json) LIKE ?
-              )
-            ORDER BY created_at DESC
-            LIMIT ?
-          `)
-          .all(input.projectPath, pattern, pattern, pattern, pattern, input.limit) as ObservationRow[])
+        ? input.phase
+          ? (this.db
+              .prepare(`
+                SELECT * FROM observations
+                WHERE project_path = ? AND session_id = ?
+                  AND phase = ?
+                  AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+                  AND (
+                    lower(content) LIKE ?
+                    OR lower(input_summary) LIKE ?
+                    OR lower(output_summary) LIKE ?
+                    OR lower(tags_json) LIKE ?
+                  )
+                ORDER BY created_at DESC
+                LIMIT ?
+              `)
+              .all(
+                input.projectPath,
+                input.sessionID,
+                input.phase,
+                pattern,
+                pattern,
+                pattern,
+                pattern,
+                input.limit,
+              ) as ObservationRow[])
+          : (this.db
+              .prepare(`
+                SELECT * FROM observations
+                WHERE project_path = ? AND session_id = ?
+                  AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+                  AND (
+                    lower(content) LIKE ?
+                    OR lower(input_summary) LIKE ?
+                    OR lower(output_summary) LIKE ?
+                    OR lower(tags_json) LIKE ?
+                  )
+                ORDER BY created_at DESC
+                LIMIT ?
+              `)
+              .all(
+                input.projectPath,
+                input.sessionID,
+                pattern,
+                pattern,
+                pattern,
+                pattern,
+                input.limit,
+              ) as ObservationRow[])
+        : input.phase
+          ? (this.db
+              .prepare(`
+                SELECT * FROM observations
+                WHERE project_path = ?
+                  AND phase = ?
+                  AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+                  AND (
+                    lower(content) LIKE ?
+                    OR lower(input_summary) LIKE ?
+                    OR lower(output_summary) LIKE ?
+                    OR lower(tags_json) LIKE ?
+                  )
+                ORDER BY created_at DESC
+                LIMIT ?
+              `)
+              .all(
+                input.projectPath,
+                input.phase,
+                pattern,
+                pattern,
+                pattern,
+                pattern,
+                input.limit,
+              ) as ObservationRow[])
+          : (this.db
+              .prepare(`
+                SELECT * FROM observations
+                WHERE project_path = ?
+                  AND tool_name NOT IN (${INTERNAL_TOOL_SQL_LIST})
+                  AND (
+                    lower(content) LIKE ?
+                    OR lower(input_summary) LIKE ?
+                    OR lower(output_summary) LIKE ?
+                    OR lower(tags_json) LIKE ?
+                  )
+                ORDER BY created_at DESC
+                LIMIT ?
+              `)
+              .all(input.projectPath, pattern, pattern, pattern, pattern, input.limit) as ObservationRow[])
 
     const rankedSummaries = [...summaries].sort(
       (a, b) =>

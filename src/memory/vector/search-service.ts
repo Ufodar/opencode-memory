@@ -57,6 +57,7 @@ export interface StoredSemanticMemorySearch {
     query: string
     limit: number
     kinds?: Array<MemorySearchRecord["kind"]>
+    phase?: ObservationRecord["phase"]
   }): Promise<{
     mode: "semantic" | "fallback"
     results: MemorySearchRecord[]
@@ -192,6 +193,7 @@ export function createStoredSemanticMemorySearch(input: {
           candidateIDs,
           searchInput.limit,
           searchInput.kinds,
+          searchInput.phase,
         )
 
         if (hydrated.length > 0) {
@@ -381,6 +383,7 @@ function hydrateStoredSearchResults(
   ids: string[],
   limit: number,
   kinds?: Array<MemorySearchRecord["kind"]>,
+  phase?: ObservationRecord["phase"],
 ): MemorySearchRecord[] {
   if (ids.length === 0) {
     return []
@@ -405,6 +408,12 @@ function hydrateStoredSearchResults(
     ...observations.map((row) => row.searchRecord),
   ]
     .filter((record) => !kinds || kinds.includes(record.kind))
+    .filter((record) => {
+      if (!phase) {
+        return true
+      }
+      return record.kind === "observation" && record.phase === phase
+    })
     .slice(0, limit)
 }
 

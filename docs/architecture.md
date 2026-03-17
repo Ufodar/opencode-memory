@@ -199,6 +199,16 @@
     - worker hybrid merge
     - SQLite text retrieval
     - semantic retrieval
+  - `memory_search` 现在还支持显式 `phase` filter：
+    - 当前允许：
+      - `planning`
+      - `research`
+      - `execution`
+      - `verification`
+      - `decision`
+      - `other`
+    - `phase` 只对 observation 生效
+    - 一旦指定 `phase`，结果面默认 observation-only
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
   - `memory_search` 在组内按命中强度与重要度做 deterministic ranking
   - semantic 与 text 同时命中时，会先按 `kind + id` 去重，再继续复用现有 summary-first 纪律

@@ -1,6 +1,15 @@
 import { tool } from "@opencode-ai/plugin"
 import type { MemoryWorkerService } from "../services/memory-worker-service.js"
 
+const OBSERVATION_PHASES = [
+  "planning",
+  "research",
+  "execution",
+  "verification",
+  "decision",
+  "other",
+] as const
+
 export function createMemorySearchTool(worker: Pick<MemoryWorkerService, "searchMemoryRecords">) {
   return tool({
     description:
@@ -10,6 +19,7 @@ export function createMemorySearchTool(worker: Pick<MemoryWorkerService, "search
       limit: tool.schema.number().optional(),
       scope: tool.schema.enum(["session", "project"]).optional(),
       kind: tool.schema.enum(["summary", "observation"]).optional(),
+      phase: tool.schema.enum(OBSERVATION_PHASES).optional(),
     },
     async execute(args, toolCtx) {
       const limit = args.limit ?? 10
@@ -19,6 +29,7 @@ export function createMemorySearchTool(worker: Pick<MemoryWorkerService, "search
         limit,
         scope: args.scope,
         kinds: args.kind ? [args.kind] : undefined,
+        phase: args.phase,
       })
 
       return JSON.stringify({

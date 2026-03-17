@@ -97,6 +97,7 @@ export interface MemoryWorkerService {
     limit: number
     scope?: "session" | "project"
     kinds?: Array<MemorySearchRecord["kind"]>
+    phase?: ObservationRecord["phase"]
   }): {
     scope: "session" | "project"
     results: MemorySearchRecord[]
@@ -125,6 +126,7 @@ export interface MemoryWorkerService {
     query: string
     limit: number
     kinds?: Array<MemorySearchRecord["kind"]>
+    phase?: ObservationRecord["phase"]
   }): Promise<MemorySearchRecord[]>
   getQueueStatus(input: {
     limit: number
@@ -210,6 +212,7 @@ export function createMemoryWorkerService(input: {
     query: string
     limit: number
     kinds?: Array<MemorySearchRecord["kind"]>
+    phase?: ObservationRecord["phase"]
   }) => Promise<MemorySearchRecord[]>
 }): MemoryWorkerService {
   const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
@@ -423,6 +426,7 @@ export function createMemoryWorkerService(input: {
               query: searchInput.query,
               limit,
               kinds: searchInput.kinds,
+              phase: searchInput.phase,
             })
 
           const searchSessionSemantic = async () =>
@@ -432,6 +436,7 @@ export function createMemoryWorkerService(input: {
               query: searchInput.query,
               limit,
               kinds: searchInput.kinds,
+              phase: searchInput.phase,
             })
 
           const searchProjectSemantic = async () =>
@@ -440,6 +445,7 @@ export function createMemoryWorkerService(input: {
               query: searchInput.query,
               limit,
               kinds: searchInput.kinds,
+              phase: searchInput.phase,
             })
 
           const sessionSemantic = searchInput.scope === "project" ? [] : await searchSessionSemantic()
@@ -449,6 +455,7 @@ export function createMemoryWorkerService(input: {
             sessionText,
             limit,
             searchInput.kinds,
+            searchInput.phase,
           )
 
           if (searchInput.scope !== "project" && (sessionResults.length > 0 || searchInput.scope === "session")) {
@@ -465,6 +472,7 @@ export function createMemoryWorkerService(input: {
             projectText,
             limit,
             searchInput.kinds,
+            searchInput.phase,
           )
 
           return {
@@ -484,6 +492,7 @@ export function createMemoryWorkerService(input: {
               query: searchInput.query,
               limit,
               kinds: searchInput.kinds,
+              phase: searchInput.phase,
             })
           : input.store.searchMemoryRecords({
               projectPath: input.projectPath,
@@ -491,6 +500,7 @@ export function createMemoryWorkerService(input: {
               query: searchInput.query,
               limit,
               kinds: searchInput.kinds,
+              phase: searchInput.phase,
             })
 
       if (searchInput.scope === "project") {
@@ -503,6 +513,7 @@ export function createMemoryWorkerService(input: {
           query: searchInput.query,
           limit,
           kinds: searchInput.kinds,
+          phase: searchInput.phase,
         })
         scopeUsed = "project"
       }
@@ -574,6 +585,7 @@ function mergeMemorySearchResults(
   textResults: MemorySearchRecord[],
   limit: number,
   kinds?: Array<MemorySearchRecord["kind"]>,
+  phase?: ObservationRecord["phase"],
 ): MemorySearchRecord[] {
   const merged = new Map<string, MemorySearchRecord>()
 
@@ -586,6 +598,12 @@ function mergeMemorySearchResults(
 
   return Array.from(merged.values())
     .filter((record) => !kinds || kinds.includes(record.kind))
+    .filter((record) => {
+      if (!phase) {
+        return true
+      }
+      return record.kind === "observation" && record.phase === phase
+    })
     .sort((a, b) => memorySearchKindPriority(a) - memorySearchKindPriority(b))
     .slice(0, limit)
 }

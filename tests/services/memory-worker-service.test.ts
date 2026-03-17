@@ -916,6 +916,131 @@ describe("createMemoryWorkerService", () => {
     ])
   })
 
+  test("applies phase filters across semantic and text search paths", async () => {
+    const semanticCalls: Array<{ sessionID?: string; phase?: string }> = []
+    const textCalls: Array<{ sessionID?: string; phase?: string }> = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords(input: any) {
+          textCalls.push({ sessionID: input.sessionID, phase: input.phase })
+          return [
+            {
+              kind: "summary" as const,
+              id: "sum_text",
+              content: "summary text hit",
+              createdAt: 4,
+            },
+            {
+              kind: "observation" as const,
+              id: "obs_decision_text",
+              content: "decision text hit",
+              createdAt: 3,
+              tool: "read",
+              importance: 0.8,
+              tags: ["decision"],
+              phase: "decision",
+            },
+            {
+              kind: "observation" as const,
+              id: "obs_research_text",
+              content: "research text hit",
+              createdAt: 2,
+              tool: "read",
+              importance: 0.7,
+              tags: ["research"],
+              phase: "research",
+            },
+          ]
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline() {
+          return null
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input: any) => {
+        semanticCalls.push({ sessionID: input.sessionID, phase: input.phase })
+        return [
+          {
+            kind: "summary" as const,
+            id: "sum_semantic",
+            content: "summary semantic hit",
+            createdAt: 5,
+          },
+          {
+            kind: "observation" as const,
+            id: "obs_decision_semantic",
+            content: "decision semantic hit",
+            createdAt: 4,
+            tool: "bash",
+            importance: 0.95,
+            tags: ["decision"],
+            phase: "decision",
+          },
+          {
+            kind: "observation" as const,
+            id: "obs_execution_semantic",
+            content: "execution semantic hit",
+            createdAt: 1,
+            tool: "edit",
+            importance: 0.7,
+            tags: ["execution"],
+            phase: "execution",
+          },
+        ]
+      },
+    })
+
+    const result = await (worker as any).searchMemoryRecords({
+      sessionID: "ses_demo",
+      query: "decision",
+      limit: 10,
+      scope: "session",
+      phase: "decision",
+    })
+
+    expect(semanticCalls).toEqual([{ sessionID: "ses_demo", phase: "decision" }])
+    expect(textCalls).toEqual([{ sessionID: "ses_demo", phase: "decision" }])
+    expect(result.results.map((record: MemorySearchRecord) => `${record.kind}:${record.id}`)).toEqual([
+      "observation:obs_decision_semantic",
+      "observation:obs_decision_text",
+    ])
+  })
+
   test("prefers semantic observation anchors before text timeline fallback", async () => {
     const semanticCalls: Array<{ sessionID?: string; kinds?: string[] }> = []
     const timelineCalls: Array<{
