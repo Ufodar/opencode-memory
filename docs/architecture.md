@@ -151,8 +151,22 @@
   - `memory_timeline`
   - `memory_details`
 - 当前策略：
+  - `memory_search` 现在已补第一版 semantic retrieval：
+    - OpenAI-compatible embedding API
+    - 本地 vector index
+    - 当前后端：
+      - `USearch`
+      - `exact-scan`
+    - 当前只接到 `memory_search`
+    - `memory_timeline` / `memory_details` 这轮不变
   - `memory_search` summary-first
   - `memory_search` 未指定 `scope` 时默认 `session-first / project-fallback`
+  - 搜索顺序当前是：
+    - session semantic
+    - session text fallback
+    - project semantic
+    - project text fallback
+    这样保持原有 scope 语义不变
   - `memory_timeline` 围绕 summary / observation anchor 返回时间上下文
   - `memory_timeline` 未指定 `scope` 时默认 `session-first / project-fallback`
   - `memory_details` mixed details
@@ -169,6 +183,20 @@
     - `memory_search`
     - `memory_timeline`
     - `memory_details`
+
+### 向量层
+
+- 当前仍以 SQLite 为真源
+- 新增 `memory_vectors` 表，持久化：
+  - `search_record_json`
+  - `covered_observation_ids_json`
+  - `vector_blob`
+- semantic hit 进入结果面后，仍继续遵守：
+  - summary-first
+  - covered observation 去重
+- embedding 配置当前不绑定 `opencode.json`
+  - 第一版先使用 `OPENCODE_MEMORY_*` env
+  - 后续如需 `providerRef`，再单独设计
 
 ### compaction 记忆保留
 

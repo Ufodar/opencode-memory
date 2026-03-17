@@ -511,6 +511,84 @@ describe("createMemoryWorkerService", () => {
     expect(result.results[0]?.id).toBe("sum_project")
   })
 
+  test("prefers semantic search before store fallback and keeps session/project scope logic", async () => {
+    const semanticCalls: Array<{ sessionID?: string }> = []
+    const textCalls: Array<{ sessionID?: string }> = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords(input) {
+          textCalls.push({ sessionID: input.sessionID })
+          return []
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline() {
+          return null
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input) => {
+        semanticCalls.push({ sessionID: input.sessionID })
+        if (input.sessionID) {
+          return []
+        }
+
+        return [
+          {
+            kind: "summary" as const,
+            id: "sum_semantic",
+            content: "语义命中的 project summary",
+            createdAt: 1,
+          },
+        ]
+      },
+    })
+
+    const result = await worker.searchMemoryRecords({
+      sessionID: "ses_demo",
+      query: "跨多次 run 复用后台进程",
+      limit: 5,
+    })
+
+    expect(semanticCalls).toEqual([{ sessionID: "ses_demo" }, { sessionID: undefined }])
+    expect(textCalls).toEqual([{ sessionID: "ses_demo" }])
+    expect(result.scope).toBe("project")
+    expect(result.results[0]?.id).toBe("sum_semantic")
+  })
+
   test("reads queue status and retries failed jobs through the worker service", async () => {
     const calls: string[] = []
 

@@ -118,6 +118,12 @@ export interface MemoryWorkerService {
     timeline: MemoryTimelineResult
   } | null>
   getMemoryDetails(ids: string[]): Awaitable<MemoryDetailRecord[]>
+  searchSemanticMemoryRecords?(input: {
+    projectPath: string
+    sessionID?: string
+    query: string
+    limit: number
+  }): Promise<MemorySearchRecord[]>
   getQueueStatus(input: {
     limit: number
   }): Awaitable<{
@@ -191,8 +197,17 @@ export function createMemoryWorkerService(input: {
   buildSystemMemoryContext?: BuildSystemMemoryContext
   buildCompactionMemoryContext?: BuildCompactionMemoryContext
   readWorkerStatus?: () => MemoryWorkerStatusSnapshot | null
-  onObservationCaptured?: (record: ObservationRecord) => void
-  onSummaryCaptured?: (record: Extract<MemoryDetailRecord, { kind: "summary" }>) => void
+  onObservationCaptured?: (record: ObservationRecord) => Awaitable<void>
+  onSummaryCaptured?: (input: {
+    detail: Extract<MemoryDetailRecord, { kind: "summary" }>
+    summary: SummaryRecord
+  }) => Awaitable<void>
+  searchSemanticMemoryRecords?: (input: {
+    projectPath: string
+    sessionID?: string
+    query: string
+    limit: number
+  }) => Promise<MemorySearchRecord[]>
 }): MemoryWorkerService {
   const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
   const captureToolObservation = input.captureToolObservation ?? defaultCaptureToolObservation
@@ -268,7 +283,7 @@ export function createMemoryWorkerService(input: {
       )
 
       saveObservation(refinedObservation)
-      input.onObservationCaptured?.(refinedObservation)
+      await input.onObservationCaptured?.(refinedObservation)
       return refinedObservation
     },
 
@@ -294,8 +309,20 @@ export function createMemoryWorkerService(input: {
           .getMemoryDetails([result.summaryID])
           .find((record): record is Extract<MemoryDetailRecord, { kind: "summary" }> => record.kind === "summary")
 
-        if (summaryDetail) {
-          input.onSummaryCaptured?.(summaryDetail)
+        const summaryRecord =
+          "listRecentSummaries" in input.store
+            ? input.store.listRecentSummaries({
+                projectPath: input.projectPath,
+                sessionID,
+                limit: 1,
+              })[0]
+            : undefined
+
+        if (summaryDetail && summaryRecord?.id === result.summaryID) {
+          await input.onSummaryCaptured?.({
+            detail: summaryDetail,
+            summary: summaryRecord,
+          })
         }
       }
 
@@ -383,6 +410,69 @@ export function createMemoryWorkerService(input: {
     },
 
     searchMemoryRecords(searchInput) {
+      if (input.searchSemanticMemoryRecords) {
+        return (async () => {
+          const limit = searchInput.limit
+
+          const searchSessionSemantic = async () =>
+            await input.searchSemanticMemoryRecords?.({
+              projectPath: input.projectPath,
+              sessionID: searchInput.sessionID,
+              query: searchInput.query,
+              limit,
+            })
+
+          const searchProjectSemantic = async () =>
+            await input.searchSemanticMemoryRecords?.({
+              projectPath: input.projectPath,
+              query: searchInput.query,
+              limit,
+            })
+
+          let sessionSemantic = searchInput.scope === "project" ? [] : await searchSessionSemantic()
+          if (searchInput.scope !== "project" && sessionSemantic && sessionSemantic.length > 0) {
+            return {
+              scope: "session" as const,
+              results: sessionSemantic,
+            }
+          }
+
+          const sessionText =
+            searchInput.scope === "project"
+              ? []
+              : input.store.searchMemoryRecords({
+                  projectPath: input.projectPath,
+                  sessionID: searchInput.sessionID,
+                  query: searchInput.query,
+                  limit,
+                })
+
+          if (searchInput.scope !== "project" && (sessionText.length > 0 || searchInput.scope === "session")) {
+            return {
+              scope: "session" as const,
+              results: sessionText,
+            }
+          }
+
+          const projectSemantic = await searchProjectSemantic()
+          if (projectSemantic && projectSemantic.length > 0) {
+            return {
+              scope: "project" as const,
+              results: projectSemantic,
+            }
+          }
+
+          return {
+            scope: "project" as const,
+            results: input.store.searchMemoryRecords({
+              projectPath: input.projectPath,
+              query: searchInput.query,
+              limit,
+            }),
+          }
+        })()
+      }
+
       const limit = searchInput.limit
 
       let scopeUsed: "session" | "project" = "project"

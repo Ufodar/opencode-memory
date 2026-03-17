@@ -1,9 +1,13 @@
 import { createSessionReentryGuard } from "../runtime/hooks/idle-summary-guard.js"
 import { generateModelObservation } from "../services/ai/model-observation.js"
 import { generateModelSummary } from "../services/ai/model-summary.js"
+import { createEmbeddingClient } from "../services/ai/embedding-client.js"
+import { getEmbeddingConfig } from "../services/ai/embedding-config.js"
 import { log } from "../services/logger.js"
 import { createMemoryWorkerService } from "../services/memory-worker-service.js"
+import { createStoredSemanticMemorySearch } from "../memory/vector/search-service.js"
 import { SQLiteMemoryStore } from "../storage/sqlite/memory-store.js"
+import { SQLiteMemoryVectorRepository } from "../storage/sqlite/vector-repository.js"
 import { getOpencodeMemoryVersion } from "../version.js"
 import {
   removeWorkerRegistryRecord,
@@ -63,6 +67,19 @@ export async function startMemoryWorkerServer(input: {
   activeSessionReapIntervalMs?: number
 }): Promise<MemoryWorkerServerHandle> {
   const store = new SQLiteMemoryStore(input.databasePath)
+  const embeddingConfig = getEmbeddingConfig()
+  const embeddingClient = embeddingConfig ? createEmbeddingClient(embeddingConfig) : null
+  const vectorRepository = new SQLiteMemoryVectorRepository(store.getDatabaseHandle())
+  const semanticMemorySearch =
+    embeddingConfig && embeddingClient
+      ? createStoredSemanticMemorySearch({
+          repository: vectorRepository,
+          dimensions: embeddingConfig.dimensions,
+          backend: embeddingConfig.backend,
+          embedQuery: (query) => embeddingClient.embed(query),
+          logFailure: log,
+        })
+      : null
   const statusStore = input.statusPath
     ? createMemoryWorkerStatusSnapshotStore(input.statusPath)
     : null
@@ -89,12 +106,30 @@ export async function startMemoryWorkerServer(input: {
     generateModelObservation,
     generateModelSummary,
     readWorkerStatus: () => lastWorkerStatusSnapshot ?? initialStatusSnapshot,
-    onObservationCaptured(observation) {
+    async onObservationCaptured(observation) {
       streamBroadcaster.broadcastObservation(observation)
+      await semanticMemorySearch?.indexObservation(observation)
     },
-    onSummaryCaptured(summary) {
-      streamBroadcaster.broadcastSummary(summary)
+    async onSummaryCaptured(summaryInput) {
+      streamBroadcaster.broadcastSummary(summaryInput.detail)
+      await semanticMemorySearch?.indexSummary({
+        detail: summaryInput.detail,
+        projectPath: summaryInput.summary.projectPath,
+        sessionID: summaryInput.summary.sessionID,
+        requestSummary: summaryInput.summary.requestSummary,
+      })
     },
+    searchSemanticMemoryRecords: semanticMemorySearch
+      ? async (searchInput) =>
+          (
+            await semanticMemorySearch.search({
+              projectPath: searchInput.projectPath,
+              sessionID: searchInput.sessionID,
+              query: searchInput.query,
+              limit: searchInput.limit,
+            })
+          ).results
+      : undefined,
   })
   const pendingJobs = createPendingJobProcessor({
     store: {

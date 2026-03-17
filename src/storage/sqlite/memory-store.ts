@@ -57,6 +57,10 @@ export class SQLiteMemoryStore
     this.retrieval = new MemoryRetrievalService(this.database.handle)
   }
 
+  getDatabaseHandle() {
+    return this.database.handle
+  }
+
   saveObservation(record: ObservationRecord) {
     this.observations.save(record)
   }

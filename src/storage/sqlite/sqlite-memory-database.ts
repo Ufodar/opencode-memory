@@ -72,6 +72,23 @@ export class SQLiteMemoryDatabase {
       CREATE INDEX IF NOT EXISTS idx_summaries_project_created
       ON summaries(project_path, created_at DESC);
 
+      CREATE TABLE IF NOT EXISTS memory_vectors (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        project_path TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        search_record_json TEXT NOT NULL,
+        covered_observation_ids_json TEXT NOT NULL,
+        vector_blob BLOB NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_memory_vectors_project_created
+      ON memory_vectors(project_path, kind, created_at DESC);
+
+      CREATE INDEX IF NOT EXISTS idx_memory_vectors_session_created
+      ON memory_vectors(project_path, session_id, kind, created_at DESC);
+
       CREATE TABLE IF NOT EXISTS pending_jobs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT NOT NULL,

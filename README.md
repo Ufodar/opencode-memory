@@ -18,12 +18,14 @@ OpenCode 的通用工作记忆插件底座。
 - system/background 注入
 - 分层检索
 - compaction 记忆保留
+- `memory_search` 的第一版 semantic retrieval
 
 第一阶段不做：
 
 - 标书或其他业务特化记忆
 - 团队知识库
 - 复杂 timeline / reranking
+- Chroma / providerRef / timeline 向量检索
 
 ## 设计原则
 
@@ -83,6 +85,13 @@ docs/
   - `decision`
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_timeline` 已支持围绕 summary / observation anchor 查看时间上下文
+- `memory_search` 已支持第一版语义召回：
+  - 通过 `OPENCODE_MEMORY_EMBEDDING_*` 连接 OpenAI-compatible embedding API
+  - 新 observation / summary 写入后会同步向量化
+  - 当前本地 vector index 后端：
+    - `usearch`
+    - `exact-scan`
+  - semantic retrieval 当前只接到 `memory_search`
 - SQLite 存储层已开始按长期架构目标拆分：
   - `SQLiteMemoryStore`
   - `SQLiteMemoryDatabase`
@@ -258,6 +267,16 @@ docs/
   - 新增 `memory_queue_status`
   - 新增 `memory_queue_retry`
   - queue depth / isProcessing 现在也会直接暴露出来
+- 第一版向量配置当前使用 `opencode-memory` 自己的 env namespace：
+  - `OPENCODE_MEMORY_EMBEDDING_API_URL`
+  - `OPENCODE_MEMORY_EMBEDDING_API_KEY`
+  - `OPENCODE_MEMORY_EMBEDDING_MODEL`
+  - `OPENCODE_MEMORY_EMBEDDING_DIMENSIONS`
+  - `OPENCODE_MEMORY_VECTOR_BACKEND`
+- 对外概念保持：
+  - `semantic retrieval`
+  - `vector index`
+  不把 `USearch` 暴露成产品层名字
   - processing job 现在也能看见，并会标出是否 stale
   - stuck processing job 现在也能手动放回 `pending`
   - 失败 job 不再只能静默留在 SQLite 里
