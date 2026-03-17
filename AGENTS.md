@@ -21,6 +21,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-17
 - N/A（只调整 token key 文本） (051-token-key-work-clarifier)
 - N/A（只调整 footer phrasing） (053-context-value-access-phrasing)
 - N/A（只调整 footer 最后一行 phrasing） (054-footer-visible-id-access)
+- N/A（只调整 snapshot label） (055-next-steps-snapshot-label)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -40,9 +41,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 055-next-steps-snapshot-label: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 054-footer-visible-id-access: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 053-context-value-access-phrasing: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 052-token-key-read-clarifier: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

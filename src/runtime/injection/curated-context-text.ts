@@ -7,7 +7,7 @@ const ELLIPSIS = "…"
 const CHARS_PER_TOKEN_ESTIMATE = 4
 
 export interface SessionSnapshotField {
-  label: "Current Focus" | "Investigated" | "Learned" | "Completed" | "Next"
+  label: "Current Focus" | "Investigated" | "Learned" | "Completed" | "Next Steps"
   value: string
 }
 
@@ -363,7 +363,7 @@ export function buildSessionSnapshotFields(input: {
   const next = buildSnapshotNextText(input)
   if (next) {
     fields.push({
-      label: "Next",
+      label: "Next Steps",
       value: next,
     })
   }

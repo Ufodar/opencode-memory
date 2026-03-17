@@ -78,6 +78,12 @@
     - `[MEMORY TIMELINE]`
     - `[RESUME GUIDE]`
     - `[PREVIOUSLY]`（`A:` assistant handoff）
+  - `[LATEST SESSION SNAPSHOT]` 当前字段名已经对齐为：
+    - `Current Focus`
+    - `Investigated`
+    - `Learned`
+    - `Completed`
+    - `Next Steps`
   - `[MEMORY TIMELINE]` 现在会同时承载：
     - older summary checkpoint
     - unsummarized observation checkpoint

@@ -169,7 +169,7 @@ docs/
     - `Current Focus`
     - `Learned`
     - `Completed`
-    - `Next`
+    - `Next Steps`
   - 当前 session 若已有 assistant 文本回复，system context 末尾现在还会追加：
     - `[PREVIOUSLY]`
     - 用 `A:` 前缀明确表达“上一次 assistant 停在了哪里”

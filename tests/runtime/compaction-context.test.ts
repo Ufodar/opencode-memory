@@ -179,7 +179,7 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).toContain("- Current Focus: 抽取资格条件")
     expect(text).toContain("- Learned: 读取第3章资格条件并定位到3条硬约束")
     expect(text).toContain("- Completed: 已提取3条资格条件并发现1项材料缺口")
-    expect(text).toContain("- Next: 输出缺口清单")
+    expect(text).toContain("- Next Steps: 输出缺口清单")
     expect(text).not.toContain("Recent memory summaries:")
     expect(text).toContain("输出缺口清单")
     expect(text).toContain("Recent timeline checkpoints:")
@@ -456,7 +456,7 @@ describe("buildCompactionMemoryContext", () => {
     const text = context.join("\n")
     expect(text).toContain("Latest session snapshot:")
     expect(text).toContain("- Completed: brief.txt：这是一个真实 OpenCode 宿主 smoke 测试文件")
-    expect(text).toContain("- Next: 继续检查 memory_context_preview 的输出")
+    expect(text).toContain("- Next Steps: 继续检查 memory_context_preview 的输出")
     expect(text).not.toContain("Recent memory summaries:")
     expect(text).not.toContain("插件在真实 OpenCode 宿主中加载")
     expect(text).toContain("[file] brief.txt")
@@ -490,7 +490,7 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).toContain("- Current Focus: 检查 smoke 文档")
     expect(text).not.toContain("- Learned:")
     expect(text).toContain("- Completed: 已完成 smoke 文档检查，并确认当前 preview 已按结构化 section 输出")
-    expect(text).toContain("- Next: 继续从已完成 smoke 文档检查开始")
+    expect(text).toContain("- Next Steps: 继续从已完成 smoke 文档检查开始")
   })
 
   test("moves older compaction summaries into the unified timeline after latest snapshot absorbs the newest one", () => {
