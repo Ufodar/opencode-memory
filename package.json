@@ -1,7 +1,15 @@
 {
-  "name": "opencode-memory",
+  "name": "@ufodar/opencode-memory",
   "version": "0.1.0",
   "description": "OpenCode plugin for persistent work memory using observations, summaries, and system-context injection",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ufodar/opencode-memory.git"
+  },
+  "homepage": "https://github.com/Ufodar/opencode-memory#readme",
+  "bugs": {
+    "url": "https://github.com/Ufodar/opencode-memory/issues"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,6 +31,9 @@
   ],
   "author": "Ufodar",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@opencode-ai/plugin": "^1.0.162",
     "usearch": "^2.21.4"
