@@ -3,6 +3,7 @@ import { inferObservationPhaseFromToolCall } from "./phase.js"
 
 const HIGH_VALUE_TOOLS = new Set([
   "read",
+  "filesystem_read_text_file",
   "grep",
   "glob",
   "edit",

@@ -167,6 +167,32 @@ describe("captureToolObservation", () => {
     })
   })
 
+  test("treats filesystem_read_text_file as a read-like observation", () => {
+    const observation = captureToolObservation(
+      {
+        tool: "filesystem_read_text_file",
+        sessionID: "ses_demo",
+        callID: "call_fs_read",
+        args: { path: "/workspace/demo/brief.txt" },
+        projectPath: "/workspace/demo",
+      },
+      {
+        title: "",
+        output: "这是一份用于验证 opencode-memory 的测试文件。 其中包含一个语义短语：投标保函。",
+        metadata: {},
+      },
+    )
+
+    expect(observation).not.toBeNull()
+    expect(observation?.phase).toBe("research")
+    expect(observation?.content).toContain("投标保函")
+    expect(observation?.trace).toEqual({
+      workingDirectory: "/workspace/demo",
+      filePaths: ["/workspace/demo/brief.txt"],
+      filesRead: ["/workspace/demo/brief.txt"],
+    })
+  })
+
   test("captures modified file trace for write tools", () => {
     const observation = captureToolObservation(
       {

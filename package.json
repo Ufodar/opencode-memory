@@ -1,6 +1,6 @@
 {
   "name": "@ufodar/opencode-memory",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OpenCode plugin for persistent work memory using observations, summaries, and system-context injection",
   "repository": {
     "type": "git",

@@ -35,6 +35,7 @@ export function inferObservationPhaseFromToolCall(input: {
     case "task":
       return "planning"
     case "read":
+    case "filesystem_read_text_file":
     case "grep":
     case "glob":
       return "research"

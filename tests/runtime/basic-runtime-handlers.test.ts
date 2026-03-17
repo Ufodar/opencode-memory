@@ -154,4 +154,36 @@ describe("basic runtime handlers", () => {
 
     expect(calls).toEqual(["capture:none"])
   })
+
+  test("tool.execute.after normalizes MCP text output before delegating", async () => {
+    let delegatedOutput = ""
+
+    const handler = createToolExecuteAfterHandler({
+      worker: {
+        captureObservationFromToolCall(_input, output) {
+          delegatedOutput = output.output
+          return null
+        },
+      } as Pick<MemoryWorkerService, "captureObservationFromToolCall">,
+    })
+
+    await handler(
+      {
+        tool: "filesystem_read_text_file",
+        sessionID: "ses_demo",
+        callID: "call_mcp_1",
+        args: { path: "/workspace/demo/brief.txt" },
+      },
+      {
+        content: [
+          {
+            type: "text",
+            text: "这是一份 MCP 工具返回的文件内容。",
+          },
+        ],
+      } as never,
+    )
+
+    expect(delegatedOutput).toContain("MCP 工具返回的文件内容")
+  })
 })

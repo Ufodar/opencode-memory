@@ -18,13 +18,12 @@ export function createToolExecuteAfterHandler(input: ToolExecuteAfterHandlerDepe
       callID: string
       args: unknown
     },
-    output: {
-      title: string
-      output: string
-      metadata: Record<string, unknown>
-    },
+    output: unknown,
   ) => {
-    const observation = await input.worker.captureObservationFromToolCall(toolInput, output)
+    const observation = await input.worker.captureObservationFromToolCall(
+      toolInput,
+      normalizeToolOutput(output),
+    )
 
     if (!observation) {
       return
@@ -32,4 +31,47 @@ export function createToolExecuteAfterHandler(input: ToolExecuteAfterHandlerDepe
 
     log("captured observation", { id: observation.id, tool: observation.tool.name })
   }
+}
+
+function normalizeToolOutput(output: unknown): {
+  title: string
+  output: string
+  metadata: Record<string, unknown>
+} {
+  if (isPlainObject(output) && typeof output.output === "string") {
+    return {
+      title: typeof output.title === "string" ? output.title : "",
+      output: output.output,
+      metadata: isPlainObject(output.metadata) ? output.metadata : {},
+    }
+  }
+
+  if (isPlainObject(output) && Array.isArray(output.content)) {
+    const text = output.content
+      .filter(
+        (item): item is { type: string; text: string } =>
+          isPlainObject(item) &&
+          typeof item.type === "string" &&
+          item.type === "text" &&
+          typeof item.text === "string",
+      )
+      .map((item) => item.text)
+      .join("\n")
+
+    return {
+      title: "",
+      output: text,
+      metadata: {},
+    }
+  }
+
+  return {
+    title: "",
+    output: typeof output === "string" ? output : "",
+    metadata: {},
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }

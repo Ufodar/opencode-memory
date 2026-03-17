@@ -1,10 +1,14 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, beforeEach, describe, expect, test } from "bun:test"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
 import { buildCompactionMemoryContext } from "../../src/runtime/injection/compaction-context.js"
 
 const ORIGINAL_ENV = { ...process.env }
+
+beforeEach(() => {
+  process.env.OPENCODE_MEMORY_CONFIG_PATH = "/tmp/opencode-memory-test-config-missing.jsonc"
+})
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }

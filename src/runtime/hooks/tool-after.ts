@@ -82,7 +82,7 @@ function buildObservationSummaries(input: {
   content: string
   outputSummary: string
 } {
-  if (input.tool === "read") {
+  if (isReadLikeTool(input.tool)) {
     const filePath = readFilePathFromArgs(input.args) ?? readFilePathFromOutput(input.output)
     const semanticReadSummary = buildReadSemanticSummary({
       filePath,
@@ -223,5 +223,9 @@ function compactTrace(trace: ObservationRecord["trace"]): ObservationRecord["tra
   ) as ObservationRecord["trace"]
 }
 
-const READ_OR_DISCOVERY_TOOLS = new Set(["read", "grep", "glob"])
+const READ_OR_DISCOVERY_TOOLS = new Set(["read", "filesystem_read_text_file", "grep", "glob"])
 const WRITE_OR_MODIFY_TOOLS = new Set(["write", "edit", "patch"])
+
+function isReadLikeTool(tool: string): boolean {
+  return tool === "read" || tool === "filesystem_read_text_file"
+}
