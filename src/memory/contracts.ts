@@ -82,6 +82,7 @@ export interface MemorySearchStore {
     sessionID?: string
     query: string
     limit: number
+    kinds?: Array<MemorySearchRecord["kind"]>
   }): MemorySearchRecord[]
 }
 

@@ -139,6 +139,41 @@ describe("SQLiteMemoryStore retrieval surface", () => {
     expect(projectResults.map((item) => item.id)).toEqual(["sum_session", "sum_other"])
   })
 
+  test("supports kind filters for text retrieval", () => {
+    store.saveSummary(
+      buildSummary({
+        id: "sum_1",
+        outcomeSummary: "当前会话已完成资格条件抽取",
+      }),
+    )
+    store.saveObservation(
+      buildObservation({
+        id: "obs_1",
+        content: "读取资格条件附表并记录补充要求",
+      }),
+    )
+
+    const summaryResults = store.searchMemoryRecords({
+      projectPath: "/workspace/demo",
+      query: "资格条件",
+      limit: 10,
+      kinds: ["summary"],
+    })
+    const observationResults = store.searchMemoryRecords({
+      projectPath: "/workspace/demo",
+      query: "资格条件",
+      limit: 10,
+      kinds: ["observation"],
+    })
+
+    expect(summaryResults.map((item) => `${item.kind}:${item.id}`)).toEqual([
+      "summary:sum_1",
+    ])
+    expect(observationResults.map((item) => `${item.kind}:${item.id}`)).toEqual([
+      "observation:obs_1",
+    ])
+  })
+
   test("hides observations already covered by returned summaries", () => {
     store.saveSummary(
       buildSummary({

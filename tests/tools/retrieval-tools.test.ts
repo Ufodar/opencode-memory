@@ -47,6 +47,55 @@ describe("retrieval tools", () => {
     expect(result.results[0].id).toBe("sum_project")
   })
 
+  test("memory_search forwards kind filter to the memory worker", async () => {
+    const calls: Array<{
+      kind: "search"
+      sessionID?: string
+      scope?: "session" | "project"
+      kinds?: string[]
+    }> = []
+    const searchTool = createMemorySearchTool(
+      {
+        searchMemoryRecords(input: any) {
+          calls.push({
+            kind: "search",
+            sessionID: input.sessionID,
+            scope: input.scope,
+            kinds: input.kinds,
+          })
+          return {
+            scope: "session",
+            results: [
+              {
+                kind: "summary",
+                id: "sum_only",
+                content: "summary result",
+                createdAt: 1,
+              },
+            ] satisfies MemorySearchRecord[],
+          }
+        },
+      } as Pick<MemoryWorkerService, "searchMemoryRecords">,
+    )
+
+    const result = JSON.parse(
+      await searchTool.execute(
+        { query: "requirements", kind: "summary", limit: 5 },
+        buildToolContext(),
+      ),
+    )
+
+    expect(calls).toEqual([
+      {
+        kind: "search",
+        sessionID: "ses_current",
+        scope: undefined,
+        kinds: ["summary"],
+      },
+    ])
+    expect(result.results[0].id).toBe("sum_only")
+  })
+
   test("memory_timeline delegates timeline resolution to the memory worker", async () => {
     const calls: Array<{ kind: "timeline"; sessionID?: string; scope?: "session" | "project" }> = []
     const timelineTool = createMemoryTimelineTool(

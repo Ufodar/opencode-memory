@@ -94,9 +94,12 @@ docs/
     - `exact-scan`
   - semantic retrieval 当前已接到：
     - `memory_search`
-    - `memory_search` 同一 scope 下现在会合并 semantic 与 text 命中
+  - `memory_search` 同一 scope 下现在会合并 semantic 与 text 命中
       - 按 `kind + id` 去重
       - 继续遵守 summary-first
+  - `memory_search` 现在支持可选 `kind`：
+    - `summary`
+    - `observation`
     - `memory_timeline(query=...)` 的 observation anchor 解析
 - 核心控制 heuristics 已开始 language-neutral 化：
   - `decision` 识别支持中英常见信号

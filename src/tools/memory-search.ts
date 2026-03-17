@@ -9,6 +9,7 @@ export function createMemorySearchTool(worker: Pick<MemoryWorkerService, "search
       query: tool.schema.string(),
       limit: tool.schema.number().optional(),
       scope: tool.schema.enum(["session", "project"]).optional(),
+      kind: tool.schema.enum(["summary", "observation"]).optional(),
     },
     async execute(args, toolCtx) {
       const limit = args.limit ?? 10
@@ -17,6 +18,7 @@ export function createMemorySearchTool(worker: Pick<MemoryWorkerService, "search
         query: args.query,
         limit,
         scope: args.scope,
+        kinds: args.kind ? [args.kind] : undefined,
       })
 
       return JSON.stringify({

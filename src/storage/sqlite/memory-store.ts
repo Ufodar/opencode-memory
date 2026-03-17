@@ -130,6 +130,7 @@ export class SQLiteMemoryStore
     sessionID?: string
     query: string
     limit: number
+    kinds?: Array<MemorySearchRecord["kind"]>
   }): MemorySearchRecord[] {
     return this.retrieval.searchRecords(input)
   }

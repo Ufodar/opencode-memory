@@ -813,6 +813,109 @@ describe("createMemoryWorkerService", () => {
     ])
   })
 
+  test("applies kind filters across semantic and text search paths", async () => {
+    const semanticCalls: Array<{ sessionID?: string; kinds?: string[] }> = []
+    const textCalls: Array<{ sessionID?: string; kinds?: string[] }> = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords(input: any) {
+          textCalls.push({ sessionID: input.sessionID, kinds: input.kinds })
+          return [
+            {
+              kind: "summary" as const,
+              id: "sum_text",
+              content: "summary text hit",
+              createdAt: 2,
+            },
+            {
+              kind: "observation" as const,
+              id: "obs_text",
+              content: "observation text hit",
+              createdAt: 1,
+              tool: "read",
+              importance: 0.8,
+              tags: ["text"],
+            },
+          ]
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline() {
+          return null
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input) => {
+        semanticCalls.push({ sessionID: input.sessionID, kinds: input.kinds })
+        return [
+          {
+            kind: "summary" as const,
+            id: "sum_semantic",
+            content: "summary semantic hit",
+            createdAt: 4,
+          },
+          {
+            kind: "observation" as const,
+            id: "obs_semantic",
+            content: "observation semantic hit",
+            createdAt: 3,
+            tool: "bash",
+            importance: 0.9,
+            tags: ["semantic"],
+          },
+        ]
+      },
+    })
+
+    const result = await (worker as any).searchMemoryRecords({
+      sessionID: "ses_demo",
+      query: "requirements",
+      limit: 5,
+      scope: "session",
+      kinds: ["observation"],
+    })
+
+    expect(semanticCalls).toEqual([{ sessionID: "ses_demo", kinds: ["observation"] }])
+    expect(textCalls).toEqual([{ sessionID: "ses_demo", kinds: ["observation"] }])
+    expect(result.results.map((record: MemorySearchRecord) => `${record.kind}:${record.id}`)).toEqual([
+      "observation:obs_semantic",
+      "observation:obs_text",
+    ])
+  })
+
   test("prefers semantic observation anchors before text timeline fallback", async () => {
     const semanticCalls: Array<{ sessionID?: string; kinds?: string[] }> = []
     const timelineCalls: Array<{

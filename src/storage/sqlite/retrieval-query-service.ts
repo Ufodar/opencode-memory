@@ -32,9 +32,15 @@ export class MemoryRetrievalService {
     sessionID?: string
     query: string
     limit: number
+    kinds?: Array<MemorySearchRecord["kind"]>
   }): MemorySearchRecord[] {
     const pattern = `%${input.query.toLowerCase()}%`
-    const summaries = input.sessionID
+    const includeSummaries = !input.kinds || input.kinds.includes("summary")
+    const includeObservations = !input.kinds || input.kinds.includes("observation")
+
+    const summaries = !includeSummaries
+      ? []
+      : input.sessionID
       ? (this.db
           .prepare(`
             SELECT * FROM summaries
@@ -62,7 +68,9 @@ export class MemoryRetrievalService {
           `)
           .all(input.projectPath, pattern, pattern, pattern, input.limit) as SummaryRow[])
 
-    const observations = input.sessionID
+    const observations = !includeObservations
+      ? []
+      : input.sessionID
       ? (this.db
           .prepare(`
             SELECT * FROM observations

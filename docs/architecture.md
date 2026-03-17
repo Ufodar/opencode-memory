@@ -191,6 +191,14 @@
     - `command`
   - `memory_timeline` observation item 已稳定暴露最小 evidence 视图
   - `memory_search` 支持 `session / project` scope
+  - `memory_search` 现在还支持显式 `kind` filter：
+    - `summary`
+    - `observation`
+    这层会同时约束：
+    - tool surface
+    - worker hybrid merge
+    - SQLite text retrieval
+    - semantic retrieval
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
   - `memory_search` 在组内按命中强度与重要度做 deterministic ranking
   - semantic 与 text 同时命中时，会先按 `kind + id` 去重，再继续复用现有 summary-first 纪律

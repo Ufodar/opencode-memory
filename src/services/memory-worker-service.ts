@@ -96,6 +96,7 @@ export interface MemoryWorkerService {
     query: string
     limit: number
     scope?: "session" | "project"
+    kinds?: Array<MemorySearchRecord["kind"]>
   }): {
     scope: "session" | "project"
     results: MemorySearchRecord[]
@@ -421,6 +422,7 @@ export function createMemoryWorkerService(input: {
               sessionID,
               query: searchInput.query,
               limit,
+              kinds: searchInput.kinds,
             })
 
           const searchSessionSemantic = async () =>
@@ -429,6 +431,7 @@ export function createMemoryWorkerService(input: {
               sessionID: searchInput.sessionID,
               query: searchInput.query,
               limit,
+              kinds: searchInput.kinds,
             })
 
           const searchProjectSemantic = async () =>
@@ -436,6 +439,7 @@ export function createMemoryWorkerService(input: {
               projectPath: input.projectPath,
               query: searchInput.query,
               limit,
+              kinds: searchInput.kinds,
             })
 
           const sessionSemantic = searchInput.scope === "project" ? [] : await searchSessionSemantic()
@@ -444,6 +448,7 @@ export function createMemoryWorkerService(input: {
             sessionSemantic ?? [],
             sessionText,
             limit,
+            searchInput.kinds,
           )
 
           if (searchInput.scope !== "project" && (sessionResults.length > 0 || searchInput.scope === "session")) {
@@ -459,6 +464,7 @@ export function createMemoryWorkerService(input: {
             projectSemantic ?? [],
             projectText,
             limit,
+            searchInput.kinds,
           )
 
           return {
@@ -477,12 +483,14 @@ export function createMemoryWorkerService(input: {
               projectPath: input.projectPath,
               query: searchInput.query,
               limit,
+              kinds: searchInput.kinds,
             })
           : input.store.searchMemoryRecords({
               projectPath: input.projectPath,
               sessionID: searchInput.sessionID,
               query: searchInput.query,
               limit,
+              kinds: searchInput.kinds,
             })
 
       if (searchInput.scope === "project") {
@@ -494,6 +502,7 @@ export function createMemoryWorkerService(input: {
           projectPath: input.projectPath,
           query: searchInput.query,
           limit,
+          kinds: searchInput.kinds,
         })
         scopeUsed = "project"
       }
@@ -564,6 +573,7 @@ function mergeMemorySearchResults(
   semanticResults: MemorySearchRecord[],
   textResults: MemorySearchRecord[],
   limit: number,
+  kinds?: Array<MemorySearchRecord["kind"]>,
 ): MemorySearchRecord[] {
   const merged = new Map<string, MemorySearchRecord>()
 
@@ -575,6 +585,7 @@ function mergeMemorySearchResults(
   }
 
   return Array.from(merged.values())
+    .filter((record) => !kinds || kinds.includes(record.kind))
     .sort((a, b) => memorySearchKindPriority(a) - memorySearchKindPriority(b))
     .slice(0, limit)
 }
