@@ -4,3 +4,10 @@ dist/
 *.log
 .env
 .env.local
+
+# local-only planning / spec workflow artifacts
+.specify/
+.opencode/command/speckit.*
+specs/
+docs/plans/
+AGENTS.md

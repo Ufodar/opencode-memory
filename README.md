@@ -58,7 +58,6 @@ src/
 docs/
   architecture.md
   roadmap.md
-  plans/
 ```
 
 ## 当前状态
@@ -67,10 +66,8 @@ docs/
 
 - 独立 git 仓库初始化
 - MIT 许可
-- `spec-kit` 工作流已接入：
-  - `.opencode/command/speckit.*`
-  - `.specify/scripts/bash/*`
-  - `specs/<feature>/spec.md|plan.md|tasks.md`
+- 本地研发流程已接入 `spec-kit`
+  - `spec / plan / tasks` 工件默认仅本地保留，不随 Git 仓库公开
 - OpenCode plugin 最小骨架
 - 核心 observation / summary 类型
 - SQLite observation 持久化
@@ -503,281 +500,49 @@ OpenCode 本地插件在开发时存在模块缓存特征：
 
 当前仓库目标是吸收其机制角色，而不是复制其全部代码结构。
 
-## 2026-03-16：当前 context builder header
+## 当前 context builder 能力摘要
 
 system context 当前已经会编译出这些 section：
 
-- `Project: ... | Generated: ...`
+- `# [project] recent context, ...`
 - `[CONTINUITY]`
 - `[CONTEXT INDEX]`
 - `[TIMELINE KEY]`
+- `[TOKEN KEY]`
 - `[CONTEXT ECONOMICS]`
 - `[LATEST SESSION SNAPSHOT]`
 - `[MEMORY TIMELINE]`
 - `[RESUME GUIDE]`
 - `[PREVIOUSLY]`
 
-其中 `[CONTEXT ECONOMICS]` 当前已经包含两层：
+当前这一层已经具备的关键能力：
 
-- 真实 coverage：
-  - summaries
-  - direct observations
-  - covered observations
-- deterministic token estimate：
-  - `Loading` 行现在会直接带出可见记录数
-  - `Loading` 的数量单位当前已经对齐成 `observations`
-  - `Loading`
-  - `Work investment` 会直接写成过去在 `research / building / decisions` 上已经花掉的投入
-  - `Your savings` 现在会把百分比写成 `reduction from reuse`
+- `[CONTEXT INDEX]`
+  - 会先告诉模型：这份 memory index 通常已经足够继续工作
+  - 只有缺证据、实现细节或过去决策理由时，才继续下钻
+  - 明确说明 `memory_details / memory_timeline / memory_search` 的用途
+- `[TIMELINE KEY]`
+  - 会解释 `[summary]`、phase、`{tool}`、`[day]`、`[file]`
+- `[TOKEN KEY]`
+  - `Read` 表示当前重新学会这条信息的阅读成本
+  - `Work` 表示过去已经投入的研究、构建和决策成本
+- `[CONTEXT ECONOMICS]`
+  - 会显示可见 observations 数量
+  - 会估算当前读取成本、历史工作投入和 reuse 带来的节省
+- `[LATEST SESSION SNAPSHOT]`
+  - 当前会整理成 `Investigated / Learned / Completed / Next Steps`
+  - 旧 summary 不会在更晚 direct observation 存在时继续冒充 latest snapshot
+- `[MEMORY TIMELINE]`
+  - 已支持按时间混排 summary 和 observation
+  - 已支持 `[day]`、`[file]` 分组
+  - 关键 observation 会展开出 `Result / Tool / Evidence`
+- `[RESUME GUIDE]`
+  - 优先给继续工作的短动作，而不是重复整段 summary
+- `[PREVIOUSLY]`
+  - 会在存在上一次 assistant handoff 时追加简短交接文本
 
-这里的 token 不是 provider 账单，而是基于当前 summary / observation 文本长度做的保守估算。
+说明：
 
-`Project: ... | Generated: ...` 当前用于告诉模型：
-
-- 这份 memory context 属于哪个项目
-- 这是本次 build 时生成的最新工作索引
-
-当前可见的 summary / observation line 也已经带上 record ID：
-
-- summary line 会显示 `#sum_*`
-- observation line 会显示 `#obs_*`
-
-这样当前 context 和 `memory_details(ids)` 才真正接得上。
-
-## 2026-03-16：`024-context-value-footer`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓已经有 `[CONTEXT ECONOMICS]`
-  - 但 `claude-mem` footer 还会再给一句“这份 index 为什么值得先信”的收尾话
-  - 我们此前还缺这句 value statement
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/024-context-value-footer/spec.md`
-  - `specs/024-context-value-footer/plan.md`
-  - `specs/024-context-value-footer/tasks.md`
-- 本轮实现结果：
-  - system context 末尾新增 `[CONTEXT VALUE]`
-- 这条 footer 会把当前 `summaries / direct observations / covered observations` 收成一句话
-  - 明确表达：先信任当前 index，再决定是否回头重读旧工作
-  - 现在还会继续补一条量化句：
-    - `Access ~X tokens of past research, building, and decisions for just ~Y tokens of reading.`
-- compaction context 继续保持轻量，不带这条 footer
-
-## 2026-03-16：`029-footer-drilldown-reminder`
-
-- 继续先按 `claude-mem` 对照：
-  - 我们当前 footer 已经有：
-    - `[CONTEXT VALUE]`
-    - `Access ~X tokens of past research, building, and decisions for just ~Y tokens of reading.`
-  - 但 `claude-mem` 在同一个 footer 位置还会再多一句动作提醒：
-    - 这份 index 不够时，应该顺着当前 index 继续下钻
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/029-footer-drilldown-reminder/spec.md`
-  - `specs/029-footer-drilldown-reminder/plan.md`
-  - `specs/029-footer-drilldown-reminder/tasks.md`
-- 本轮实现结果：
-  - `[CONTEXT VALUE]` 现在会再多一条短提醒：
-    - `If this index is still not enough, use memory_details with visible IDs to access deeper memory before re-reading history.`
-  - 这条提醒不替换已有量化句，只做追加
-  - compaction context 继续不带这条 footer 提醒
-
-## 2026-03-16：`038-context-drilldown-intro`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓此前 `[CONTEXT INDEX]` 已经会说：
-    - `Trust this index before re-reading code or past history.`
-    - `memory_details / memory_timeline / memory_search`
-  - 但 `claude-mem` 在同位置还会先加一条过渡句：
-    - `When you need implementation details, rationale, or debugging context:`
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/038-context-drilldown-intro/spec.md`
-  - `specs/038-context-drilldown-intro/plan.md`
-  - `specs/038-context-drilldown-intro/tasks.md`
-- 本轮实现结果：
-  - system context 的 `[CONTEXT INDEX]` 在工具 bullet 前新增这条导语
-  - 低预算压缩版继续不带这条额外句子，避免把真正的 timeline 挤掉
-  - compaction context 继续不带这条导语
-
-## 2026-03-16：`039-action-led-context-tool-lines`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓此前 `[CONTEXT INDEX]` 已经有：
-    - 一条 drilldown intro
-    - 三条拆开的工具 bullet
-  - 但 `claude-mem` 的同位置还会把这三条写成“动作在前”：
-    - `Fetch by ID: ...`
-    - `Search history: ...`
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/039-action-led-context-tool-lines/spec.md`
-  - `specs/039-action-led-context-tool-lines/plan.md`
-  - `specs/039-action-led-context-tool-lines/tasks.md`
-- 本轮实现结果：
-  - system context 的三条工具说明改成 action-led wording
-  - 低预算压缩版继续保持单行压缩
-  - compaction context 继续不带这些 wording
-
-## 2026-03-16：`040-project-header-wording`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓此前头部已经有：
-    - 项目名
-    - 生成时间
-  - 但仍然是标签式：
-    - `Project: ... | Generated: ...`
-  - `claude-mem` 在同位置是标题式：
-    - `# [project] recent context, ...`
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/040-project-header-wording/spec.md`
-  - `specs/040-project-header-wording/plan.md`
-  - `specs/040-project-header-wording/tasks.md`
-- 本轮实现结果：
-  - system context 的 freshness 行改成标题式 wording
-  - 无项目名时也会显示 `# recent context, ...`
-  - compaction context 继续不带这行
-
-## 2026-03-16：`041-token-key-detail-lines`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓此前 `[TOKEN KEY]` 已经有：
-    - `Read=current reading cost`
-    - `Work=prior work investment`
-  - 但 `claude-mem` 的同位置还会把这两项解释成完整句子
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/041-token-key-detail-lines/spec.md`
-  - `specs/041-token-key-detail-lines/plan.md`
-  - `specs/041-token-key-detail-lines/tasks.md`
-- 本轮实现结果：
-  - system context 的 `[TOKEN KEY]` 改成两条完整说明
-  - compaction context 继续不带这些说明
-
-## 2026-03-16：`030-inline-observation-type-tags`
-
-- 继续先按 `claude-mem` 对照：
-  - 我们当前 observation 行已经有：
-    - phase
-    - file 分组
-    - visible ID
-  - 但 `claude-mem` 的 observation 行本身还会直接带 type 提示
-  - 我们此前只有展开 observation 才会在下一行出现 `Tool: read/write/bash`
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/030-inline-observation-type-tags/spec.md`
-  - `specs/030-inline-observation-type-tags/plan.md`
-  - `specs/030-inline-observation-type-tags/tasks.md`
-- 本轮实现结果：
-  - system context 的 observation 主行现在会直接显示：
-    - `{read}`
-    - `{write}`
-    - `{bash}`
-  - `[TIMELINE KEY]` 现在会一起解释：
-    - `{tool}=source tool`
-  - `Tool: ...` detail line 继续保留
-  - compaction context 继续不引入这条 header 说明
-
-## 2026-03-16：`031-observation-token-hints`
-
-- 继续先按 `claude-mem` 对照：
-  - 我们当前 expanded observation 已经有：
-    - `Result`
-    - `Tool`
-    - `Evidence`
-  - 但 `claude-mem` 的记录层还会给出 `Read / Work` 这类局部 token 线索
-  - 我们此前只有全局 `[CONTEXT ECONOMICS]`
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/031-observation-token-hints/spec.md`
-  - `specs/031-observation-token-hints/plan.md`
-  - `specs/031-observation-token-hints/tasks.md`
-- 本轮实现结果：
-  - expanded observation detail 现在会显示：
-    - `Tokens: Read ~X | Work ~Y`
-  - 这条 hint 只进入 system context 的 expanded observation
-  - 折叠 observation 主行不新增 token hint
-  - compaction context 继续不显示这条 hint
-
-## 2026-03-16：`025-snapshot-investigated`
-
-- 继续先按 `claude-mem` 对照：
-  - `claude-mem` 的 latest summary fields 里有 `Investigated`
-  - 它表达的是：这一轮实际查了什么
-  - 我们此前只有 `Current Focus`，更像“在做什么”，不是“查了什么”
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/025-snapshot-investigated/spec.md`
-  - `specs/025-snapshot-investigated/plan.md`
-  - `specs/025-snapshot-investigated/tasks.md`
-- 本轮实现结果：
-  - latest snapshot 在存在稳定 evidence 时新增 `Investigated`
-  - 当前优先从 latest summary 覆盖 observation 的文件 / 命令 trace 中提取
-  - system context 与 compaction snapshot 保持一致
-
-## 2026-03-16：`026-stale-snapshot-gating`
-
-- 继续先按 `claude-mem` 对照：
-  - `claude-mem` 不会在 summary 比 direct observation 更旧时继续显示 latest summary
-  - 我们此前还没有这条 freshness gating
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/026-stale-snapshot-gating/spec.md`
-  - `specs/026-stale-snapshot-gating/plan.md`
-  - `specs/026-stale-snapshot-gating/tasks.md`
-- 本轮实现结果：
-  - 当 direct observation 更新于 latest summary 时，不再渲染 `[LATEST SESSION SNAPSHOT]`
-  - stale summary 会回到 timeline，而不是消失
-  - system context 与 compaction context 复用同样的 freshness 规则
-
-## 2026-03-16：`042-timeline-key-detail-lines`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓此前 `[TIMELINE KEY]` 已经能解释：
-    - `[summary]`
-    - phase label
-    - `{tool}`
-    - `[day]`
-    - `[file]`
-  - 但仍然是单行压缩写法
-  - `claude-mem` 的同位置更接近多条 legend，扫读性更好
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/042-timeline-key-detail-lines/spec.md`
-  - `specs/042-timeline-key-detail-lines/plan.md`
-  - `specs/042-timeline-key-detail-lines/tasks.md`
-- 本轮实现结果：
-  - system context 的 `[TIMELINE KEY]` 现在改成多条完整说明
-  - 分别解释：
-    - `[summary]`
-    - phase label
-    - `{tool}`
-    - `[day]`
-    - `[file]`
-  - compaction context 继续不带这组 legend
-
-## 2026-03-16：`043-semantic-context-index-wording`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓此前 `[CONTEXT INDEX]` 已经有：
-    - recent working index
-    - coverage line
-    - trust / drilldown guidance
-  - 但 `claude-mem` 的同位置还会直接把这段叫成 `semantic index`
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/043-semantic-context-index-wording/spec.md`
-  - `specs/043-semantic-context-index-wording/plan.md`
-  - `specs/043-semantic-context-index-wording/tasks.md`
-- 本轮实现结果：
-  - system context 的 `[CONTEXT INDEX]` 第一行现在变成：
-    - `This semantic index is a recent working index.`
-  - 其余 coverage / trust / drilldown bullet 保持不变
-  - compaction context 继续不带这句 wording
-
-## 2026-03-16：`044-context-index-trust-wording`
-
-- 继续先按 `claude-mem` 对照：
-  - 当前仓此前 `[CONTEXT INDEX]` 已经有 trust line
-  - 但仍然是一般性的：
-    - `Trust this index before re-reading code or past history.`
-  - `claude-mem` 的同位置还会更具体写到：
-    - `past decisions and learnings`
-- 本轮严格按 `spec-kit` 工件推进：
-  - `specs/044-context-index-trust-wording/spec.md`
-  - `specs/044-context-index-trust-wording/plan.md`
-  - `specs/044-context-index-trust-wording/tasks.md`
-- 本轮实现结果：
-  - system context 的 trust line 现在变成：
-    - `Trust this index over re-reading code for past decisions and learnings.`
-  - 其余 context index bullet 保持不变
-  - compaction context 继续不带这句 wording
+- 本仓库内部确实使用 `spec-kit` 做研发流程
+- 但 `spec / plan / tasks` 等工件默认只保留在本地，不作为公开仓库的一部分
+- README 这里保留的是公开能力摘要，而不是本地研发流水账

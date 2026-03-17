@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import path from "node:path"
+import { fileURLToPath } from "node:url"
 
 import { checkMemoryWorkerHealth } from "../../src/worker/client.js"
 
@@ -23,8 +24,8 @@ describe("run-memory-worker", () => {
     const root = await mkdtemp(path.join(tmpdir(), "opencode-memory-runner-"))
     cleanupTasks.push(() => rm(root, { recursive: true, force: true }))
 
-    const workerEntry = path.resolve(
-      "/Users/storm/Documents/code/study_in_happy/projects/opencode-memory/src/worker/run-memory-worker.ts",
+    const workerEntry = fileURLToPath(
+      new URL("../../src/worker/run-memory-worker.ts", import.meta.url),
     )
     const bunExecutable = Bun.which("bun")
     expect(bunExecutable).toBeTruthy()
