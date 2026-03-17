@@ -1,8 +1,14 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
 import { buildCompactionMemoryContext } from "../../src/runtime/injection/compaction-context.js"
+
+const ORIGINAL_ENV = { ...process.env }
+
+afterEach(() => {
+  process.env = { ...ORIGINAL_ENV }
+})
 
 describe("buildCompactionMemoryContext", () => {
   test("does not include the system memory index guide", () => {
@@ -490,6 +496,57 @@ describe("buildCompactionMemoryContext", () => {
     expect(text).not.toContain("- Current Focus:")
     expect(text).not.toContain("- Learned:")
     expect(text).toContain("- Completed: 已完成 smoke 文档检查，并确认当前 preview 已按结构化 section 输出")
+    expect(text).toContain("- Next Steps: Continue from 已完成 smoke 文档检查")
+  })
+
+  test("uses English fallback actions by default in compaction snapshot", () => {
+    delete process.env.OPENCODE_MEMORY_OUTPUT_LANGUAGE
+
+    const context = buildCompactionMemoryContext({
+      summaries: [
+        {
+          id: "sum_latest_en",
+          sessionID: "ses_demo",
+          projectPath: "/workspace/demo",
+          requestAnchorID: "req_latest_en",
+          requestSummary: "Review the smoke docs",
+          outcomeSummary:
+            "Finished checking the smoke docs and confirmed semantic observation summaries are visible",
+          observationIDs: ["obs_1"],
+          createdAt: 61,
+        },
+      ],
+      observations: [],
+      maxChars: 360,
+    })
+
+    const text = context.join("\n")
+    expect(text).toContain("- Next Steps: Continue from Finished checking the smoke docs")
+    expect(text).not.toContain("继续从")
+    expect(text).not.toContain("继续处理")
+  })
+
+  test("keeps Chinese fallback actions in compaction snapshot when policy is zh", () => {
+    process.env.OPENCODE_MEMORY_OUTPUT_LANGUAGE = "zh"
+
+    const context = buildCompactionMemoryContext({
+      summaries: [
+        {
+          id: "sum_latest_zh",
+          sessionID: "ses_demo",
+          projectPath: "/workspace/demo",
+          requestAnchorID: "req_latest_zh",
+          requestSummary: "检查 smoke 文档",
+          outcomeSummary: "已完成 smoke 文档检查，并确认当前 preview 已按结构化 section 输出",
+          observationIDs: ["obs_1"],
+          createdAt: 62,
+        },
+      ],
+      observations: [],
+      maxChars: 360,
+    })
+
+    const text = context.join("\n")
     expect(text).toContain("- Next Steps: 继续从已完成 smoke 文档检查开始")
   })
 

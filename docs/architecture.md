@@ -66,6 +66,9 @@
     - `OPENCODE_MEMORY_OUTPUT_LANGUAGE`
     进行配置
   - 默认输出语言当前为英文，更适合作为通用 OSS 插件
+  - deterministic snapshot / resume fallback 文案也复用同一语言策略：
+    - 默认英文
+    - 显式 `zh` 时保留中文
 
 ### 回注器
 

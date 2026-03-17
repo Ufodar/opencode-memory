@@ -1,9 +1,15 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { SummaryRecord } from "../../src/memory/summary/types.js"
 import { buildSystemMemoryContext } from "../../src/runtime/injection/system-context.js"
 import { captureToolObservation } from "../../src/runtime/hooks/tool-after.js"
+
+const ORIGINAL_ENV = { ...process.env }
+
+afterEach(() => {
+  process.env = { ...ORIGINAL_ENV }
+})
 
 describe("buildSystemMemoryContext", () => {
   test("starts with a short memory index guide for downstream tool use", () => {
@@ -658,7 +664,7 @@ describe("buildSystemMemoryContext", () => {
     expect(text).not.toContain("Current Focus:")
     expect(text).not.toContain("Learned:")
     expect(text).toContain("Completed: 已完成 smoke 文档检查，并确认 observation 语义摘要已经生效")
-    expect(text).toContain("Next Steps: 继续从已完成 smoke 文档检查开始")
+    expect(text).toContain("Next Steps: Continue from 已完成 smoke 文档检查")
     expect(text).toContain("Pick up from: 已完成 smoke 文档检查")
   })
 
@@ -691,6 +697,65 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("目标：让 agent 使用 read 工具读取这个文件")
     expect(text).not.toContain("插件在真实 OpenCode 宿主中加载")
     expect(text).toContain("Next action: 继续检查 memory_context_preview 的输出")
+  })
+
+  test("uses English fallback actions by default when latest snapshot has no explicit nextStep", () => {
+    delete process.env.OPENCODE_MEMORY_OUTPUT_LANGUAGE
+
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_latest_en",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_latest_en",
+        requestSummary: "Review the smoke docs",
+        outcomeSummary:
+          "Finished checking the smoke docs and confirmed semantic observation summaries are visible",
+        observationIDs: ["obs_1"],
+        createdAt: 31,
+      },
+    ]
+
+    const system = buildSystemMemoryContext({
+      scope: "session",
+      summaries,
+      observations: [],
+    })
+
+    const text = system.join("\n")
+    expect(text).toContain("Next Steps: Continue from Finished checking the smoke docs")
+    expect(text).toContain(
+      "Pick up from: Finished checking the smoke docs and confirmed semantic observation summaries are visible",
+    )
+    expect(text).not.toContain("继续从")
+    expect(text).not.toContain("继续处理")
+  })
+
+  test("keeps Chinese fallback actions when output language policy is zh", () => {
+    process.env.OPENCODE_MEMORY_OUTPUT_LANGUAGE = "zh"
+
+    const summaries: SummaryRecord[] = [
+      {
+        id: "sum_latest_zh",
+        sessionID: "ses_demo",
+        projectPath: "/workspace/demo",
+        requestAnchorID: "req_latest_zh",
+        requestSummary: "检查 smoke 文档",
+        outcomeSummary: "已完成 smoke 文档检查，并确认 observation 语义摘要已经生效",
+        observationIDs: ["obs_1"],
+        createdAt: 32,
+      },
+    ]
+
+    const system = buildSystemMemoryContext({
+      scope: "session",
+      summaries,
+      observations: [],
+    })
+
+    const text = system.join("\n")
+    expect(text).toContain("Next Steps: 继续从已完成 smoke 文档检查开始")
+    expect(text).toContain("Pick up from: 已完成 smoke 文档检查")
   })
 
   test("deduplicates repeated curated summary lines", () => {

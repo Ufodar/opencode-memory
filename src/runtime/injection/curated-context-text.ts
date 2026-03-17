@@ -2,6 +2,7 @@ import { basename } from "node:path"
 
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { SummaryRecord } from "../../memory/summary/types.js"
+import { getMemoryOutputLanguage } from "../../services/ai/output-language.js"
 
 const ELLIPSIS = "…"
 const CHARS_PER_TOKEN_ESTIMATE = 4
@@ -476,11 +477,17 @@ function buildSnapshotNextText(input: {
   }
 
   if (input.outcomeSummary) {
-    return `继续从${extractLeadClause(input.outcomeSummary, 72)}开始`
+    const clause = extractLeadClause(input.outcomeSummary, 72)
+    return getMemoryOutputLanguage() === "zh"
+      ? `继续从${clause}开始`
+      : `Continue from ${clause}`
   }
 
   if (input.requestSummary) {
-    return `继续处理${extractLeadClause(input.requestSummary, 72)}`
+    const clause = extractLeadClause(input.requestSummary, 72)
+    return getMemoryOutputLanguage() === "zh"
+      ? `继续处理${clause}`
+      : `Continue with ${clause}`
   }
 
   return undefined

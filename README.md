@@ -100,6 +100,9 @@ docs/
   - retrieval-only prompt 识别支持中英常见提示
   - `OPENCODE_MEMORY_OUTPUT_LANGUAGE` 可控制 model summary / observation 的目标输出语言
   - 默认输出语言已转为英文，更适合作为通用 OSS 插件
+  - deterministic context fallback（如 `Next Steps` / `RESUME GUIDE`）也已跟随同一策略：
+    - 默认英文
+    - 显式 `zh` 时保留中文
 - SQLite 存储层已开始按长期架构目标拆分：
   - `SQLiteMemoryStore`
   - `SQLiteMemoryDatabase`
