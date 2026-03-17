@@ -101,7 +101,8 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("direct observations: 2")
     expect(text).toContain("covered observations: 3")
     expect(text).toContain("Loading: 3 records")
-    expect(text).toContain("Work investment:")
+    expect(text).toContain("Work investment: ")
+    expect(text).toContain("spent on research, building, and decisions")
     expect(text).toContain("Your savings:")
   })
 
@@ -122,7 +123,8 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("direct observations: 1")
     expect(text).toContain("covered observations: 0")
     expect(text).toContain("Loading: 1 records")
-    expect(text).toContain("Work investment:")
+    expect(text).toContain("Work investment: ")
+    expect(text).toContain("spent on research, building, and decisions")
     expect(text).toContain("Your savings:")
   })
 
