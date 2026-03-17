@@ -263,7 +263,7 @@ describe("buildSystemMemoryContext", () => {
 
     expect(text).toContain("[CONTINUITY]")
     expect(text).toContain("[LATEST SESSION SNAPSHOT]")
-    expect(text).toContain("Current Focus: 抽取资格条件")
+    expect(text).not.toContain("Current Focus:")
     expect(text).toContain("Learned: 读取第3章资格条件并定位到3条硬约束")
     expect(text).toContain("Completed: 已提取3条资格条件并发现1项材料缺口")
     expect(text).toContain("Next Steps: 输出缺口清单")
@@ -651,7 +651,7 @@ describe("buildSystemMemoryContext", () => {
 
     const text = system.join("\n")
     expect(text).toContain("[LATEST SESSION SNAPSHOT]")
-    expect(text).toContain("Current Focus: 检查 smoke 文档")
+    expect(text).not.toContain("Current Focus:")
     expect(text).not.toContain("Learned:")
     expect(text).toContain("Completed: 已完成 smoke 文档检查，并确认 observation 语义摘要已经生效")
     expect(text).toContain("Next Steps: 继续从已完成 smoke 文档检查开始")
@@ -765,7 +765,7 @@ describe("buildSystemMemoryContext", () => {
 
     const text = system.join("\n")
     expect(text).toContain("[LATEST SESSION SNAPSHOT]")
-    expect(text).toContain("Current Focus: 检查最新 smoke")
+    expect(text).not.toContain("Current Focus:")
     expect(text).toContain("Completed: 已完成最新 smoke 检查，并确认 snapshot 已进入 preview")
     expect(text).not.toContain("[MEMORY SUMMARY]")
     expect(text).toContain("[MEMORY TIMELINE]")

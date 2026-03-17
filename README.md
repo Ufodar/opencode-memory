@@ -166,7 +166,7 @@ docs/
     - `[TOKEN KEY] Read=current reading cost (cost to learn it now) | Work=prior work investment (research, building, deciding)`
   - `RESUME GUIDE` 会优先输出短动作提示，而不是重复整条 summary
   - latest summary 现在还会被编译成 `[LATEST SESSION SNAPSHOT]`
-    - `Current Focus`
+    - `Investigated`
     - `Learned`
     - `Completed`
     - `Next Steps`

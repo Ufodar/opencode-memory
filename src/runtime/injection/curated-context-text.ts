@@ -7,7 +7,7 @@ const ELLIPSIS = "…"
 const CHARS_PER_TOKEN_ESTIMATE = 4
 
 export interface SessionSnapshotField {
-  label: "Current Focus" | "Investigated" | "Learned" | "Completed" | "Next Steps"
+  label: "Investigated" | "Learned" | "Completed" | "Next Steps"
   value: string
 }
 
@@ -328,14 +328,6 @@ export function buildSessionSnapshotFields(input: {
   nextStep?: string
 }): SessionSnapshotField[] {
   const fields: SessionSnapshotField[] = []
-  const currentFocus = buildSnapshotFocusText(input.requestSummary)
-  if (currentFocus) {
-    fields.push({
-      label: "Current Focus",
-      value: currentFocus,
-    })
-  }
-
   const investigated = buildSnapshotInvestigatedText(input.investigatedSummary)
   if (investigated) {
     fields.push({
@@ -434,11 +426,6 @@ function buildExpandedObservationToolText(observation: ObservationRecord): strin
   }
 
   return name
-}
-
-function buildSnapshotFocusText(value?: string): string | undefined {
-  if (!value) return undefined
-  return extractLeadClause(value, 88)
 }
 
 function buildSnapshotInvestigatedText(value?: string): string | undefined {

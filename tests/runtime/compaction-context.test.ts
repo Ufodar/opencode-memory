@@ -176,7 +176,7 @@ describe("buildCompactionMemoryContext", () => {
 
     expect(text).toContain("[CONTINUITY CHECKPOINTS]")
     expect(text).toContain("Latest session snapshot:")
-    expect(text).toContain("- Current Focus: 抽取资格条件")
+    expect(text).not.toContain("- Current Focus:")
     expect(text).toContain("- Learned: 读取第3章资格条件并定位到3条硬约束")
     expect(text).toContain("- Completed: 已提取3条资格条件并发现1项材料缺口")
     expect(text).toContain("- Next Steps: 输出缺口清单")
@@ -487,7 +487,7 @@ describe("buildCompactionMemoryContext", () => {
 
     const text = context.join("\n")
     expect(text).toContain("Latest session snapshot:")
-    expect(text).toContain("- Current Focus: 检查 smoke 文档")
+    expect(text).not.toContain("- Current Focus:")
     expect(text).not.toContain("- Learned:")
     expect(text).toContain("- Completed: 已完成 smoke 文档检查，并确认当前 preview 已按结构化 section 输出")
     expect(text).toContain("- Next Steps: 继续从已完成 smoke 文档检查开始")
@@ -527,7 +527,7 @@ describe("buildCompactionMemoryContext", () => {
 
     const text = context.join("\n")
     expect(text).toContain("Latest session snapshot:")
-    expect(text).toContain("- Current Focus: 检查最新 smoke")
+    expect(text).not.toContain("- Current Focus:")
     expect(text).not.toContain("Recent memory summaries:")
     expect(text).toContain("Recent timeline checkpoints:")
     expect(text).toContain("[summary] 之前的准备工作：已整理 smoke 前置条件并记录到 checklist.md")

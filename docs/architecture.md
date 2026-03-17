@@ -79,7 +79,6 @@
     - `[RESUME GUIDE]`
     - `[PREVIOUSLY]`（`A:` assistant handoff）
   - `[LATEST SESSION SNAPSHOT]` 当前字段名已经对齐为：
-    - `Current Focus`
     - `Investigated`
     - `Learned`
     - `Completed`
@@ -134,7 +133,7 @@
     - trust line 当前会排在这些 tool bullets 之后，更接近 `claude-mem` 的阅读顺序：
       - `Trust this index over re-reading code for past decisions and learnings.`
     - 低预算时，会回退到单行压缩版，避免挤掉真正的 timeline 内容
-    - latest summary 会先编译成 `Current Focus / Learned / Completed / Next`
+    - latest summary 会先编译成 `Investigated / Learned / Completed / Next Steps`
     - `Learned` 只来自 latest summary 覆盖的 observation 证据
     - older summaries 会被压成更短的 summary checkpoint 并进入统一 timeline
     - timeline observation 会被压成短 checkpoint
@@ -473,12 +472,11 @@ tool.execute.after
 ## 2026-03-16：latest snapshot 当前能力
 
 - latest snapshot 当前已不只包含：
-  - `Current Focus`
+  - `Investigated`
   - `Learned`
   - `Completed`
-  - `Next`
-- 在存在稳定 evidence 时，还会新增：
-  - `Investigated`
+  - `Next Steps`
+- `Investigated` 只会在存在稳定 evidence 时出现
 - `Investigated` 的当前来源保持 deterministic：
   - latest summary 覆盖的 observation trace
   - 优先文件线索
