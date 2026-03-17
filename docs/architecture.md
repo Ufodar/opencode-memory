@@ -431,7 +431,7 @@ tool.execute.after
 - 现在这条 footer 还会继续补一条量化句：
   - `Access ~X tokens of past research, building, and decisions for just ~Y tokens of reading.`
 - 现在这条 footer 还会继续补一条动作提醒：
-  - `If this index is still not enough, use memory_details with visible IDs before re-reading history.`
+  - `If this index is still not enough, use memory_details with visible IDs to access deeper memory before re-reading history.`
 - 这条 footer 只出现在 system context，不进入 compaction context
 
 ## 2026-03-16：timeline observation 行当前能力

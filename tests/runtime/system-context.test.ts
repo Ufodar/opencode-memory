@@ -164,7 +164,9 @@ describe("buildSystemMemoryContext", () => {
     expect(text).toContain("tokens of past research, building, and decisions")
     expect(text).toContain("for just ~")
     expect(text).toContain("If this index is still not enough")
-    expect(text).toContain("use memory_details with visible IDs")
+    expect(text).toContain(
+      "use memory_details with visible IDs to access deeper memory before re-reading history",
+    )
   })
 
   test("keeps the generic context value footer when the sample is too small for meaningful savings", () => {

@@ -535,7 +535,7 @@ system context 当前已经会编译出这些 section：
   - `specs/029-footer-drilldown-reminder/tasks.md`
 - 本轮实现结果：
   - `[CONTEXT VALUE]` 现在会再多一条短提醒：
-    - `If this index is still not enough, use memory_details with visible IDs before re-reading history.`
+    - `If this index is still not enough, use memory_details with visible IDs to access deeper memory before re-reading history.`
   - 这条提醒不替换已有量化句，只做追加
   - compaction context 继续不带这条 footer 提醒
 

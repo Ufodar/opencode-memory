@@ -161,7 +161,7 @@ export function buildContextValueLines(input: {
   }
 
   lines.push(
-    "- If this index is still not enough, use memory_details with visible IDs before re-reading history.",
+    "- If this index is still not enough, use memory_details with visible IDs to access deeper memory before re-reading history.",
   )
 
   return lines
