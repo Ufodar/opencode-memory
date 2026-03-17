@@ -2,35 +2,37 @@ import { mkdirSync } from "node:fs"
 import { createHash } from "node:crypto"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
+import { expandHome, getOpenCodeMemoryConfig } from "./plugin-config.js"
 
-const DATA_DIR = join(homedir(), ".opencode-memory", "data")
-const DB_PATH = join(DATA_DIR, "memory.sqlite")
-const WORKER_REGISTRY_PATH = join(DATA_DIR, "worker-registry.json")
+const DEFAULT_DATA_DIR = join(homedir(), ".opencode-memory", "data")
 
-export function ensureDataDir(): string {
-  mkdirSync(DATA_DIR, { recursive: true })
-  return DATA_DIR
+export function ensureDataDir(env: NodeJS.ProcessEnv = process.env): string {
+  const dataDir = getDataDir(env)
+  mkdirSync(dataDir, { recursive: true })
+  return dataDir
 }
 
-export function getDefaultDatabasePath(): string {
-  ensureDataDir()
-  mkdirSync(dirname(DB_PATH), { recursive: true })
-  return DB_PATH
+export function getDefaultDatabasePath(env: NodeJS.ProcessEnv = process.env): string {
+  const dataDir = ensureDataDir(env)
+  const dbPath = join(dataDir, "memory.sqlite")
+  mkdirSync(dirname(dbPath), { recursive: true })
+  return dbPath
 }
 
-export function getDefaultWorkerRegistryPath(): string {
-  ensureDataDir()
-  mkdirSync(dirname(WORKER_REGISTRY_PATH), { recursive: true })
-  return WORKER_REGISTRY_PATH
+export function getDefaultWorkerRegistryPath(env: NodeJS.ProcessEnv = process.env): string {
+  const dataDir = ensureDataDir(env)
+  const registryPath = join(dataDir, "worker-registry.json")
+  mkdirSync(dirname(registryPath), { recursive: true })
+  return registryPath
 }
 
 export function getDefaultWorkerStatusPath(input: {
   projectPath: string
   databasePath: string
-}): string {
-  ensureDataDir()
+}, env: NodeJS.ProcessEnv = process.env): string {
+  const dataDir = ensureDataDir(env)
   const statusPath = join(
-    DATA_DIR,
+    dataDir,
     `worker-status-${hashWorkerStatusKey(input)}.json`,
   )
   mkdirSync(dirname(statusPath), { recursive: true })
@@ -42,4 +44,11 @@ function hashWorkerStatusKey(input: { projectPath: string; databasePath: string 
     .update(`${input.projectPath}::${input.databasePath}`)
     .digest("hex")
     .slice(0, 16)
+}
+
+function getDataDir(env: NodeJS.ProcessEnv): string {
+  const pluginConfig = getOpenCodeMemoryConfig({ env })
+  return pluginConfig.storagePath
+    ? expandHome(pluginConfig.storagePath)
+    : DEFAULT_DATA_DIR
 }

@@ -1,3 +1,5 @@
+import { getOpenCodeMemoryConfig } from "../../config/plugin-config.js"
+
 export type MemoryOutputLanguage = "en" | "zh"
 
 const CHINESE_LANGUAGE_VALUES = new Set(["zh", "zh-cn", "zh-hans", "cn", "chinese"])
@@ -5,7 +7,11 @@ const CHINESE_LANGUAGE_VALUES = new Set(["zh", "zh-cn", "zh-hans", "cn", "chines
 export function getMemoryOutputLanguage(
   env: NodeJS.ProcessEnv = process.env,
 ): MemoryOutputLanguage {
-  const raw = env.OPENCODE_MEMORY_OUTPUT_LANGUAGE?.trim().toLowerCase()
+  const pluginConfig = getOpenCodeMemoryConfig({ env })
+  const raw = (
+    env.OPENCODE_MEMORY_OUTPUT_LANGUAGE?.trim() ??
+    pluginConfig.outputLanguage?.trim()
+  )?.toLowerCase()
   if (!raw) return "en"
   return CHINESE_LANGUAGE_VALUES.has(raw) ? "zh" : "en"
 }

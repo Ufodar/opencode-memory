@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import {
@@ -7,9 +9,11 @@ import {
 } from "../../src/services/ai/model-observation.js"
 
 const ORIGINAL_ENV = { ...process.env }
+const TEMP_ROOT = "/tmp/opencode-memory-model-observation-tests"
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
+  rmSync(TEMP_ROOT, { recursive: true, force: true })
 })
 
 describe("model observation", () => {
@@ -175,6 +179,30 @@ describe("model observation", () => {
     )
 
     expect(systemPrompt).toContain("content 必须是中文")
+  })
+
+  test("reads model observation config from opencode-memory.jsonc when env vars are absent", () => {
+    const configPath = join(TEMP_ROOT, "opencode-memory.jsonc")
+    mkdirSync(TEMP_ROOT, { recursive: true })
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        observationApiUrl: "https://api.example.com/v1",
+        observationApiKey: "env://OBS_API_KEY",
+        observationModel: "gpt-observation",
+      }),
+    )
+
+    const config = getModelObservationConfig({
+      OPENCODE_MEMORY_CONFIG_PATH: configPath,
+      OBS_API_KEY: "observation-secret",
+    } as NodeJS.ProcessEnv)
+
+    expect(config).toEqual({
+      apiUrl: "https://api.example.com/v1",
+      apiKey: "observation-secret",
+      model: "gpt-observation",
+    })
   })
 })
 

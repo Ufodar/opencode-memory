@@ -2,82 +2,124 @@
 
 `opencode-memory` 是一个面向 OpenCode 的持久工作记忆插件。
 
-它把工作过程拆成 `observation`、`summary` 和可回注的 `context`，通过独立 worker 在会话外持久化这些数据，并在下一轮对话、compaction 和检索工具中重新使用它们。
+它会把工作过程整理成 `observation`、`summary` 和可回注的 `context`，让 agent 在下一轮对话里继续接上之前的工作。
 
-## 为什么做这个项目
+## Quick Start
 
-长任务里最容易丢的是这些信息：
+OpenCode 目前是配置驱动的插件加载方式。最短安装路径就是：
 
-- 刚刚读过哪些文件
-- 上一轮做出了什么判断
-- 为什么停在这里
-- 下一步最合理的恢复点是什么
+1. 在 `~/.config/opencode/opencode.json` 里启用插件包名
+2. 在 `~/.config/opencode/opencode-memory.jsonc` 里配置插件参数
+3. 重启 OpenCode
 
-`opencode-memory` 的目标不是做任务编排器，而是给 OpenCode 提供一层稳定的工作记忆底座。
+### 1. 安装插件
 
-## 当前能力
+发布后，推荐直接按包名安装：
 
-- 工具执行后自动采集 observation
-- 按 request window 聚合 summary
-- 独立 Bun worker 处理 capture、summary、retrieval 和 context build
-- worker 可跨多次 `opencode run` 复用
-- system context 注入与 compaction context 注入
-- `memory_search` / `memory_timeline` / `memory_details`
-- `summary-first` 检索纪律
-- `session-first / project-fallback` 检索范围
-- 第一版 semantic retrieval
-  - OpenAI-compatible embeddings API
-  - `usearch` / `exact-scan` 向量后端
-- 中英基础 language-neutral heuristics
+```jsonc
+{
+  "plugin": ["opencode-memory"]
+}
+```
 
-## 安装
+重启 OpenCode 后，插件会自动下载并加载。
 
-先构建：
+如果你想固定版本，也可以写成：
+
+```jsonc
+{
+  "plugin": ["opencode-memory@0.1.0"]
+}
+```
+
+### 2. 配置插件
+
+推荐把 `opencode-memory` 的参数单独放在：
+
+`~/.config/opencode/opencode-memory.jsonc`
+
+如果你只想先把语义检索跑起来，最小示例可以直接这样写：
+
+```jsonc
+{
+  "embeddingApiUrl": "https://your-openai-compatible-api/v1",
+  "embeddingApiKey": "env://OPENAI_API_KEY",
+  "embeddingModel": "Qwen3-embedding",
+  "embeddingDimensions": 4096,
+  "vectorBackend": "usearch"
+}
+```
+
+如果你还想让插件用模型帮你生成更好的 summary / observation，可以继续加：
+
+```jsonc
+{
+  "summaryApiUrl": "https://your-openai-compatible-api/v1",
+  "summaryApiKey": "env://OPENAI_API_KEY",
+  "summaryModel": "gpt-4o-mini",
+  "observationApiUrl": "https://your-openai-compatible-api/v1",
+  "observationApiKey": "env://OPENAI_API_KEY",
+  "observationModel": "gpt-4o-mini"
+}
+```
+
+### 3. 可选配置
+
+- `storagePath`
+  - 默认是 `~/.opencode-memory/data`
+- `outputLanguage`
+  - `en` 或 `zh`
+- `embeddingApiUrl`
+- `embeddingApiKey`
+- `embeddingModel`
+- `embeddingDimensions`
+- `vectorBackend`
+  - `usearch`
+  - `exact-scan`
+- `summaryApiUrl`
+- `summaryApiKey`
+- `summaryModel`
+- `observationApiUrl`
+- `observationApiKey`
+- `observationModel`
+
+密钥支持这三种写法：
+
+- 直接写字符串
+- `env://ENV_VAR_NAME`
+- `file:///absolute/path/to/secret.txt`
+
+环境变量仍然可用，并且优先级高于 `opencode-memory.jsonc`。
+
+## 本地源码开发
+
+如果你是在本地仓库里开发，先构建：
 
 ```bash
 bun install
 bun run build
 ```
 
-然后在 OpenCode 配置里加载打包后的插件入口，例如：
+然后在 `~/.config/opencode/opencode.json` 里直接加载本地构建产物：
 
-```json
+```jsonc
 {
-  "plugins": [
+  "plugin": [
     "file:///absolute/path/to/opencode-memory/dist/index.js"
   ]
 }
 ```
 
-## 配置
+## 它会做什么
 
-### 必需环境
-
-- `OPENCODE_MEMORY_DATA_DIR`
-  - memory 数据目录；不设置时使用默认本地目录
-
-### 可选模型配置
-
-用于 summary / observation 模型增强：
-
-- `OPENCODE_MEMORY_SUMMARY_API_URL`
-- `OPENCODE_MEMORY_SUMMARY_API_KEY`
-- `OPENCODE_MEMORY_SUMMARY_MODEL`
-- `OPENCODE_MEMORY_OBSERVATION_API_URL`
-- `OPENCODE_MEMORY_OBSERVATION_API_KEY`
-- `OPENCODE_MEMORY_OBSERVATION_MODEL`
-- `OPENCODE_MEMORY_OUTPUT_LANGUAGE`
-  - 默认英文；设置为 `zh` 时输出中文
-
-### 可选向量检索配置
-
-- `OPENCODE_MEMORY_EMBEDDING_API_URL`
-- `OPENCODE_MEMORY_EMBEDDING_API_KEY`
-- `OPENCODE_MEMORY_EMBEDDING_MODEL`
-- `OPENCODE_MEMORY_EMBEDDING_DIMENSIONS`
-- `OPENCODE_MEMORY_VECTOR_BACKEND`
-  - `usearch`
-  - `exact-scan`
+- 工具执行后自动采集 observation
+- 按 request window 聚合 summary
+- 通过独立 worker 持久化 memory
+- 在下一轮对话和 compaction 时回注 context
+- 提供：
+  - `memory_search`
+  - `memory_timeline`
+  - `memory_details`
 
 ## 暴露的工具
 
@@ -94,22 +136,6 @@ bun run build
   - 查看 worker 队列状态
 - `memory_queue_retry`
   - 重试失败队列项
-
-## 检索模型
-
-当前检索分成两层：
-
-- `SQLite`
-  - 真源
-  - 元数据过滤
-  - 结果 hydration
-- `vector index`
-  - semantic retrieval
-  - 当前后端：
-    - `USearchVectorIndex`
-    - `ExactScanVectorIndex`
-
-`memory_search` 当前会在同一 scope 内合并 semantic 与 text 命中，然后继续遵守 `summary-first`。
 
 ## 架构概览
 
@@ -157,10 +183,7 @@ bun run smoke:host -- --workspace /absolute/path/to/workspace --mode control
 
 ## 项目状态
 
-当前更接近：
-
-- `alpha`
-- development-ready
+当前更接近 `alpha / development-ready`。
 
 已经可以真实试用和持续公开开发，但还不应宣称为稳定发布版。
 

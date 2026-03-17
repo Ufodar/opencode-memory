@@ -1,4 +1,8 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
+import {
+  getOpenCodeMemoryConfig,
+  resolveConfiguredSecret,
+} from "../../config/plugin-config.js"
 import { log } from "../logger.js"
 import { getMemoryOutputLanguage } from "./output-language.js"
 
@@ -18,9 +22,18 @@ export interface ModelObservationResult {
 export function getModelObservationConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): ModelObservationConfig | null {
-  const apiUrl = env.OPENCODE_MEMORY_OBSERVATION_API_URL?.trim()
-  const apiKey = env.OPENCODE_MEMORY_OBSERVATION_API_KEY?.trim()
-  const model = env.OPENCODE_MEMORY_OBSERVATION_MODEL?.trim()
+  const pluginConfig = getOpenCodeMemoryConfig({ env })
+  const apiUrl =
+    env.OPENCODE_MEMORY_OBSERVATION_API_URL?.trim() ??
+    pluginConfig.observationApiUrl?.trim()
+  const apiKey = resolveConfiguredSecret(
+    env.OPENCODE_MEMORY_OBSERVATION_API_KEY?.trim() ??
+      pluginConfig.observationApiKey?.trim(),
+    { env },
+  )
+  const model =
+    env.OPENCODE_MEMORY_OBSERVATION_MODEL?.trim() ??
+    pluginConfig.observationModel?.trim()
 
   if (!apiUrl || !apiKey || !model) {
     return null

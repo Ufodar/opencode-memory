@@ -1,4 +1,8 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
+import {
+  getOpenCodeMemoryConfig,
+  resolveConfiguredSecret,
+} from "../../config/plugin-config.js"
 import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import { log } from "../logger.js"
 import { getMemoryOutputLanguage } from "./output-language.js"
@@ -15,9 +19,18 @@ export interface ModelSummaryResult {
 }
 
 export function getModelSummaryConfig(env: NodeJS.ProcessEnv = process.env): ModelSummaryConfig | null {
-  const apiUrl = env.OPENCODE_MEMORY_SUMMARY_API_URL?.trim()
-  const apiKey = env.OPENCODE_MEMORY_SUMMARY_API_KEY?.trim()
-  const model = env.OPENCODE_MEMORY_SUMMARY_MODEL?.trim()
+  const pluginConfig = getOpenCodeMemoryConfig({ env })
+  const apiUrl =
+    env.OPENCODE_MEMORY_SUMMARY_API_URL?.trim() ??
+    pluginConfig.summaryApiUrl?.trim()
+  const apiKey = resolveConfiguredSecret(
+    env.OPENCODE_MEMORY_SUMMARY_API_KEY?.trim() ??
+      pluginConfig.summaryApiKey?.trim(),
+    { env },
+  )
+  const model =
+    env.OPENCODE_MEMORY_SUMMARY_MODEL?.trim() ??
+    pluginConfig.summaryModel?.trim()
 
   if (!apiUrl || !apiKey || !model) return null
 

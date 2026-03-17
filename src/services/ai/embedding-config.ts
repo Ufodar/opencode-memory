@@ -1,3 +1,8 @@
+import {
+  getOpenCodeMemoryConfig,
+  resolveConfiguredSecret,
+} from "../../config/plugin-config.js"
+
 export type EmbeddingVectorBackend = "usearch" | "exact-scan"
 
 export interface EmbeddingConfig {
@@ -11,10 +16,21 @@ export interface EmbeddingConfig {
 export function getEmbeddingConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): EmbeddingConfig | null {
-  const apiUrl = env.OPENCODE_MEMORY_EMBEDDING_API_URL?.trim()
-  const apiKey = env.OPENCODE_MEMORY_EMBEDDING_API_KEY?.trim()
-  const model = env.OPENCODE_MEMORY_EMBEDDING_MODEL?.trim()
-  const dimensionsValue = env.OPENCODE_MEMORY_EMBEDDING_DIMENSIONS?.trim()
+  const pluginConfig = getOpenCodeMemoryConfig({ env })
+  const apiUrl =
+    env.OPENCODE_MEMORY_EMBEDDING_API_URL?.trim() ??
+    pluginConfig.embeddingApiUrl?.trim()
+  const apiKey = resolveConfiguredSecret(
+    env.OPENCODE_MEMORY_EMBEDDING_API_KEY?.trim() ??
+      pluginConfig.embeddingApiKey?.trim(),
+    { env },
+  )
+  const model =
+    env.OPENCODE_MEMORY_EMBEDDING_MODEL?.trim() ??
+    pluginConfig.embeddingModel?.trim()
+  const dimensionsValue =
+    env.OPENCODE_MEMORY_EMBEDDING_DIMENSIONS?.trim() ??
+    toOptionalString(pluginConfig.embeddingDimensions)
 
   if (!apiUrl || !apiKey || !model || !dimensionsValue) {
     return null
@@ -30,8 +46,15 @@ export function getEmbeddingConfig(
     apiKey,
     model,
     dimensions,
-    backend: normalizeBackend(env.OPENCODE_MEMORY_VECTOR_BACKEND),
+    backend: normalizeBackend(
+      env.OPENCODE_MEMORY_VECTOR_BACKEND ??
+        pluginConfig.vectorBackend,
+    ),
   }
+}
+
+function toOptionalString(value: number | undefined): string | undefined {
+  return typeof value === "number" ? String(value) : undefined
 }
 
 function normalizeBackend(value: string | undefined): EmbeddingVectorBackend {

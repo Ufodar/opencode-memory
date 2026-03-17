@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
+import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 
 import type { ObservationRecord } from "../../src/memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../src/memory/request/types.js"
@@ -8,9 +10,11 @@ import {
 } from "../../src/services/ai/model-summary.js"
 
 const ORIGINAL_ENV = { ...process.env }
+const TEMP_ROOT = "/tmp/opencode-memory-model-summary-tests"
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
+  rmSync(TEMP_ROOT, { recursive: true, force: true })
 })
 
 describe("model summary", () => {
@@ -236,6 +240,30 @@ describe("model summary", () => {
     )
 
     expect(systemPrompt).toContain("outcomeSummary must be in English")
+  })
+
+  test("reads model summary config from opencode-memory.jsonc when env vars are absent", () => {
+    const configPath = join(TEMP_ROOT, "opencode-memory.jsonc")
+    mkdirSync(TEMP_ROOT, { recursive: true })
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        summaryApiUrl: "https://api.example.com/v1",
+        summaryApiKey: "env://SUMMARY_API_KEY",
+        summaryModel: "gpt-summary",
+      }),
+    )
+
+    const config = getModelSummaryConfig({
+      OPENCODE_MEMORY_CONFIG_PATH: configPath,
+      SUMMARY_API_KEY: "summary-secret",
+    } as NodeJS.ProcessEnv)
+
+    expect(config).toEqual({
+      apiUrl: "https://api.example.com/v1",
+      apiKey: "summary-secret",
+      model: "gpt-summary",
+    })
   })
 
   test("allows Chinese output policy explicitly", async () => {
