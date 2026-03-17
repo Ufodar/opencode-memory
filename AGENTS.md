@@ -24,6 +24,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-17
 - N/A（只调整 snapshot label） (055-next-steps-snapshot-label)
 - N/A（只调整 snapshot 字段集合） (056-drop-current-focus-snapshot-field)
 - N/A（只调整 economics 文本） (057-loading-line-record-count)
+- TypeScript + Bun + Bun test, OpenCode runtime integration (060-loading-observations-wording)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -43,9 +44,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 060-loading-observations-wording: Added TypeScript + Bun + Bun test, OpenCode runtime integration
 - 059-savings-reduction-from-reuse: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 - 058-work-investment-spent-phrasing: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
-- 057-loading-line-record-count: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

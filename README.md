@@ -486,6 +486,7 @@ system context 当前已经会编译出这些 section：
   - covered observations
 - deterministic token estimate：
   - `Loading` 行现在会直接带出可见记录数
+  - `Loading` 的数量单位当前已经对齐成 `observations`
   - `Loading`
   - `Work investment` 会直接写成过去在 `research / building / decisions` 上已经花掉的投入
   - `Your savings` 现在会把百分比写成 `reduction from reuse`
