@@ -415,6 +415,13 @@ export function createMemoryWorkerService(input: {
       if (input.searchSemanticMemoryRecords) {
         return (async () => {
           const limit = searchInput.limit
+          const searchText = (sessionID?: string) =>
+            input.store.searchMemoryRecords({
+              projectPath: input.projectPath,
+              sessionID,
+              query: searchInput.query,
+              limit,
+            })
 
           const searchSessionSemantic = async () =>
             await input.searchSemanticMemoryRecords?.({
@@ -431,46 +438,32 @@ export function createMemoryWorkerService(input: {
               limit,
             })
 
-          let sessionSemantic = searchInput.scope === "project" ? [] : await searchSessionSemantic()
-          if (searchInput.scope !== "project" && sessionSemantic && sessionSemantic.length > 0) {
+          const sessionSemantic = searchInput.scope === "project" ? [] : await searchSessionSemantic()
+          const sessionText = searchInput.scope === "project" ? [] : searchText(searchInput.sessionID)
+          const sessionResults = mergeMemorySearchResults(
+            sessionSemantic ?? [],
+            sessionText,
+            limit,
+          )
+
+          if (searchInput.scope !== "project" && (sessionResults.length > 0 || searchInput.scope === "session")) {
             return {
               scope: "session" as const,
-              results: sessionSemantic,
-            }
-          }
-
-          const sessionText =
-            searchInput.scope === "project"
-              ? []
-              : input.store.searchMemoryRecords({
-                  projectPath: input.projectPath,
-                  sessionID: searchInput.sessionID,
-                  query: searchInput.query,
-                  limit,
-                })
-
-          if (searchInput.scope !== "project" && (sessionText.length > 0 || searchInput.scope === "session")) {
-            return {
-              scope: "session" as const,
-              results: sessionText,
+              results: sessionResults,
             }
           }
 
           const projectSemantic = await searchProjectSemantic()
-          if (projectSemantic && projectSemantic.length > 0) {
-            return {
-              scope: "project" as const,
-              results: projectSemantic,
-            }
-          }
+          const projectText = searchText(undefined)
+          const projectResults = mergeMemorySearchResults(
+            projectSemantic ?? [],
+            projectText,
+            limit,
+          )
 
           return {
             scope: "project" as const,
-            results: input.store.searchMemoryRecords({
-              projectPath: input.projectPath,
-              query: searchInput.query,
-              limit,
-            }),
+            results: projectResults,
           }
         })()
       }
@@ -565,6 +558,29 @@ export function createMemoryWorkerService(input: {
       }
     },
   }
+}
+
+function mergeMemorySearchResults(
+  semanticResults: MemorySearchRecord[],
+  textResults: MemorySearchRecord[],
+  limit: number,
+): MemorySearchRecord[] {
+  const merged = new Map<string, MemorySearchRecord>()
+
+  for (const record of [...semanticResults, ...textResults]) {
+    const key = `${record.kind}:${record.id}`
+    if (!merged.has(key)) {
+      merged.set(key, record)
+    }
+  }
+
+  return Array.from(merged.values())
+    .sort((a, b) => memorySearchKindPriority(a) - memorySearchKindPriority(b))
+    .slice(0, limit)
+}
+
+function memorySearchKindPriority(record: MemorySearchRecord): number {
+  return record.kind === "summary" ? 0 : 1
 }
 
 function getLatestSummaryObservations(

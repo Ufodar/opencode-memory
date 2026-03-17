@@ -27,6 +27,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-17
 - TypeScript + Bun + Bun test, OpenCode runtime integration (060-loading-observations-wording)
 - TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch` (061-vector-memory-search)
 - SQLite + 本地 vector index 文件 / in-memory cache (061-vector-memory-search)
+- TypeScript / Bun + `@opencode-ai/plugin`, `bun:sqlite`, `usearch` (065-hybrid-memory-search-results)
+- SQLite + 本地向量索引 (065-hybrid-memory-search-results)
 
 - TypeScript + Bun + Bun runtime、OpenCode plugin API、SQLite、本地独立 worker (003-semantic-memory-records)
 
@@ -46,6 +48,7 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 065-hybrid-memory-search-results: Added TypeScript / Bun + `@opencode-ai/plugin`, `bun:sqlite`, `usearch`
 - 062-semantic-memory-timeline: Added TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch`
 - 061-vector-memory-search: Added TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch`
 

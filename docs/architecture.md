@@ -172,11 +172,9 @@
   - `memory_search` summary-first
   - `memory_search` 未指定 `scope` 时默认 `session-first / project-fallback`
   - 搜索顺序当前是：
-    - session semantic
-    - session text fallback
-    - project semantic
-    - project text fallback
-    这样保持原有 scope 语义不变
+    - session semantic + session text merge
+    - project semantic + project text merge
+    也就是同一 scope 下先做 hybrid merge，只有 session 混合结果为空时才继续回退到 project
   - `memory_timeline` 围绕 summary / observation anchor 返回时间上下文
   - `memory_timeline` 未指定 `scope` 时默认 `session-first / project-fallback`
   - `memory_timeline(query=...)` 当前顺序是：
@@ -195,6 +193,7 @@
   - `memory_search` 支持 `session / project` scope
   - `memory_search` 会过滤被返回 summary 覆盖的 observation
   - `memory_search` 在组内按命中强度与重要度做 deterministic ranking
+  - semantic 与 text 同时命中时，会先按 `kind + id` 去重，再继续复用现有 summary-first 纪律
   - internal memory tool 不进入记忆自身：
     - `memory_search`
     - `memory_timeline`

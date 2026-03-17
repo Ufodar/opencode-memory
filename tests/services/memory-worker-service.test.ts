@@ -511,7 +511,7 @@ describe("createMemoryWorkerService", () => {
     expect(result.results[0]?.id).toBe("sum_project")
   })
 
-  test("prefers semantic search before store fallback and keeps session/project scope logic", async () => {
+  test("merges semantic and text results within the session scope before project fallback", async () => {
     const semanticCalls: Array<{ sessionID?: string }> = []
     const textCalls: Array<{ sessionID?: string }> = []
 
@@ -536,6 +536,111 @@ describe("createMemoryWorkerService", () => {
         },
         searchMemoryRecords(input) {
           textCalls.push({ sessionID: input.sessionID })
+          if (input.sessionID) {
+            return [
+              {
+                kind: "summary" as const,
+                id: "sum_session_text",
+                content: "文本命中的 session summary",
+                createdAt: 2,
+              },
+            ]
+          }
+
+          return []
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline() {
+          return null
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input) => {
+        semanticCalls.push({ sessionID: input.sessionID })
+        if (input.sessionID) {
+          return [
+            {
+              kind: "observation" as const,
+              id: "obs_session_semantic",
+              content: "语义命中的 session observation",
+              createdAt: 1,
+              tool: "read",
+              importance: 0.8,
+              tags: ["session"],
+            },
+          ]
+        }
+
+        return []
+      },
+    })
+
+    const result = await worker.searchMemoryRecords({
+      sessionID: "ses_demo",
+      query: "跨多次 run 复用后台进程",
+      limit: 5,
+    })
+
+    expect(semanticCalls).toEqual([{ sessionID: "ses_demo" }])
+    expect(textCalls).toEqual([{ sessionID: "ses_demo" }])
+    expect(result.scope).toBe("session")
+    expect(result.results.map((record) => record.id)).toEqual([
+      "sum_session_text",
+      "obs_session_semantic",
+    ])
+  })
+
+  test("falls back to project scope with merged semantic and text results when session scope is empty", async () => {
+    const semanticCalls: Array<{ sessionID?: string }> = []
+    const textCalls: Array<{ sessionID?: string }> = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords(input) {
+          textCalls.push({ sessionID: input.sessionID })
+          if (!input.sessionID) {
+            return [
+              {
+                kind: "summary" as const,
+                id: "sum_project_text",
+                content: "文本命中的 project summary",
+                createdAt: 2,
+              },
+            ]
+          }
           return []
         },
         getMemoryDetails() {
@@ -568,10 +673,13 @@ describe("createMemoryWorkerService", () => {
 
         return [
           {
-            kind: "summary" as const,
-            id: "sum_semantic",
-            content: "语义命中的 project summary",
+            kind: "observation" as const,
+            id: "obs_project_semantic",
+            content: "语义命中的 project observation",
             createdAt: 1,
+            tool: "bash",
+            importance: 0.9,
+            tags: ["project"],
           },
         ]
       },
@@ -584,9 +692,125 @@ describe("createMemoryWorkerService", () => {
     })
 
     expect(semanticCalls).toEqual([{ sessionID: "ses_demo" }, { sessionID: undefined }])
-    expect(textCalls).toEqual([{ sessionID: "ses_demo" }])
+    expect(textCalls).toEqual([{ sessionID: "ses_demo" }, { sessionID: undefined }])
     expect(result.scope).toBe("project")
-    expect(result.results[0]?.id).toBe("sum_semantic")
+    expect(result.results.map((record) => record.id)).toEqual([
+      "sum_project_text",
+      "obs_project_semantic",
+    ])
+  })
+
+  test("deduplicates records across semantic and text hits while keeping summary-first ordering", async () => {
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords(input) {
+          if (!input.sessionID) {
+            return []
+          }
+
+          return [
+            {
+              kind: "summary" as const,
+              id: "sum_dup",
+              content: "文本与语义都命中的 summary",
+              createdAt: 3,
+            },
+            {
+              kind: "observation" as const,
+              id: "obs_dup",
+              content: "文本与语义都命中的 observation",
+              createdAt: 2,
+              tool: "read",
+              importance: 0.8,
+              tags: ["dup"],
+            },
+            {
+              kind: "observation" as const,
+              id: "obs_text_only",
+              content: "仅文本命中的 observation",
+              createdAt: 1,
+              tool: "grep",
+              importance: 0.7,
+              tags: ["text"],
+            },
+          ]
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline() {
+          return null
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input) => {
+        if (!input.sessionID) {
+          return []
+        }
+
+        return [
+          {
+            kind: "summary" as const,
+            id: "sum_dup",
+            content: "文本与语义都命中的 summary",
+            createdAt: 3,
+          },
+          {
+            kind: "observation" as const,
+            id: "obs_dup",
+            content: "文本与语义都命中的 observation",
+            createdAt: 2,
+            tool: "read",
+            importance: 0.8,
+            tags: ["dup"],
+          },
+        ]
+      },
+    })
+
+    const result = await worker.searchMemoryRecords({
+      sessionID: "ses_demo",
+      query: "dup",
+      limit: 5,
+      scope: "session",
+    })
+
+    expect(result.results.map((record) => `${record.kind}:${record.id}`)).toEqual([
+      "summary:sum_dup",
+      "observation:obs_dup",
+      "observation:obs_text_only",
+    ])
   })
 
   test("prefers semantic observation anchors before text timeline fallback", async () => {
