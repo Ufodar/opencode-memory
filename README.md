@@ -485,6 +485,7 @@ system context 当前已经会编译出这些 section：
   - direct observations
   - covered observations
 - deterministic token estimate：
+  - `Loading` 行现在会直接带出可见记录数
   - `Loading`
   - `Work investment`
   - `Your savings`

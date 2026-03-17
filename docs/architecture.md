@@ -514,6 +514,7 @@ tool.execute.after
     - direct observations
     - covered observations
   - deterministic token estimate：
+    - `Loading` 行现在会直接带出可见记录数
     - `Loading`
     - `Work investment`
     - `Your savings`
