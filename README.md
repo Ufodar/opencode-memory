@@ -159,10 +159,6 @@ OpenCode hooks / tools
 - injection
   - 把 recent memory 编译成 system / compaction context
 
-更多细节见：
-
-- [架构说明](docs/architecture.md)
-
 ## 开发
 
 ```bash
