@@ -589,6 +589,327 @@ describe("createMemoryWorkerService", () => {
     expect(result.results[0]?.id).toBe("sum_semantic")
   })
 
+  test("prefers semantic observation anchors before text timeline fallback", async () => {
+    const semanticCalls: Array<{ sessionID?: string; kinds?: string[] }> = []
+    const timelineCalls: Array<{
+      sessionID?: string
+      anchorID?: string
+      query?: string
+    }> = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords() {
+          return []
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline(input) {
+          timelineCalls.push({
+            sessionID: input.sessionID,
+            anchorID: input.anchorID,
+            query: input.query,
+          })
+          if (input.anchorID === "obs_project_semantic") {
+            return {
+              anchor: {
+                kind: "observation" as const,
+                id: "obs_project_semantic",
+                content: "修复 worker 复用时的端口竞争",
+                createdAt: 2,
+                tool: "bash",
+                importance: 0.9,
+                tags: ["worker"],
+                evidence: {},
+                isAnchor: true,
+              },
+              items: [],
+            }
+          }
+          return null
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input) => {
+        semanticCalls.push({
+          sessionID: input.sessionID,
+          kinds: input.kinds,
+        })
+
+        if (input.sessionID) {
+          return []
+        }
+
+        return [
+          {
+            kind: "observation" as const,
+            id: "obs_project_semantic",
+            content: "修复 worker 复用时的端口竞争",
+            createdAt: 2,
+            tool: "bash",
+            importance: 0.9,
+            tags: ["worker"],
+          },
+        ]
+      },
+    })
+
+    const result = await worker.getMemoryTimeline({
+      sessionID: "ses_demo",
+      query: "解决后台监听占用问题",
+      depthBefore: 2,
+      depthAfter: 2,
+    })
+
+    expect(semanticCalls).toEqual([
+      { sessionID: "ses_demo", kinds: ["observation"] },
+      { sessionID: undefined, kinds: ["observation"] },
+    ])
+    expect(timelineCalls).toEqual([
+      {
+        sessionID: "ses_demo",
+        anchorID: undefined,
+        query: "解决后台监听占用问题",
+      },
+      {
+        sessionID: undefined,
+        anchorID: "obs_project_semantic",
+        query: undefined,
+      },
+    ])
+    expect(result?.scope).toBe("project")
+    expect(result?.timeline.anchor.id).toBe("obs_project_semantic")
+  })
+
+  test("falls back to text timeline query when semantic observation search does not hit", async () => {
+    const semanticCalls: Array<{ sessionID?: string; kinds?: string[] }> = []
+    const timelineCalls: Array<{
+      sessionID?: string
+      anchorID?: string
+      query?: string
+    }> = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords() {
+          return []
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline(input) {
+          timelineCalls.push({
+            sessionID: input.sessionID,
+            anchorID: input.anchorID,
+            query: input.query,
+          })
+          if (input.sessionID && input.query === "requirements") {
+            return {
+              anchor: {
+                kind: "summary" as const,
+                id: "sum_session_text",
+                content: "读取 requirements 并确认缺材料",
+                createdAt: 3,
+                requestSummary: "梳理 requirements",
+                isAnchor: true,
+              },
+              items: [],
+            }
+          }
+          return null
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input) => {
+        semanticCalls.push({
+          sessionID: input.sessionID,
+          kinds: input.kinds,
+        })
+        return []
+      },
+    })
+
+    const result = await worker.getMemoryTimeline({
+      sessionID: "ses_demo",
+      query: "requirements",
+      depthBefore: 2,
+      depthAfter: 2,
+    })
+
+    expect(semanticCalls).toEqual([{ sessionID: "ses_demo", kinds: ["observation"] }])
+    expect(timelineCalls).toEqual([
+      {
+        sessionID: "ses_demo",
+        anchorID: undefined,
+        query: "requirements",
+      },
+    ])
+    expect(result?.scope).toBe("session")
+    expect(result?.timeline.anchor.id).toBe("sum_session_text")
+  })
+
+  test("keeps explicit anchor resolution ahead of semantic timeline query", async () => {
+    const semanticCalls: Array<{ sessionID?: string; kinds?: string[] }> = []
+    const timelineCalls: Array<{
+      sessionID?: string
+      anchorID?: string
+      query?: string
+    }> = []
+
+    const worker = createMemoryWorkerService({
+      projectPath: "/workspace/demo",
+      store: {
+        saveRequestAnchor() {},
+        saveObservation() {},
+        getLatestRequestAnchor() {
+          return null
+        },
+        listObservationsForRequestWindow() {
+          return []
+        },
+        saveSummary() {},
+        updateRequestAnchorCheckpoint() {},
+        listRecentSummaries() {
+          return []
+        },
+        listRecentObservations() {
+          return []
+        },
+        searchMemoryRecords() {
+          return []
+        },
+        getMemoryDetails() {
+          return []
+        },
+        getMemoryTimeline(input) {
+          timelineCalls.push({
+            sessionID: input.sessionID,
+            anchorID: input.anchorID,
+            query: input.query,
+          })
+          return {
+            anchor: {
+              kind: "observation" as const,
+              id: input.anchorID ?? "obs_fallback",
+              content: "显式 anchor",
+              createdAt: 1,
+              tool: "read",
+              importance: 0.8,
+              tags: [],
+              evidence: {},
+              isAnchor: true,
+            },
+            items: [],
+          }
+        },
+        getQueueStats() {
+          return { pending: 0, processing: 0, failed: 0 }
+        },
+        listFailedJobs() {
+          return []
+        },
+        retryJob() {
+          return false
+        },
+      },
+      idleSummaryGuard: {
+        async run(_sessionID, task) {
+          await task()
+          return { ran: true }
+        },
+      },
+      searchSemanticMemoryRecords: async (input) => {
+        semanticCalls.push({
+          sessionID: input.sessionID,
+          kinds: input.kinds,
+        })
+        return []
+      },
+    })
+
+    const result = await worker.getMemoryTimeline({
+      sessionID: "ses_demo",
+      anchorID: "obs_explicit",
+      query: "should not matter",
+      depthBefore: 2,
+      depthAfter: 2,
+    })
+
+    expect(semanticCalls).toEqual([])
+    expect(timelineCalls).toEqual([
+      {
+        sessionID: "ses_demo",
+        anchorID: "obs_explicit",
+        query: "should not matter",
+      },
+    ])
+    expect(result?.scope).toBe("session")
+    expect(result?.timeline.anchor.id).toBe("obs_explicit")
+  })
+
   test("reads queue status and retries failed jobs through the worker service", async () => {
     const calls: string[] = []
 

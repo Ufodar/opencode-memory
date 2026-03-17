@@ -56,6 +56,7 @@ export interface StoredSemanticMemorySearch {
     sessionID?: string
     query: string
     limit: number
+    kinds?: Array<MemorySearchRecord["kind"]>
   }): Promise<{
     mode: "semantic" | "fallback"
     results: MemorySearchRecord[]
@@ -186,7 +187,12 @@ export function createStoredSemanticMemorySearch(input: {
           queryVector,
           limit: Math.max(searchInput.limit * 4, searchInput.limit),
         })
-        const hydrated = hydrateStoredSearchResults(input.repository, candidateIDs, searchInput.limit)
+        const hydrated = hydrateStoredSearchResults(
+          input.repository,
+          candidateIDs,
+          searchInput.limit,
+          searchInput.kinds,
+        )
 
         if (hydrated.length > 0) {
           return {
@@ -374,6 +380,7 @@ function hydrateStoredSearchResults(
   repository: SQLiteMemoryVectorRepository,
   ids: string[],
   limit: number,
+  kinds?: Array<MemorySearchRecord["kind"]>,
 ): MemorySearchRecord[] {
   if (ids.length === 0) {
     return []
@@ -396,7 +403,9 @@ function hydrateStoredSearchResults(
   return [
     ...summaries.map((row) => row.searchRecord),
     ...observations.map((row) => row.searchRecord),
-  ].slice(0, limit)
+  ]
+    .filter((record) => !kinds || kinds.includes(record.kind))
+    .slice(0, limit)
 }
 
 function projectScopeKey(projectPath: string): string {

@@ -93,4 +93,59 @@ describe("stored semantic memory search", () => {
     expect(result.results.map((item) => item.id)).toEqual(["sum_semantic", "obs_other"])
     expect(result.results[0]?.kind).toBe("summary")
   })
+
+  test("supports observation-only semantic results for timeline anchors", async () => {
+    repository.upsert({
+      id: "sum_semantic",
+      kind: "summary",
+      projectPath: "/workspace/demo",
+      sessionID: "ses_demo",
+      createdAt: 1,
+      searchRecord: {
+        kind: "summary",
+        id: "sum_semantic",
+        content: "完成 memory worker reuse",
+        createdAt: 1,
+        nextStep: "继续收紧 worker 生命周期",
+      },
+      coveredObservationIDs: [],
+      vector: new Float32Array([1, 0, 0]),
+    })
+    repository.upsert({
+      id: "obs_anchor",
+      kind: "observation",
+      projectPath: "/workspace/demo",
+      sessionID: "ses_demo",
+      createdAt: 2,
+      searchRecord: {
+        kind: "observation",
+        id: "obs_anchor",
+        content: "修复 worker 复用时的端口竞争",
+        createdAt: 2,
+        tool: "bash",
+        importance: 0.9,
+        tags: ["worker", "reuse"],
+      },
+      vector: new Float32Array([0.95, 0.05, 0]),
+    })
+
+    const service = createStoredSemanticMemorySearch({
+      repository,
+      dimensions: 3,
+      backend: "exact-scan",
+      embedQuery: async () => new Float32Array([0.99, 0.01, 0]),
+    })
+
+    const result = await service.search({
+      projectPath: "/workspace/demo",
+      sessionID: "ses_demo",
+      query: "解决后台监听占用问题",
+      limit: 5,
+      kinds: ["observation"],
+    })
+
+    expect(result.mode).toBe("semantic")
+    expect(result.results.map((item) => item.id)).toEqual(["obs_anchor"])
+    expect(result.results[0]?.kind).toBe("observation")
+  })
 })

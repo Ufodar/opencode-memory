@@ -46,9 +46,9 @@ npm test && npm run lint
 TypeScript + Bun: Follow standard conventions
 
 ## Recent Changes
+- 062-semantic-memory-timeline: Added TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch`
 - 061-vector-memory-search: Added TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch`
 - 060-loading-observations-wording: Added TypeScript + Bun + Bun test, OpenCode runtime integration
-- 059-savings-reduction-from-reuse: Added TypeScript + Bun + `@opencode-ai/plugin`、`@opencode-ai/sdk`、现有 runtime injection 模块
 
 
 <!-- MANUAL ADDITIONS START -->

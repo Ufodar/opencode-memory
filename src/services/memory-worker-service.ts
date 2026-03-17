@@ -123,6 +123,7 @@ export interface MemoryWorkerService {
     sessionID?: string
     query: string
     limit: number
+    kinds?: Array<MemorySearchRecord["kind"]>
   }): Promise<MemorySearchRecord[]>
   getQueueStatus(input: {
     limit: number
@@ -207,6 +208,7 @@ export function createMemoryWorkerService(input: {
     sessionID?: string
     query: string
     limit: number
+    kinds?: Array<MemorySearchRecord["kind"]>
   }) => Promise<MemorySearchRecord[]>
 }): MemoryWorkerService {
   const captureRequestAnchor = input.captureRequestAnchor ?? defaultCaptureRequestAnchor
@@ -510,48 +512,11 @@ export function createMemoryWorkerService(input: {
     },
 
     getMemoryTimeline(timelineInput) {
-      let scopeUsed: "session" | "project" = "project"
-      let timeline =
-        timelineInput.scope === "project"
-          ? input.store.getMemoryTimeline({
-              projectPath: input.projectPath,
-              anchorID: timelineInput.anchorID,
-              query: timelineInput.query,
-              depthBefore: timelineInput.depthBefore,
-              depthAfter: timelineInput.depthAfter,
-            })
-          : input.store.getMemoryTimeline({
-              projectPath: input.projectPath,
-              sessionID: timelineInput.sessionID,
-              anchorID: timelineInput.anchorID,
-              query: timelineInput.query,
-              depthBefore: timelineInput.depthBefore,
-              depthAfter: timelineInput.depthAfter,
-            })
-
-      if (timelineInput.scope === "project") {
-        scopeUsed = "project"
-      } else if (timeline || timelineInput.scope === "session") {
-        scopeUsed = "session"
-      } else {
-        timeline = input.store.getMemoryTimeline({
-          projectPath: input.projectPath,
-          anchorID: timelineInput.anchorID,
-          query: timelineInput.query,
-          depthBefore: timelineInput.depthBefore,
-          depthAfter: timelineInput.depthAfter,
-        })
-        scopeUsed = "project"
+      if (!timelineInput.anchorID && timelineInput.query && input.searchSemanticMemoryRecords) {
+        return resolveTimelineWithSemanticAnchor(input, timelineInput)
       }
 
-      if (!timeline) {
-        return null
-      }
-
-      return {
-        scope: scopeUsed,
-        timeline,
-      }
+      return resolveTimelineFromStore(input, timelineInput)
     },
 
     getMemoryDetails(ids) {
@@ -617,6 +582,150 @@ function getLatestSummaryObservations(
   return latestSummary.observationIDs
     .map((id) => observationsByID.get(id))
     .filter((observation): observation is ObservationRecord => Boolean(observation))
+}
+
+function resolveTimelineFromStore(
+  input: {
+    projectPath: string
+    store: MemoryTimelineStore
+  },
+  timelineInput: Parameters<MemoryWorkerService["getMemoryTimeline"]>[0],
+) {
+  let scopeUsed: "session" | "project" = "project"
+  let timeline =
+    timelineInput.scope === "project"
+      ? input.store.getMemoryTimeline({
+          projectPath: input.projectPath,
+          anchorID: timelineInput.anchorID,
+          query: timelineInput.query,
+          depthBefore: timelineInput.depthBefore,
+          depthAfter: timelineInput.depthAfter,
+        })
+      : input.store.getMemoryTimeline({
+          projectPath: input.projectPath,
+          sessionID: timelineInput.sessionID,
+          anchorID: timelineInput.anchorID,
+          query: timelineInput.query,
+          depthBefore: timelineInput.depthBefore,
+          depthAfter: timelineInput.depthAfter,
+        })
+
+  if (timelineInput.scope === "project") {
+    scopeUsed = "project"
+  } else if (timeline || timelineInput.scope === "session") {
+    scopeUsed = "session"
+  } else {
+    timeline = input.store.getMemoryTimeline({
+      projectPath: input.projectPath,
+      anchorID: timelineInput.anchorID,
+      query: timelineInput.query,
+      depthBefore: timelineInput.depthBefore,
+      depthAfter: timelineInput.depthAfter,
+    })
+    scopeUsed = "project"
+  }
+
+  if (!timeline) {
+    return null
+  }
+
+  return {
+    scope: scopeUsed,
+    timeline,
+  }
+}
+
+async function resolveTimelineWithSemanticAnchor(
+  input: {
+    projectPath: string
+    store: MemoryTimelineStore
+    searchSemanticMemoryRecords?: (input: {
+      projectPath: string
+      sessionID?: string
+      query: string
+      limit: number
+      kinds?: Array<MemorySearchRecord["kind"]>
+    }) => Promise<MemorySearchRecord[]>
+  },
+  timelineInput: Parameters<MemoryWorkerService["getMemoryTimeline"]>[0],
+) {
+  const query = timelineInput.query
+  if (!query || !input.searchSemanticMemoryRecords) {
+    return resolveTimelineFromStore(input, timelineInput)
+  }
+
+  const trySemanticObservationAnchor = async (scope: "session" | "project") => {
+    const semanticResults = await input.searchSemanticMemoryRecords?.({
+      projectPath: input.projectPath,
+      sessionID: scope === "session" ? timelineInput.sessionID : undefined,
+      query,
+      limit: 5,
+      kinds: ["observation"],
+    })
+    const anchor = semanticResults?.find(
+      (record): record is Extract<MemorySearchRecord, { kind: "observation" }> =>
+        record.kind === "observation",
+    )
+
+    if (!anchor) {
+      return null
+    }
+
+    const timeline = input.store.getMemoryTimeline({
+      projectPath: input.projectPath,
+      sessionID: scope === "session" ? timelineInput.sessionID : undefined,
+      anchorID: anchor.id,
+      depthBefore: timelineInput.depthBefore,
+      depthAfter: timelineInput.depthAfter,
+    })
+
+    if (!timeline) {
+      return null
+    }
+
+    return {
+      scope,
+      timeline,
+    }
+  }
+
+  const tryTextTimeline = (scope: "session" | "project") => {
+    const timeline = input.store.getMemoryTimeline({
+      projectPath: input.projectPath,
+      sessionID: scope === "session" ? timelineInput.sessionID : undefined,
+      query,
+      depthBefore: timelineInput.depthBefore,
+      depthAfter: timelineInput.depthAfter,
+    })
+
+    if (!timeline) {
+      return null
+    }
+
+    return {
+      scope,
+      timeline,
+    }
+  }
+
+  if (timelineInput.scope !== "project") {
+    const sessionSemantic = await trySemanticObservationAnchor("session")
+    if (sessionSemantic) {
+      return sessionSemantic
+    }
+
+    const sessionText = tryTextTimeline("session")
+    if (sessionText || timelineInput.scope === "session") {
+      return sessionText
+    }
+  }
+
+  const projectSemantic = await trySemanticObservationAnchor("project")
+  if (projectSemantic) {
+    return projectSemantic
+  }
+
+  return tryTextTimeline("project")
 }
 
 async function applyModelObservationRefinement(

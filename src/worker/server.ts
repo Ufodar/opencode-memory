@@ -127,6 +127,7 @@ export async function startMemoryWorkerServer(input: {
               sessionID: searchInput.sessionID,
               query: searchInput.query,
               limit: searchInput.limit,
+              kinds: searchInput.kinds,
             })
           ).results
       : undefined,

@@ -157,8 +157,10 @@
     - 当前后端：
       - `USearch`
       - `exact-scan`
-    - 当前只接到 `memory_search`
-    - `memory_timeline` / `memory_details` 这轮不变
+    - 当前已接到：
+      - `memory_search`
+      - `memory_timeline(query=...)` 的 observation anchor 解析
+    - `memory_details` 这轮不变
   - `memory_search` summary-first
   - `memory_search` 未指定 `scope` 时默认 `session-first / project-fallback`
   - 搜索顺序当前是：
@@ -169,6 +171,12 @@
     这样保持原有 scope 语义不变
   - `memory_timeline` 围绕 summary / observation anchor 返回时间上下文
   - `memory_timeline` 未指定 `scope` 时默认 `session-first / project-fallback`
+  - `memory_timeline(query=...)` 当前顺序是：
+    - session semantic observation anchor
+    - session text timeline
+    - project semantic observation anchor
+    - project text timeline
+    这样在补 semantic query 的同时，保持原有 scope 纪律不变
   - `memory_details` mixed details
   - `memory_details` observation detail 已稳定暴露结构化 evidence：
     - `workingDirectory`

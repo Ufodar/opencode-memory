@@ -91,7 +91,9 @@ docs/
   - 当前本地 vector index 后端：
     - `usearch`
     - `exact-scan`
-  - semantic retrieval 当前只接到 `memory_search`
+  - semantic retrieval 当前已接到：
+    - `memory_search`
+    - `memory_timeline(query=...)` 的 observation anchor 解析
 - SQLite 存储层已开始按长期架构目标拆分：
   - `SQLiteMemoryStore`
   - `SQLiteMemoryDatabase`
