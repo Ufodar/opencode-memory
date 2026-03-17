@@ -19,6 +19,7 @@ OpenCode 的通用工作记忆插件底座。
 - 分层检索
 - compaction 记忆保留
 - `memory_search` 的第一版 semantic retrieval
+- 开源前核心 heuristics 的 language-neutral baseline
 
 第一阶段不做：
 
@@ -86,14 +87,19 @@ docs/
 - `memory_search` / `memory_details` 已支持 summary-first 检索与 mixed details
 - `memory_timeline` 已支持围绕 summary / observation anchor 查看时间上下文
 - `memory_search` 已支持第一版语义召回：
-  - 通过 `OPENCODE_MEMORY_EMBEDDING_*` 连接 OpenAI-compatible embedding API
+- 通过 `OPENCODE_MEMORY_EMBEDDING_*` 连接 OpenAI-compatible embedding API
   - 新 observation / summary 写入后会同步向量化
   - 当前本地 vector index 后端：
     - `usearch`
     - `exact-scan`
   - semantic retrieval 当前已接到：
     - `memory_search`
-    - `memory_timeline(query=...)` 的 observation anchor 解析
+  - `memory_timeline(query=...)` 的 observation anchor 解析
+- 核心控制 heuristics 已开始 language-neutral 化：
+  - `decision` 识别支持中英常见信号
+  - retrieval-only prompt 识别支持中英常见提示
+  - `OPENCODE_MEMORY_OUTPUT_LANGUAGE` 可控制 model summary / observation 的目标输出语言
+  - 默认输出语言已转为英文，更适合作为通用 OSS 插件
 - SQLite 存储层已开始按长期架构目标拆分：
   - `SQLiteMemoryStore`
   - `SQLiteMemoryDatabase`

@@ -164,6 +164,121 @@ describe("model summary", () => {
     expect(result?.nextStep).toBeUndefined()
   })
 
+  test("drops weak English nextStep wording", async () => {
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
+
+    const result = await generateModelSummary(
+      {
+        request: buildRequest(),
+        observations: [buildObservation()],
+      },
+      {
+        fetchImpl: async () =>
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      outcomeSummary: "Finished extracting the eligibility constraints.",
+                      nextStep: "continue working",
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      },
+    )
+
+    expect(result?.nextStep).toBeUndefined()
+  })
+
+  test("requests English output by default", async () => {
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
+    delete process.env.OPENCODE_MEMORY_OUTPUT_LANGUAGE
+
+    let systemPrompt = ""
+
+    await generateModelSummary(
+      {
+        request: buildRequest(),
+        observations: [buildObservation()],
+      },
+      {
+        fetchImpl: async (_input, init) => {
+          const payload = JSON.parse(String(init?.body)) as {
+            messages: Array<{ role: string; content: string }>
+          }
+          systemPrompt = payload.messages[0]?.content ?? ""
+
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      outcomeSummary: "Finished extracting the eligibility constraints.",
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        },
+      },
+    )
+
+    expect(systemPrompt).toContain("outcomeSummary must be in English")
+  })
+
+  test("allows Chinese output policy explicitly", async () => {
+    process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
+    process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"
+    process.env.OPENCODE_MEMORY_SUMMARY_MODEL = "gpt-test"
+    process.env.OPENCODE_MEMORY_OUTPUT_LANGUAGE = "zh"
+
+    let systemPrompt = ""
+
+    await generateModelSummary(
+      {
+        request: buildRequest(),
+        observations: [buildObservation()],
+      },
+      {
+        fetchImpl: async (_input, init) => {
+          const payload = JSON.parse(String(init?.body)) as {
+            messages: Array<{ role: string; content: string }>
+          }
+          systemPrompt = payload.messages[0]?.content ?? ""
+
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      outcomeSummary: "已完成资格条件抽取。",
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          )
+        },
+      },
+    )
+
+    expect(systemPrompt).toContain("outcomeSummary 必须是中文")
+  })
+
   test("returns null when model request exceeds timeout", async () => {
     process.env.OPENCODE_MEMORY_SUMMARY_API_URL = "https://api.example.com/v1"
     process.env.OPENCODE_MEMORY_SUMMARY_API_KEY = "test-key"

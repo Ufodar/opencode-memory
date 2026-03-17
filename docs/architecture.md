@@ -40,6 +40,7 @@
 - OpenCode 等价点：`tool.execute.after`
 - 作用：把高价值工具调用转成 observation 候选并落库
 - 当前补充策略：
+  - `decision` heuristics 当前已支持中英常见信号，而不是只看中文词
   - `read` 工具优先从正文里提取 deterministic semantic 摘要
   - observation model 只是可选增强层
   - 即使模型失败，也保留 deterministic trace / evidence
@@ -61,6 +62,10 @@
   - summary 可选走 model-assisted，但必须可回退到 deterministic
   - model-assisted 输出必须经过归一化和约束收口
   - model-assisted 请求必须受 timeout 约束
+  - model summary / model observation 的目标输出语言当前可通过：
+    - `OPENCODE_MEMORY_OUTPUT_LANGUAGE`
+    进行配置
+  - 默认输出语言当前为英文，更适合作为通用 OSS 插件
 
 ### 回注器
 
@@ -191,6 +196,7 @@
     - `memory_search`
     - `memory_timeline`
     - `memory_details`
+  - retrieval-only prompt 识别当前已支持中英常见提示，不再只依赖中文表达
 
 ### 向量层
 

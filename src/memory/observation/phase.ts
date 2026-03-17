@@ -1,7 +1,10 @@
 import type { ObservationRecord, ObservationPhase } from "./types.js"
 
-const DECISION_SIGNAL_PATTERN =
+const CHINESE_DECISION_SIGNAL_PATTERN =
   /(形成决策|明确决策|决策[:：]|决定[:：]?|下一步[:：]?|先[^，。；]{0,40}(?:[，,。；;]|$))/u
+
+const ENGLISH_DECISION_SIGNAL_PATTERN =
+  /\b(?:decision|next step|first step|plan)\s*[:\-]|\bdecided to\b/i
 
 const BASH_VERIFICATION_PATTERN =
   /\b(pytest|jest|vitest|bun test|npm test|pnpm test|yarn test|cargo test|go test|ctest|eslint|biome|lint|typecheck|tsc(?:\s+--noEmit)?|check)\b/i
@@ -13,7 +16,10 @@ const BASH_EXECUTION_PATTERN =
   /\b(mkdir|mv|cp|rm|touch|bun install|npm install|pnpm install|yarn install|git add|git commit|chmod|chown)\b/i
 
 export function looksLikeDecisionSignal(value: string): boolean {
-  return DECISION_SIGNAL_PATTERN.test(value)
+  return (
+    CHINESE_DECISION_SIGNAL_PATTERN.test(value) ||
+    ENGLISH_DECISION_SIGNAL_PATTERN.test(value)
+  )
 }
 
 export function inferObservationPhaseFromToolCall(input: {

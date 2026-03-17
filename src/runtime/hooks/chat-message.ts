@@ -25,7 +25,13 @@ const PURE_MEMORY_RETRIEVAL_HINTS = [
   /只做\s+记忆上下文预览/,
   /只调用\s+memory_(search|timeline|details|context_preview|queue_status|queue_retry)/,
   /不要读取任何文件/,
+  /memory\s+lookup\s+only/i,
+  /preview\s+memory\s+context\s+only/i,
+  /memory\s+context\s+preview\s+only/i,
   /do not read any files/i,
+  /do not inspect (?:repository )?files/i,
+  /do not open (?:repository )?files/i,
+  /use only\s+memory_(search|timeline|details|context_preview|queue_status|queue_retry)/i,
   /only call\s+memory_(search|timeline|details|context_preview|queue_status|queue_retry)/i,
 ]
 

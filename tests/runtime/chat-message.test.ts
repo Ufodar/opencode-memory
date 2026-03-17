@@ -36,4 +36,38 @@ describe("captureRequestAnchor", () => {
 
     expect(record).toBeNull()
   })
+
+  test("skips English memory lookup-only prompts", () => {
+    const record = captureRequestAnchor({
+      sessionID: "ses_demo",
+      messageID: "msg_3",
+      projectPath: "/workspace/demo",
+      text: "Memory lookup only. Do not read files. Use only memory_search for prior notes.",
+    })
+
+    expect(record).toBeNull()
+  })
+
+  test("skips English memory preview-only prompts", () => {
+    const record = captureRequestAnchor({
+      sessionID: "ses_demo",
+      messageID: "msg_4",
+      projectPath: "/workspace/demo",
+      text: "Preview memory context only. Do not inspect repository files. Use only memory_context_preview.",
+    })
+
+    expect(record).toBeNull()
+  })
+
+  test("keeps English work prompts that mention memory tools conditionally", () => {
+    const record = captureRequestAnchor({
+      sessionID: "ses_demo",
+      messageID: "msg_5",
+      projectPath: "/workspace/demo",
+      text: "Investigate the failing smoke report and use memory_search only if prior notes are needed.",
+    })
+
+    expect(record?.id).toBe("msg_5")
+    expect(record?.content).toContain("Investigate the failing smoke report")
+  })
 })

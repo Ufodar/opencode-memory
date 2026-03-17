@@ -52,6 +52,48 @@ describe("selectCheckpointObservations", () => {
     expect(selected.map((item) => item.id)).toEqual(["obs_1", "obs_2"])
   })
 
+  test("keeps observations through an English decision signal", () => {
+    const observations = [
+      buildObservation({
+        id: "obs_1",
+        toolName: "read",
+        content: "Read the eligibility section and found three hard constraints",
+        createdAt: 10,
+      }),
+      buildObservation({
+        id: "obs_2",
+        toolName: "write",
+        content: "Decision: produce a gap checklist before drafting",
+        createdAt: 20,
+      }),
+    ]
+
+    const selected = selectCheckpointObservations({ observations })
+
+    expect(selected.map((item) => item.id)).toEqual(["obs_1", "obs_2"])
+  })
+
+  test("treats English next-step wording as a decision-like checkpoint signal", () => {
+    const observations = [
+      buildObservation({
+        id: "obs_1",
+        toolName: "read",
+        content: "Reviewed the smoke report and found one missing assertion",
+        createdAt: 10,
+      }),
+      buildObservation({
+        id: "obs_2",
+        toolName: "write",
+        content: "Next step: validate the smoke report before release",
+        createdAt: 20,
+      }),
+    ]
+
+    const selected = selectCheckpointObservations({ observations })
+
+    expect(selected.map((item) => item.id)).toEqual(["obs_1", "obs_2"])
+  })
+
   test("allows a single execution observation to form a checkpoint", () => {
     const observations = [
       buildObservation({

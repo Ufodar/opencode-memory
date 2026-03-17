@@ -1,6 +1,7 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import type { RequestAnchorRecord } from "../../memory/request/types.js"
 import { log } from "../logger.js"
+import { getMemoryOutputLanguage } from "./output-language.js"
 
 export interface ModelSummaryConfig {
   apiUrl: string
@@ -56,7 +57,7 @@ export async function generateModelSummary(
         signal: controller.signal,
         body: JSON.stringify({
           model: config.model,
-          messages: buildMessages(input),
+          messages: buildMessages(input, deps.env ?? process.env),
           temperature: 0.2,
           response_format: {
             type: "json_object",
@@ -113,17 +114,9 @@ export async function generateModelSummary(
 function buildMessages(input: {
   request: RequestAnchorRecord
   observations: ObservationRecord[]
-}) {
-  const system = [
-    "你是一个工作记忆摘要生成器。",
-    "你的任务是把一个 request checkpoint 里的 observation 压成简短、准确、可回注的阶段摘要。",
-    "输出必须是 JSON，对象字段只有 outcomeSummary 和 nextStep。",
-    "outcomeSummary 必须是中文，聚焦已经完成的事实结果，不要写闲聊或过程口号。",
-    "outcomeSummary 最好控制在 1-2 句内，避免重复 request 原文。",
-    "nextStep 只有在 observation 中已经出现明确下一步时才填写。",
-    "nextStep 必须具体，像“继续处理”这类空泛说法不要写。",
-    "禁止编造 observation 中没有出现的文件、结论或计划。",
-  ].join("\n")
+}, env: NodeJS.ProcessEnv = process.env) {
+  const language = getMemoryOutputLanguage(env)
+  const system = buildSystemPrompt(language)
 
   const user = [
     `## Request`,
@@ -138,6 +131,32 @@ function buildMessages(input: {
     { role: "system", content: system },
     { role: "user", content: user },
   ]
+}
+
+function buildSystemPrompt(language: "en" | "zh"): string {
+  if (language === "zh") {
+    return [
+      "你是一个工作记忆摘要生成器。",
+      "你的任务是把一个 request checkpoint 里的 observation 压成简短、准确、可回注的阶段摘要。",
+      "输出必须是 JSON，对象字段只有 outcomeSummary 和 nextStep。",
+      "outcomeSummary 必须是中文，聚焦已经完成的事实结果，不要写闲聊或过程口号。",
+      "outcomeSummary 最好控制在 1-2 句内，避免重复 request 原文。",
+      "nextStep 只有在 observation 中已经出现明确下一步时才填写。",
+      "nextStep 必须具体，像“继续处理”这类空泛说法不要写。",
+      "禁止编造 observation 中没有出现的文件、结论或计划。",
+    ].join("\n")
+  }
+
+  return [
+    "You are a working-memory summary generator.",
+    "Your task is to compress a request checkpoint into a short, accurate, reinjectable stage summary.",
+    "Output must be JSON with exactly two fields: outcomeSummary and nextStep.",
+    "outcomeSummary must be in English and focus on completed factual results, not slogans or chat filler.",
+    "Keep outcomeSummary to 1-2 sentences when possible, and avoid repeating the request verbatim.",
+    "Only fill nextStep when the observations already contain an explicit next action.",
+    "nextStep must be concrete. Generic phrases like 'continue working' are not allowed.",
+    "Do not invent files, conclusions, or plans that do not appear in the observations.",
+  ].join("\n")
 }
 
 function safeParseJson(value: string): Record<string, unknown> | null {
@@ -184,7 +203,9 @@ function normalizePunctuationSpacing(value: string): string {
 }
 
 function isWeakNextStep(value: string): boolean {
-  return /^(继续处理|继续推进|继续完善|继续优化|待继续|继续)$/u.test(value)
+  return /^(继续处理|继续推进|继续完善|继续优化|待继续|继续|continue|continue working|continue processing|continue refining|continue iterating|keep going|keep working|pending)$/iu.test(
+    value,
+  )
 }
 
 function truncate(value: string, max: number): string {

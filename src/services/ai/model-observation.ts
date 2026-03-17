@@ -1,5 +1,6 @@
 import type { ObservationRecord } from "../../memory/observation/types.js"
 import { log } from "../logger.js"
+import { getMemoryOutputLanguage } from "./output-language.js"
 
 export interface ModelObservationConfig {
   apiUrl: string
@@ -71,7 +72,7 @@ export async function generateModelObservation(
         signal: controller.signal,
         body: JSON.stringify({
           model: config.model,
-          messages: buildMessages(input),
+          messages: buildMessages(input, deps.env ?? process.env),
           temperature: 0.2,
           response_format: {
             type: "json_object",
@@ -152,17 +153,8 @@ function buildMessages(input: {
     metadata: Record<string, unknown>
   }
   observation: ObservationRecord
-}) {
-  const system = [
-    "你是一个工作记忆 observation 精炼器。",
-    "你的任务是根据工具调用结果，把 observation 压成更适合检索和回注的一条事实记录。",
-    "输出必须是 JSON，对象字段只能是 content、outputSummary、tags、importance。",
-    "content 必须是中文，描述已经得到的事实结果，不要复述无关路径，不要写闲聊。",
-    "outputSummary 只在确实有助于后续理解时才填写。",
-    "tags 应该是少量、高信息量的标签，避免通用废词。",
-    "importance 必须是 0 到 1 之间的小数。",
-    "禁止编造工具输出里没有出现的结论。",
-  ].join("\n")
+}, env: NodeJS.ProcessEnv = process.env) {
+  const system = buildSystemPrompt(getMemoryOutputLanguage(env))
 
   const user = [
     `## Heuristic Observation`,
@@ -196,6 +188,32 @@ function buildMessages(input: {
     { role: "system", content: system },
     { role: "user", content: user },
   ]
+}
+
+function buildSystemPrompt(language: "en" | "zh"): string {
+  if (language === "zh") {
+    return [
+      "你是一个工作记忆 observation 精炼器。",
+      "你的任务是根据工具调用结果，把 observation 压成更适合检索和回注的一条事实记录。",
+      "输出必须是 JSON，对象字段只能是 content、outputSummary、tags、importance。",
+      "content 必须是中文，描述已经得到的事实结果，不要复述无关路径，不要写闲聊。",
+      "outputSummary 只在确实有助于后续理解时才填写。",
+      "tags 应该是少量、高信息量的标签，避免通用废词。",
+      "importance 必须是 0 到 1 之间的小数。",
+      "禁止编造工具输出里没有出现的结论。",
+    ].join("\n")
+  }
+
+  return [
+    "You are a working-memory observation refiner.",
+    "Your task is to compress a tool result into one factual observation record that is better for retrieval and reinjection.",
+    "Output must be JSON with only these fields: content, outputSummary, tags, importance.",
+    "content must be in English and describe factual results already obtained, without unrelated path noise or chat filler.",
+    "Only fill outputSummary when it materially helps later understanding.",
+    "tags should be few and high-signal, not generic filler terms.",
+    "importance must be a decimal between 0 and 1.",
+    "Do not invent conclusions that do not appear in the tool output.",
+  ].join("\n")
 }
 
 function normalizeText(value: string, max: number): string | undefined {

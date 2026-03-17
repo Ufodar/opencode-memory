@@ -48,7 +48,6 @@ TypeScript + Bun: Follow standard conventions
 ## Recent Changes
 - 062-semantic-memory-timeline: Added TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch`
 - 061-vector-memory-search: Added TypeScript + Bun + `@opencode-ai/plugin`、`bun:sqlite`、`usearch`
-- 060-loading-observations-wording: Added TypeScript + Bun + Bun test, OpenCode runtime integration
 
 
 <!-- MANUAL ADDITIONS START -->
