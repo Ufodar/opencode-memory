@@ -129,3 +129,4 @@ function collectOutcomeBits(observations: ObservationRecord[]): string[] {
 
   return result
 }
+
