@@ -1,20 +1,20 @@
 # opencode-memory
 
-`opencode-memory` 是一个面向 OpenCode 的持久工作记忆插件。
+`opencode-memory` is a persistent working-memory plugin for OpenCode.
 
-它会把工作过程整理成 `observation`、`summary` 和可回注的 `context`，让 agent 在下一轮对话里继续接上之前的工作。
+It organizes your working process into `observation`, `summary`, and re-injectable `context`, so the agent can pick up where it left off in the next conversation turn.
 
 ## Quick Start
 
-OpenCode 目前是配置驱动的插件加载方式。最短安装路径就是：
+OpenCode currently loads plugins in a configuration-driven way. The shortest setup path is:
 
-1. 在 `~/.config/opencode/opencode.json` 里启用插件包名
-2. 在 `~/.config/opencode/opencode-memory.jsonc` 里配置插件参数
-3. 重启 OpenCode
+1. Enable the plugin package name in `~/.config/opencode/opencode.json`
+2. Configure the plugin parameters in `~/.config/opencode/opencode-memory.jsonc`
+3. Restart OpenCode
 
-### 1. 安装插件
+### 1. Install the plugin
 
-发布后，推荐直接按包名安装：
+After release, we recommend installing directly by package name:
 
 ```jsonc
 {
@@ -22,9 +22,9 @@ OpenCode 目前是配置驱动的插件加载方式。最短安装路径就是�
 }
 ```
 
-重启 OpenCode 后，插件会自动下载并加载。
+After restarting OpenCode, the plugin will be downloaded and loaded automatically.
 
-如果你想固定版本，也可以写成：
+If you want to pin a specific version, you can also write:
 
 ```jsonc
 {
@@ -32,13 +32,13 @@ OpenCode 目前是配置驱动的插件加载方式。最短安装路径就是�
 }
 ```
 
-### 2. 配置插件
+### 2. Configure the plugin
 
-推荐把 `opencode-memory` 的参数单独放在：
+We recommend keeping the `opencode-memory` parameters in a dedicated file:
 
 `~/.config/opencode/opencode-memory.jsonc`
 
-如果你只想先把语义检索跑起来，最小示例可以直接这样写：
+If you just want to get semantic retrieval running first, a minimal example looks like this:
 
 ```jsonc
 {
@@ -50,9 +50,9 @@ OpenCode 目前是配置驱动的插件加载方式。最短安装路径就是�
 }
 ```
 
-`embeddingDimensions` 必须和 embedding 接口真实返回的向量长度一致。不同模型或不同网关可能不一样，不要只按模型名猜。
+`embeddingDimensions` must match the actual vector length returned by your embedding endpoint. Different models or gateways may differ, so don't guess based only on the model name.
 
-如果你还想让插件用模型帮你生成更好的 summary / observation，可以继续加：
+If you also want the plugin to use a model to generate better summary / observation content, you can add:
 
 ```jsonc
 {
@@ -65,12 +65,12 @@ OpenCode 目前是配置驱动的插件加载方式。最短安装路径就是�
 }
 ```
 
-### 3. 可选配置
+### 3. Optional configuration
 
 - `storagePath`
-  - 默认是 `~/.opencode-memory/data`
+  - Default: `~/.opencode-memory/data`
 - `outputLanguage`
-  - `en` 或 `zh`
+  - `en` or `zh`
 - `embeddingApiUrl`
 - `embeddingApiKey`
 - `embeddingModel`
@@ -85,24 +85,24 @@ OpenCode 目前是配置驱动的插件加载方式。最短安装路径就是�
 - `observationApiKey`
 - `observationModel`
 
-密钥支持这三种写法：
+Secrets support these three syntaxes:
 
-- 直接写字符串
+- A plain string
 - `env://ENV_VAR_NAME`
 - `file:///absolute/path/to/secret.txt`
 
-环境变量仍然可用，并且优先级高于 `opencode-memory.jsonc`。
+Environment variables remain available and take priority over `opencode-memory.jsonc`.
 
-## 本地源码开发
+## Local source development
 
-如果你是在本地仓库里开发，先构建：
+If you're developing in a local checkout, build first:
 
 ```bash
 bun install
 bun run build
 ```
 
-然后在 `~/.config/opencode/opencode.json` 里直接加载本地构建产物：
+Then load the local build directly in `~/.config/opencode/opencode.json`:
 
 ```jsonc
 {
@@ -112,34 +112,34 @@ bun run build
 }
 ```
 
-## 它会做什么
+## What it does
 
-- 工具执行后自动采集 observation
-- 按 request window 聚合 summary
-- 通过独立 worker 持久化 memory
-- 在下一轮对话和 compaction 时回注 context
-- 提供：
+- Automatically captures observations after tool execution
+- Aggregates summaries per request window
+- Persists memory through a dedicated worker
+- Re-injects context on the next turn and during compaction
+- Provides:
   - `memory_search`
   - `memory_timeline`
   - `memory_details`
 
-## 暴露的工具
+## Exposed tools
 
 - `memory_search`
-  - 查找 summary / observation
-  - 支持 `scope`、`kind`、`phase`
+  - Looks up summary / observation
+  - Supports `scope`, `kind`, `phase`
 - `memory_timeline`
-  - 围绕 summary 或 observation anchor 展开时间线
+  - Expands a timeline around a summary or observation anchor
 - `memory_details`
-  - 查看单条记录详情和结构化证据
+  - Views individual record details and structured evidence
 - `memory_context_preview`
-  - 预览当前会话将被注入的 memory context
+  - Previews the memory context that will be injected into the current session
 - `memory_queue_status`
-  - 查看 worker 队列状态
+  - Views worker queue status
 - `memory_queue_retry`
-  - 重试失败队列项
+  - Retries failed queue items
 
-## 架构概览
+## Architecture overview
 
 ```text
 OpenCode hooks / tools
@@ -150,18 +150,18 @@ OpenCode hooks / tools
   -> context builder / retrieval services
 ```
 
-核心职责分成四层：
+Core responsibilities are split into four layers:
 
 - capture
-  - 把 request anchor 和 observation 写入 worker 队列
+  - Writes request anchors and observations into the worker queue
 - summary
-  - 从 observation 聚合 checkpoint summary
+  - Aggregates checkpoint summaries from observations
 - retrieval
   - `search -> timeline -> details`
 - injection
-  - 把 recent memory 编译成 system / compaction context
+  - Compiles recent memory into system / compaction context
 
-## 开发
+## Development
 
 ```bash
 bun test
@@ -169,7 +169,7 @@ bun run typecheck
 bun run build
 ```
 
-可选宿主回归：
+Optional host regression:
 
 ```bash
 bun run smoke:host -- --workspace /absolute/path/to/workspace --mode control
@@ -177,13 +177,13 @@ bun run smoke:host -- --workspace /absolute/path/to/workspace --mode control
 
 ## Acknowledgments
 
-`opencode-memory` 在早期探索阶段参考了：
+`opencode-memory` referenced the following projects during its early exploration:
 
 - [`tickernelz/opencode-mem`](https://github.com/tickernelz/opencode-mem)
 - [`thedotmack/claude-mem`](https://github.com/thedotmack/claude-mem)
 
-当前项目已经围绕独立 worker、summary-first retrieval、structured context builder 和 OpenCode 插件配置方式做了大量重构，但保留这层来源说明更准确，也更适合公开协作。
+The current project has been heavily refactored around a dedicated worker, summary-first retrieval, a structured context builder, and the OpenCode plugin configuration approach, but keeping this source attribution is more accurate and better suited for open collaboration.
 
-## 许可证
+## License
 
 [MIT](LICENSE)
